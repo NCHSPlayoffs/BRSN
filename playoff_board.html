@@ -49,6 +49,13 @@
       --pill-glass: rgba(255,255,255,0.10);
       --map-glass: rgba(7,10,18,0.58);
       --surface-sheen: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.026));
+      --board-glass-sheen: linear-gradient(112deg, rgba(255,255,255,0.165) 0%, rgba(255,255,255,0.064) 35%, rgba(255,255,255,0.028) 64%, rgba(255,255,255,0.080) 100%);
+      --board-glass-wash: linear-gradient(180deg, rgba(255,255,255,0.120), rgba(255,255,255,0.045));
+      --board-glass-milk: linear-gradient(0deg, rgba(255,255,255,0.036), rgba(255,255,255,0.036));
+      --round-glass-sheen: linear-gradient(112deg, rgba(255,255,255,0.155) 0%, rgba(255,255,255,0.060) 36%, rgba(255,255,255,0.026) 68%, rgba(255,255,255,0.072) 100%);
+      --frost-panel-sheen: linear-gradient(112deg, rgba(255,255,255,0.185) 0%, rgba(255,255,255,0.076) 38%, rgba(255,255,255,0.038) 68%, rgba(255,255,255,0.110) 100%);
+      --frost-panel-wash: linear-gradient(180deg, rgba(255,255,255,0.135), rgba(255,255,255,0.052));
+      --frost-card-wash: linear-gradient(180deg, rgba(255,255,255,0.115), rgba(255,255,255,0.040));
       --button-glow: rgba(255,255,255,0.28);
       --focus-ring: rgba(143,196,255,0.62);
       --logo-glow: rgba(143,196,255,0.16);
@@ -363,7 +370,6 @@
     .table-card {
       border: 1px solid var(--line);
       border-radius: 8px;
-      box-shadow: 0 18px 40px rgba(0,0,0,0.28);
       background: var(--card-bg);
     }
 
@@ -636,6 +642,78 @@
       grid-template-columns: 1fr;
       gap: 10px;
       align-items: stretch;
+    }
+
+    .app-settings-section {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.026)),
+        rgba(5,8,14,0.30);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.10),
+        0 10px 24px rgba(0,0,0,0.18);
+    }
+
+    .app-settings-section > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 42px;
+      padding: 0 12px;
+      cursor: pointer;
+      color: rgba(240,245,252,0.94);
+      font-family: var(--font-header);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.10em;
+      list-style: none;
+      text-transform: uppercase;
+      user-select: none;
+    }
+
+    .app-settings-section > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .app-settings-section > summary::after {
+      content: "+";
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.025)),
+        rgba(0,0,0,0.24);
+      color: rgba(244,247,253,0.92);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 18px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .app-settings-section[open] > summary {
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.080), rgba(255,255,255,0.020)),
+        rgba(0,0,0,0.12);
+    }
+
+    .app-settings-section[open] > summary::after {
+      content: "-";
+    }
+
+    .app-settings-section-body {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      padding: 10px;
     }
 
     .app-settings-field {
@@ -1023,12 +1101,6 @@
 .sport-picker.open .sport-picker-btn {
   border-color: rgba(255,255,255,0.38);
   box-shadow: 0 8px 22px rgba(0,0,0,0.22);
-}
-
-.sport-picker-btn,
-.class-picker-btn {
-  background: linear-gradient(180deg, #ffdfdf 0%, #bababa 100%);
-  color: #120405;
 }
 
 .sport-picker-btn:hover,
@@ -2523,8 +2595,8 @@
     .region-rankings-table th:nth-child(4),
     .region-rankings-table td:nth-child(4) {
       width: 126px;
-      padding-left: 5px;
-      padding-right: 5px;
+      padding-left: 0px;
+      padding-right: 30px;
       text-align: center;
     }
 
@@ -2765,18 +2837,6 @@
 
     .connector-line.west { left: -5px; right: -450px; }
     .connector-line.east { left: -450px; right: -5px; }
-
-    .round1-west .game-stack {
-      border-top: 3px solid rgba(255,255,255,0.4);
-      border-bottom: 3px solid rgba(255,255,255,0.4);
-      border-right: 3px solid rgba(255,255,255,0.4);
-    }
-
-    .round1-east .game-stack {
-      border-top: 3px solid rgba(255,255,255,0.4);
-      border-bottom: 3px solid rgba(255,255,255,0.4);
-      border-left: 3px solid rgba(255,255,255,0.4);
-    }
 
     .team-card {
       display: grid;
@@ -3468,7 +3528,7 @@
 .region-rankings-table thead th{
   background:#2b2f36 !important;
   color:#d9e2f2;
-  width: 60%;
+  width: 50%;
 }
 
 /* REGION PANEL BORDER COLORS */
@@ -5267,7 +5327,13 @@ body {
 }
 
 .hero,
-.table-card,
+.table-card {
+  border-color: var(--glass-border);
+  background:
+    var(--surface-sheen),
+    var(--card-bg);
+}
+
 .export-preview-panel,
 .east-west-map-panel,
 .team-schedule-card {
@@ -5329,11 +5395,9 @@ select,
     var(--surface-sheen),
     var(--control-glass);
   color: var(--text);
-  box-shadow:
-    inset 0 1px 0 var(--glass-highlight),
-    0 10px 24px rgba(0,0,0,0.18);
-  backdrop-filter: blur(10px) saturate(1.08);
-  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .sport-picker-btn,
@@ -5458,16 +5522,6 @@ td {
   border-bottom-color: rgba(255,255,255,0.085);
 }
 
-tbody tr:nth-child(even) {
-  background:
-    linear-gradient(90deg, transparent, var(--row-glass), transparent);
-}
-
-body:not(.playoff-mode) tbody tr:hover {
-  background:
-    linear-gradient(90deg, rgba(255,255,255,0.060), rgba(255,255,255,0.020), rgba(255,255,255,0.050));
-}
-
 .rank,
 .team-name,
 .team-copy-name,
@@ -5530,11 +5584,6 @@ body:not(.playoff-mode) tbody tr:hover {
   background:
     linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.025)),
     rgba(0,0,0,0.18);
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.11),
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    0 8px 18px rgba(0,0,0,0.18),
-    0 0 18px var(--logo-glow);
 }
 
 .region-panel,
@@ -5554,18 +5603,98 @@ body:not(.playoff-mode) tbody tr:hover {
     0 16px 40px rgba(0,0,0,0.26);
 }
 
+.region-standings-board,
+.playoff-board {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(255,47,58,0.17) 0%, rgba(255,47,58,0.055) 34%, rgba(255,255,255,0.012) 50%, rgba(31,120,255,0.055) 66%, rgba(31,120,255,0.17) 100%),
+    linear-gradient(180deg, rgba(255,255,255,0.026), transparent 42%, rgba(0,0,0,0.105));
+}
+
+body.performance-mode .region-standings-board,
+body.performance-mode .playoff-board {
+  background: transparent;
+  overflow: visible;
+  border-radius: 0;
+}
+
+.region-standings-board > *,
+.playoff-board > * {
+  position: relative;
+  z-index: 1;
+}
+
+.region-panel,
+.bracket-region {
+  background:
+    var(--board-glass-sheen),
+    var(--board-glass-wash),
+    var(--board-glass-milk),
+    rgba(8,12,20,0.40);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .region-panel.west,
 .bracket-region.west {
-  border-color: rgba(255,47,58,0.78);
+  border-color: rgba(255,76,88,0.86);
+  background:
+    linear-gradient(90deg, rgba(255,47,58,0.125), rgba(255,47,58,0.030) 42%, rgba(255,255,255,0.018)),
+    var(--board-glass-sheen),
+    var(--board-glass-wash),
+    var(--board-glass-milk),
+    rgba(8,12,20,0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    inset 0 0 0 1px rgba(255,255,255,0.060),
+    inset 0 28px 48px rgba(255,255,255,0.044),
+    0 16px 42px rgba(0,0,0,0.28),
+    0 0 28px rgba(255,47,58,0.24);
+}
+
+.region-panel.east,
+.bracket-region.east {
+  border-color: rgba(68,146,255,0.86);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.018), rgba(31,120,255,0.030) 58%, rgba(31,120,255,0.125)),
+    var(--board-glass-sheen),
+    var(--board-glass-wash),
+    var(--board-glass-milk),
+    rgba(8,12,20,0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    inset 0 0 0 1px rgba(255,255,255,0.060),
+    inset 0 28px 48px rgba(255,255,255,0.044),
+    0 16px 42px rgba(0,0,0,0.28),
+    0 0 28px rgba(31,120,255,0.24);
+}
+
+body.performance-mode .region-panel,
+body.performance-mode .bracket-region {
+  border-color: var(--glass-border);
+  background:
+    radial-gradient(circle at 72% 0%, var(--glow) 0, transparent 30%),
+    var(--surface-sheen),
+    rgba(255,255,255,0.022);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 16px 40px rgba(0,0,0,0.26);
+}
+
+body.performance-mode .region-panel.west,
+body.performance-mode .bracket-region.west {
+  border-color: rgba(255,76,88,0.86);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.10),
     0 16px 42px rgba(0,0,0,0.28),
     0 0 26px rgba(255,47,58,0.13);
 }
 
-.region-panel.east,
-.bracket-region.east {
-  border-color: rgba(31,120,255,0.78);
+body.performance-mode .region-panel.east,
+body.performance-mode .bracket-region.east {
+  border-color: rgba(68,146,255,0.86);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.10),
     0 16px 42px rgba(0,0,0,0.28),
@@ -5592,9 +5721,20 @@ body:not(.playoff-mode) tbody tr:hover {
   filter: drop-shadow(0 0 6px rgba(255,255,255,0.20));
 }
 
-.round1-west .game-stack,
-.round1-east .game-stack {
-  border-color: rgba(255,255,255,0.48);
+.connector-line.west {
+  background:
+    linear-gradient(90deg, rgba(255,72,86,0.78) 0%, rgba(255,72,86,0.70) 46%, rgba(255,47,58,0.34) 72%, rgba(255,47,58,0.02) 100%);
+  filter:
+    drop-shadow(0 0 6px rgba(255,47,58,0.38))
+    drop-shadow(0 0 12px rgba(255,47,58,0.18));
+}
+
+.connector-line.east {
+  background:
+    linear-gradient(90deg, rgba(31,120,255,0.02) 0%, rgba(31,120,255,0.34) 28%, rgba(70,150,255,0.70) 54%, rgba(70,150,255,0.78) 100%);
+  filter:
+    drop-shadow(0 0 6px rgba(31,120,255,0.38))
+    drop-shadow(0 0 12px rgba(31,120,255,0.18));
 }
 
 .game-box.text-box,
@@ -5678,6 +5818,92 @@ body:not(.playoff-mode) tbody tr:hover {
     0 0 14px rgba(255,47,58,0.13);
 }
 
+.app-settings-panel,
+.export-preview-panel,
+.east-west-map-panel,
+.team-schedule-card {
+  background:
+    var(--frost-panel-sheen),
+    var(--frost-panel-wash),
+    rgba(255,255,255,0.030);
+  box-shadow:
+    0 26px 76px rgba(0,0,0,0.42),
+    inset 0 1px 0 rgba(255,255,255,0.18),
+    inset 0 0 0 1px rgba(255,255,255,0.055);
+}
+
+.app-settings-field,
+.export-preview-card,
+.team-schedule-game,
+.east-west-map-info-card,
+.east-west-map-card-stat,
+.nc-map-logo-scale-panel,
+.board-loading-card {
+  background:
+    var(--frost-panel-sheen),
+    var(--frost-card-wash),
+    rgba(255,255,255,0.034);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.18),
+    inset 0 0 0 1px rgba(255,255,255,0.044),
+    0 12px 30px rgba(0,0,0,0.24);
+}
+
+.export-preview-toolbar,
+.team-schedule-body {
+  background:
+    var(--frost-panel-sheen),
+    linear-gradient(180deg, rgba(255,255,255,0.066), rgba(255,255,255,0.018)),
+    rgba(255,255,255,0.026);
+}
+
+.app-settings-panel {
+  background:
+    radial-gradient(circle at 20% 0%, var(--glow) 0, transparent 32%),
+    linear-gradient(135deg, rgba(255,47,58,0.12), rgba(31,120,255,0.13)),
+    linear-gradient(180deg, rgba(255,255,255,0.145), rgba(255,255,255,0.040)),
+    rgba(5,8,14,0.74);
+}
+
+.app-settings-field {
+  background:
+    var(--frost-panel-sheen),
+    linear-gradient(180deg, rgba(255,255,255,0.100), rgba(255,255,255,0.032)),
+    rgba(5,8,14,0.34);
+}
+
+.team-schedule-head,
+.export-preview-topbar {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255,255,255,0.15), transparent 30%),
+    var(--surface-sheen),
+    var(--playoff-header-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.18),
+    0 12px 34px rgba(0,0,0,0.26);
+}
+
+.app-settings-head {
+  border-color: rgba(255,255,255,0.16);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255,255,255,0.12), transparent 32%),
+    linear-gradient(180deg, rgba(255,255,255,0.115), rgba(255,255,255,0.034)),
+    rgba(18,22,30,0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.16),
+    0 10px 26px rgba(0,0,0,0.22);
+}
+
+.setting-note,
+.snapshot-empty,
+.export-preview-grid:empty::before {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.086), rgba(255,255,255,0.026)),
+    rgba(5,8,14,0.32);
+}
+
 .export-preview-grid::-webkit-scrollbar-track,
 .team-schedule-body::-webkit-scrollbar-track,
 .table-scroll::-webkit-scrollbar-track {
@@ -5699,24 +5925,6 @@ body:not(.playoff-mode) tbody tr:hover {
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
     0 18px 42px rgba(0,0,0,0.34);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-select,
-.sport-picker-btn,
-.class-picker-btn,
-.export-preview-class-toggle,
-.export-preview-name,
-.export-preview-progress,
-.export-preview-status,
-.snapshot-date-input,
-.app-settings-field input[type="number"],
-.checkbox-control,
-.split-toggle-control,
-.app-settings-field .checkbox-control,
-.snapshot-time-btn {
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -5778,7 +5986,41 @@ button {
   text-align: center;
 }
 
-.round1-slot .game-stack {
+.round1-west .game-stack {
+  background:
+    linear-gradient(90deg, rgba(255,47,58,0.105), rgba(255,47,58,0.024) 48%, rgba(255,255,255,0.018)),
+    var(--round-glass-sheen),
+    var(--surface-sheen),
+    rgba(255,255,255,0.055) !important;
+  border-top: 3px solid rgba(255,72,86,0.64) !important;
+  border-bottom: 3px solid rgba(255,72,86,0.64) !important;
+  border-right: 3px solid rgba(255,72,86,0.64) !important;
+  border-left-color: rgba(255,72,86,0.64) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    inset 0 0 0 1px rgba(255,255,255,0.070),
+    0 16px 40px rgba(0,0,0,0.26),
+    0 0 18px rgba(255,47,58,0.24) !important;
+}
+
+.round1-east .game-stack {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.018), rgba(31,120,255,0.024) 52%, rgba(31,120,255,0.105)),
+    var(--round-glass-sheen),
+    var(--surface-sheen),
+    rgba(255,255,255,0.055) !important;
+  border-top: 3px solid rgba(70,150,255,0.64) !important;
+  border-bottom: 3px solid rgba(70,150,255,0.64) !important;
+  border-left: 3px solid rgba(70,150,255,0.64) !important;
+  border-right-color: rgba(70,150,255,0.64) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    inset 0 0 0 1px rgba(255,255,255,0.070),
+    0 16px 40px rgba(0,0,0,0.26),
+    0 0 18px rgba(31,120,255,0.24) !important;
+}
+
+body.performance-mode .round1-slot .game-stack {
   background:
     radial-gradient(circle at 72% 0%, var(--glow) 0, transparent 30%),
     var(--surface-sheen),
@@ -5786,18 +6028,6 @@ button {
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
     0 16px 40px rgba(0,0,0,0.26) !important;
-}
-
-.round1-west .game-stack {
-  border-top: 3px solid rgba(255,255,255,0.4) !important;
-  border-bottom: 3px solid rgba(255,255,255,0.4) !important;
-  border-right: 3px solid rgba(255,255,255,0.4) !important;
-}
-
-.round1-east .game-stack {
-  border-top: 3px solid rgba(255,255,255,0.4) !important;
-  border-bottom: 3px solid rgba(255,255,255,0.4) !important;
-  border-left: 3px solid rgba(255,255,255,0.4) !important;
 }
 
 #eastWestMapClassPickerText,
@@ -5846,7 +6076,9 @@ button {
 /* MAIN SELECTOR GLASS CONTROLS */
 .hero-controls .sport-picker-btn,
 .hero-controls .class-picker-btn,
-.hero-controls .year-picker-btn {
+.hero-controls .year-picker-btn,
+.east-west-map-class-btn,
+.east-west-map-sport-btn {
   border-color: rgba(255,255,255,0.30);
   background:
     radial-gradient(circle at 8% 50%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.045) 34%, transparent 64%),
@@ -5868,14 +6100,23 @@ button {
 .hero-controls .sport-picker-btn-text,
 .hero-controls .sport-picker-btn-caret,
 .hero-controls .class-picker-btn-text,
-.hero-controls .class-picker-btn-caret {
+.hero-controls .class-picker-btn-caret,
+.east-west-map-sport-btn .sport-picker-btn-icon,
+.east-west-map-sport-btn .sport-picker-btn-text,
+.east-west-map-sport-btn .sport-picker-btn-caret,
+.east-west-map-class-btn .class-picker-btn-text,
+.east-west-map-class-btn .class-picker-btn-caret {
   color: #fff7f7;
 }
 
 .hero-controls .sport-picker-btn:hover,
 .hero-controls .class-picker-btn:hover,
 .hero-controls .sport-picker.open .sport-picker-btn,
-.hero-controls .class-picker.open .class-picker-btn {
+.hero-controls .class-picker.open .class-picker-btn,
+.east-west-map-sport-btn:hover,
+.east-west-map-class-btn:hover,
+.east-west-map-sport-picker.open .east-west-map-sport-btn,
+.east-west-map-class-picker.open .east-west-map-class-btn {
   border-color: rgba(255,255,255,0.44);
   background:
     radial-gradient(circle at 8% 50%, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.060) 36%, transparent 66%),
@@ -5891,7 +6132,9 @@ button {
 }
 
 .hero-controls .sport-picker-menu,
-.hero-controls .class-picker-menu {
+.hero-controls .class-picker-menu,
+.east-west-map-sport-menu,
+.east-west-map-class-menu {
   border-color: rgba(255,255,255,0.26);
   background:
     radial-gradient(circle at 8% 50%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.040) 38%, transparent 68%),
@@ -5905,7 +6148,9 @@ button {
 }
 
 .hero-controls .sport-picker-option,
-.hero-controls .class-picker-option {
+.hero-controls .class-picker-option,
+.east-west-map-sport-menu .sport-picker-option,
+.east-west-map-class-menu .class-picker-option {
   color: #fff7f7;
   text-shadow: 0 1px 8px rgba(0,0,0,0.62);
   background:
@@ -5916,7 +6161,11 @@ button {
 .hero-controls .sport-picker-option:hover,
 .hero-controls .sport-picker-option.is-selected,
 .hero-controls .class-picker-option:hover,
-.hero-controls .class-picker-option.is-selected {
+.hero-controls .class-picker-option.is-selected,
+.east-west-map-sport-menu .sport-picker-option:hover,
+.east-west-map-sport-menu .sport-picker-option.is-selected,
+.east-west-map-class-menu .class-picker-option:hover,
+.east-west-map-class-menu .class-picker-option.is-selected {
   background:
     linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.040)),
     rgba(255,47,58,0.10);
@@ -5975,73 +6224,105 @@ body.theme-bigred .board-actions button:not(:disabled):hover {
           <div class="app-settings-head">
             <div>
             <div class="app-settings-title">Board Settings</div>
-              <div class="app-settings-subtitle">Theme, snapshots, exports, and odd-team split</div>
+              <div class="app-settings-subtitle">Open a section to adjust board settings</div>
             </div>
             <button id="appSettingsCloseBtn" class="app-settings-close" type="button" aria-label="Close settings">&times;</button>
           </div>
           <div class="app-settings-grid">
-            <div class="app-settings-field">
-              <label for="theme">Theme</label>
-              <select id="theme">
-                <option value="carbon">Carbon</option>
-                <option value="midnight">Midnight</option>
-                <option value="slate">Slate</option>
-                <option value="gold">Gold</option>
-                <option value="bigred" selected>Big Red</option>
-                <option value="royal">Royal Blue</option>
-                <option value="emerald">Emerald</option>
-                <option value="plum">Plum</option>
-              </select>
-            </div>
-            <div class="app-settings-field snapshot-settings-field">
-              <label for="compareSnapshotDate">Compare Change</label>
-              <div class="snapshot-picker-row">
-                <button id="compareSnapshotCalendarBtn" class="snapshot-calendar-btn" type="button" aria-label="Choose compare date">📅</button>
-                <input id="compareSnapshotDate" class="snapshot-date-input" type="date" aria-label="Compare snapshot date">
-                <button id="compareSnapshotResetBtn" class="snapshot-reset-btn" type="button">Reset</button>
+            <details class="app-settings-section">
+              <summary>Theme</summary>
+              <div class="app-settings-section-body">
+                <div class="app-settings-field">
+                  <label for="theme">Theme</label>
+                  <select id="theme">
+                    <option value="carbon">Carbon</option>
+                    <option value="midnight">Midnight</option>
+                    <option value="slate">Slate</option>
+                    <option value="gold">Gold</option>
+                    <option value="bigred" selected>Big Red</option>
+                    <option value="royal">Royal Blue</option>
+                    <option value="emerald">Emerald</option>
+                    <option value="plum">Plum</option>
+                  </select>
+                </div>
+                <div class="app-settings-field">
+                  <label for="performanceModeToggle">Display Performance</label>
+                  <label class="split-toggle-control" for="performanceModeToggle">
+                    <input id="performanceModeToggle" type="checkbox">
+                    <span class="split-toggle-track" aria-hidden="true"><span class="split-toggle-thumb"></span></span>
+                    <span>Performance Mode</span>
+                  </label>
+                  <div class="setting-note">Removes heavier red/blue board gradients for smoother scrolling. Turn it off when you want the full glassy board look.</div>
+                </div>
               </div>
-              <div id="compareSnapshotList" class="snapshot-time-list">
-                <span class="snapshot-empty">Comparing to previous snapshot.</span>
+            </details>
+
+            <details class="app-settings-section">
+              <summary>Teams</summary>
+              <div class="app-settings-section-body">
+                <div class="app-settings-field">
+                  <label for="eastWestExtraEast">Odd Team Split</label>
+                  <label class="split-toggle-control" for="eastWestExtraEast">
+                    <input id="eastWestExtraEast" type="checkbox">
+                    <span class="split-toggle-track" aria-hidden="true"><span class="split-toggle-thumb"></span></span>
+                    <span data-odd-team-split-label>Default to East</span>
+                  </label>
+                  <div class="setting-note">Moves extra team east or west if class has an odd amount of teams. The odd-teams region will be determined by a coin flip at the end of the season.</div>
+                </div>
+                <div class="app-settings-field">
+                  <label for="playoffTeamLimit">Playoff Teams Amount</label>
+                  <input id="playoffTeamLimit" type="number" min="1" step="1" inputmode="numeric" placeholder="Auto">
+                  <div class="setting-note">Overrides playoff eligibility for every class. Auto uses 48 teams for 1A-7A and 24 teams for 8A.</div>
+                </div>
               </div>
-            </div>
-            <div class="app-settings-field snapshot-settings-field">
-              <label for="historySnapshotDate">History Logs</label>
-              <div class="snapshot-picker-row">
-                <button id="historySnapshotCalendarBtn" class="snapshot-calendar-btn" type="button" aria-label="Choose history date">📅</button>
-                <input id="historySnapshotDate" class="snapshot-date-input" type="date" aria-label="History snapshot date">
-                <button id="historySnapshotResetBtn" class="snapshot-reset-btn" type="button">RESET</button>
+            </details>
+
+            <details class="app-settings-section">
+              <summary>Compare History</summary>
+              <div class="app-settings-section-body">
+                <div class="app-settings-field snapshot-settings-field">
+                  <label for="compareSnapshotDate">Compare Change</label>
+                  <div class="snapshot-picker-row">
+                    <button id="compareSnapshotCalendarBtn" class="snapshot-calendar-btn" type="button" aria-label="Choose compare date">📅</button>
+                    <input id="compareSnapshotDate" class="snapshot-date-input" type="date" aria-label="Compare snapshot date">
+                    <button id="compareSnapshotResetBtn" class="snapshot-reset-btn" type="button">Reset</button>
+                  </div>
+                  <div id="compareSnapshotList" class="snapshot-time-list">
+                    <span class="snapshot-empty">Comparing to previous snapshot.</span>
+                  </div>
+                </div>
+                <div class="app-settings-field snapshot-settings-field">
+                  <label for="historySnapshotDate">History Logs</label>
+                  <div class="snapshot-picker-row">
+                    <button id="historySnapshotCalendarBtn" class="snapshot-calendar-btn" type="button" aria-label="Choose history date">📅</button>
+                    <input id="historySnapshotDate" class="snapshot-date-input" type="date" aria-label="History snapshot date">
+                    <button id="historySnapshotResetBtn" class="snapshot-reset-btn" type="button">RESET</button>
+                  </div>
+                  <div id="historySnapshotList" class="snapshot-time-list">
+                    <span class="snapshot-empty">Loading live RPI tables.</span>
+                  </div>
+                </div>
+                <div class="app-settings-field">
+                  <label for="showLastChangeToggle">Rank Change Display</label>
+                  <label class="split-toggle-control" for="showLastChangeToggle">
+                    <input id="showLastChangeToggle" type="checkbox">
+                    <span class="split-toggle-track" aria-hidden="true"><span class="split-toggle-thumb"></span></span>
+                    <span>Show Last Change</span>
+                  </label>
+                  <div class="setting-note">Keeps the most recent rank or RPI movement visible when the latest live snapshot did not change.</div>
+                </div>
               </div>
-              <div id="historySnapshotList" class="snapshot-time-list">
-                <span class="snapshot-empty">Loading live RPI tables.</span>
+            </details>
+
+            <details class="app-settings-section">
+              <summary>Export as PNG</summary>
+              <div class="app-settings-section-body">
+                <div class="app-settings-field app-settings-action">
+                  <label for="exportBtn">PNG Tools</label>
+                  <button id="exportBtn" type="button">💾 Export PNG</button>
+                </div>
               </div>
-            </div>
-            <div class="app-settings-field">
-              <label for="showLastChangeToggle">Rank Change Display</label>
-              <label class="split-toggle-control" for="showLastChangeToggle">
-                <input id="showLastChangeToggle" type="checkbox">
-                <span class="split-toggle-track" aria-hidden="true"><span class="split-toggle-thumb"></span></span>
-                <span>Show Last Change</span>
-              </label>
-              <div class="setting-note">Keeps the most recent rank or RPI movement visible when the latest live snapshot did not change.</div>
-            </div>
-            <div class="app-settings-field">
-              <label for="eastWestExtraEast">Odd Team Split</label>
-              <label class="split-toggle-control" for="eastWestExtraEast">
-                <input id="eastWestExtraEast" type="checkbox">
-                <span class="split-toggle-track" aria-hidden="true"><span class="split-toggle-thumb"></span></span>
-                <span data-odd-team-split-label>Default to East</span>
-              </label>
-              <div class="setting-note">Moves extra team east or west if class has an odd amount of teams. The odd-teams region will be determined by a coin flip at the end of the season.</div>
-            </div>
-            <div class="app-settings-field">
-              <label for="playoffTeamLimit">Playoff Teams Amount</label>
-              <input id="playoffTeamLimit" type="number" min="1" step="1" inputmode="numeric" placeholder="Auto">
-              <div class="setting-note">Overrides playoff eligibility for every class. Auto uses 48 teams for 1A-7A and 24 teams for 8A.</div>
-            </div>
-            <div class="app-settings-field app-settings-action">
-              <label for="exportBtn">PNG Tools</label>
-              <button id="exportBtn" type="button">💾 Export PNG</button>
-            </div>
+            </details>
           </div>
         </div>
 
@@ -6346,6 +6627,7 @@ body.theme-bigred .board-actions button:not(:disabled):hover {
     const appSettingsBtn = document.getElementById('appSettingsBtn');
     const appSettingsPanel = document.getElementById('appSettingsPanel');
     const appSettingsCloseBtn = document.getElementById('appSettingsCloseBtn');
+    const performanceModeToggle = document.getElementById('performanceModeToggle');
     const compareSnapshotCalendarBtn = document.getElementById('compareSnapshotCalendarBtn');
     const compareSnapshotDate = document.getElementById('compareSnapshotDate');
     const compareSnapshotResetBtn = document.getElementById('compareSnapshotResetBtn');
@@ -6760,6 +7042,16 @@ syncYearPickerUi_();
       document.body.classList.remove('theme-carbon', 'theme-midnight', 'theme-slate', 'theme-gold', 'theme-bigred', 'theme-royal', 'theme-emerald', 'theme-plum');
       document.body.classList.add(targetClass);
       try { localStorage.setItem('nchsaa-theme', safe); } catch (e) {}
+    }
+
+    function applyPerformanceMode_(enabled, persist = false) {
+      const active = Boolean(enabled);
+      document.body.classList.toggle('performance-mode', active);
+      if (performanceModeToggle) performanceModeToggle.checked = active;
+      if (!persist) return;
+      try {
+        localStorage.setItem('nchsaa-performance-mode', active ? '1' : '0');
+      } catch (e) {}
     }
 
     function restoreMainHeader() { setMainHeaderLabels_(defaultHeaderLabels); }
@@ -10859,6 +11151,12 @@ syncYearPickerUi_();
     } catch (e) {}
 
     try {
+      applyPerformanceMode_(localStorage.getItem('nchsaa-performance-mode') === '1');
+    } catch (e) {
+      applyPerformanceMode_(false);
+    }
+
+    try {
       const savedPlayoffTeamLimit = localStorage.getItem('nchsaa-playoff-team-limit') || '';
       playoffTeamLimit.value = /^\d+$/.test(savedPlayoffTeamLimit) ? savedPlayoffTeamLimit : '';
     } catch (e) {}
@@ -11330,6 +11628,10 @@ syncYearPickerUi_();
         localStorage.setItem('nchsaa-show-last-change', showLastChangeToggle.checked ? '1' : '0');
       } catch (e) {}
       reloadCurrentBoardForSelection_();
+    });
+
+    performanceModeToggle?.addEventListener('change', () => {
+      applyPerformanceMode_(performanceModeToggle.checked, true);
     });
 
     function applyPlayoffTeamLimitSetting_() {
