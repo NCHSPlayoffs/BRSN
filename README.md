@@ -25,3 +25,5 @@ npm start
 ```
 
 Then open `http://localhost:8000`.
+
+By default, the local server does not create local RPI snapshots anymore. Supabase handles snapshot capture/history for the hosted app. To intentionally test local snapshots, start the server with `RPI_LOCAL_SNAPSHOTS=1`.

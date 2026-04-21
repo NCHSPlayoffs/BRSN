@@ -11,7 +11,8 @@ const SNAPSHOT_FILE = path.join(DATA_DIR, 'rpi-snapshots.json');
 const SNAPSHOT_SWEEP_INTERVAL_MS = Number(process.env.RPI_SNAPSHOT_INTERVAL_MS || 60 * 60 * 1000);
 const SNAPSHOT_SWEEP_INITIAL_DELAY_MS = Number(process.env.RPI_SNAPSHOT_INITIAL_DELAY_MS || 20 * 1000);
 const SNAPSHOT_REQUEST_DELAY_MS = Number(process.env.RPI_SNAPSHOT_REQUEST_DELAY_MS || 450);
-const SNAPSHOT_SWEEP_ENABLED = process.env.RPI_SNAPSHOT_SWEEP !== '0';
+const LOCAL_SNAPSHOTS_ENABLED = process.env.RPI_LOCAL_SNAPSHOTS === '1';
+const SNAPSHOT_SWEEP_ENABLED = LOCAL_SNAPSHOTS_ENABLED && process.env.RPI_SNAPSHOT_SWEEP !== '0';
 const RPI_TEST_MODE = process.env.RPI_TEST_MODE === '1';
 const MAXPREPS_SCHEDULE_CACHE_MS = Number(process.env.MAXPREPS_SCHEDULE_CACHE_MS || 15 * 60 * 1000);
 const MAXPREPS_OPPONENT_RECORD_CACHE_MS = Number(process.env.MAXPREPS_OPPONENT_RECORD_CACHE_MS || 30 * 60 * 1000);
@@ -182,7 +183,7 @@ function compareSnapshots(payload) {
   const source = String(payload.source || 'official').trim();
   const seasonYear = String(payload.seasonYear || 'live').trim();
   const rows = normalizeSnapshotRows(payload.rows);
-  const shouldSave = payload.save !== false;
+  const shouldSave = LOCAL_SNAPSHOTS_ENABLED && payload.save !== false;
   const compareSnapshotId = String(payload.compareSnapshotId || '').trim();
   const includeLastChange = payload.includeLastChange === true || payload.includeLastChange === 'true';
   if (!sport || !classification || !rows.length) throw new Error('Missing sport, classification, or rows');
@@ -930,6 +931,7 @@ async function createTestChangeSnapshot(sport, classification) {
 }
 
 async function runSnapshotSweep(reason = 'hourly') {
+  if (!LOCAL_SNAPSHOTS_ENABLED) return;
   if (snapshotSweepRunning) return;
   snapshotSweepRunning = true;
   const stats = { checked: 0, saved: 0, failed: 0, startedAt: new Date().toISOString(), finishedAt: '' };
@@ -1038,6 +1040,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/rpi-snapshots/status') {
       return sendJson(res, 200, {
         ok: true,
+        localSnapshotsEnabled: LOCAL_SNAPSHOTS_ENABLED,
         testMode: RPI_TEST_MODE,
         sweepEnabled: SNAPSHOT_SWEEP_ENABLED,
         sweepRunning: snapshotSweepRunning,
@@ -1048,6 +1051,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && requestUrl.pathname === '/rpi-snapshots/test-change') {
+      if (!LOCAL_SNAPSHOTS_ENABLED) {
+        return sendHtml(res, 403, `
+          <h1>Local Snapshots Are Off</h1>
+          <p>This local server is currently running as a PNG export/proxy helper only.</p>
+          <p>Restart with <code>RPI_LOCAL_SNAPSHOTS=1</code> if you intentionally want local snapshot testing.</p>
+        `);
+      }
+
       if (!RPI_TEST_MODE) {
         return sendHtml(res, 403, `
           <h1>RPI Test Mode Is Off</h1>
@@ -1087,11 +1098,17 @@ node server-headless-export-v2.js</pre>
     }
 
     if (req.method === 'POST' && req.url === '/rpi-snapshots/compare') {
+      if (!LOCAL_SNAPSHOTS_ENABLED) {
+        return sendJson(res, 503, { error: 'Local snapshots are disabled. Use Supabase for snapshot compare/history.' });
+      }
       const body = JSON.parse(await readBody(req));
       return sendJson(res, 200, compareSnapshots(body));
     }
 
     if (req.method === 'GET' && requestUrl.pathname === '/rpi-snapshots/list') {
+      if (!LOCAL_SNAPSHOTS_ENABLED) {
+        return sendJson(res, 503, { error: 'Local snapshots are disabled. Use Supabase for snapshot compare/history.' });
+      }
       const result = listSnapshots({
         sport: requestUrl.searchParams.get('sport') || '',
         classification: requestUrl.searchParams.get('classification') || '',
@@ -1102,12 +1119,18 @@ node server-headless-export-v2.js</pre>
     }
 
     if (req.method === 'GET' && requestUrl.pathname === '/rpi-snapshots/snapshot') {
+      if (!LOCAL_SNAPSHOTS_ENABLED) {
+        return sendJson(res, 503, { error: 'Local snapshots are disabled. Use Supabase for snapshot compare/history.' });
+      }
       const snapshot = getSnapshotById(requestUrl.searchParams.get('id'));
       if (!snapshot) return sendJson(res, 404, { error: 'Snapshot not found' });
       return sendJson(res, 200, { snapshot });
     }
 
     if (req.method === 'POST' && req.url === '/rpi-snapshots/capture') {
+      if (!LOCAL_SNAPSHOTS_ENABLED) {
+        return sendJson(res, 503, { error: 'Local snapshots are disabled. Use Supabase for snapshot capture.' });
+      }
       const body = JSON.parse(await readBody(req));
       const sport = findSnapshotSport(body.sport);
       const classification = String(body.classification || '').trim();
@@ -1138,6 +1161,7 @@ node server-headless-export-v2.js</pre>
 
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`Local RPI snapshots: ${LOCAL_SNAPSHOTS_ENABLED ? 'ON' : 'OFF'}${LOCAL_SNAPSHOTS_ENABLED ? '' : ' (Supabase handles snapshots)'}`);
   console.log(`RPI snapshot test mode: ${RPI_TEST_MODE ? 'ON' : 'OFF'}`);
   startSnapshotSweeper();
 });
