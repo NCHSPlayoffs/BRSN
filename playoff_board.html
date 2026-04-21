@@ -427,6 +427,29 @@
       border-bottom: 1px solid rgba(255,255,255,0.09);
     }
 
+    .app-settings-close {
+      display: none;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.12);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+    }
+
+    .app-settings-close:hover {
+      background: rgba(255,255,255,0.20);
+      border-color: rgba(255,255,255,0.34);
+    }
+
     .app-settings-subtitle {
       margin-top: 5px;
       color: var(--muted);
@@ -734,6 +757,10 @@
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 12px;
       align-items: end;
+      margin-top: 4px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
     }
 
     label {
@@ -1513,23 +1540,10 @@
 
     .east-west-map-head {
       position: relative;
-      display: grid;
-      grid-template-columns: 92px minmax(0, 1fr) 92px;
-      align-items: center;
-      gap: 18px;
-      padding: 14px 58px;
       margin-bottom: 12px;
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 8px;
-      background: var(--playoff-header-bg);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
     }
 
     .east-west-map-brand {
-      width: 92px;
-      height: auto;
-      display: block;
-      object-fit: contain;
       opacity: 0.94;
     }
 
@@ -1561,6 +1575,43 @@
       backdrop-filter: none;
       transform: none;
       pointer-events: auto;
+    }
+
+    .east-west-map-corner-controls {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      z-index: 8;
+      display: grid;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .east-west-map-corner-control {
+      display: inline-grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(255,255,255,0.24);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04)),
+        rgba(7,10,18,0.56);
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.18);
+      cursor: pointer;
+      backdrop-filter: blur(8px) saturate(1.1);
+    }
+
+    .east-west-map-corner-control:hover,
+    .east-west-map-corner-control.is-active {
+      border-color: rgba(255,255,255,0.52);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.08)),
+        rgba(7,10,18,0.64);
     }
 
     .east-west-map-class-picker,
@@ -1679,7 +1730,7 @@
       letter-spacing: 0;
     }
 
-    .east-west-map-title {
+    .east-west-map-title:not(.playoff-title) {
       font-family: 'Goldman', sans-serif;
       font-size: 26px;
       font-weight: 900;
@@ -1689,7 +1740,7 @@
       color: var(--text);
     }
 
-    .east-west-map-subtitle {
+    .east-west-map-subtitle:not(.playoff-subtitle) {
       margin-top: 7px;
       color: var(--muted);
       font-size: 12px;
@@ -1914,6 +1965,10 @@
       display: none;
     }
 
+    .nc-map-svg-button.is-mobile-hidden {
+      display: none;
+    }
+
     .nc-map-svg-button rect {
       fill: rgba(7,10,18,0.48);
       stroke: rgba(255,255,255,0.24);
@@ -1933,7 +1988,7 @@
 
     .nc-map-svg-button text {
       fill: var(--text);
-      font-size: 24px;
+      font-size: var(--map-button-text, 24px);
       font-weight: 900;
       text-anchor: middle;
       dominant-baseline: central;
@@ -3664,6 +3719,7 @@
 @media (max-width: 760px) {
   .export-preview-overlay {
     padding: 0;
+    z-index: 10070;
   }
 
   .export-preview-panel {
@@ -3790,9 +3846,13 @@ th,
 .record,
 .rank-change,
 .rpi-change,
-.number {
+    .number {
   font-family: var(--font-number);
   letter-spacing: 0;
+}
+
+.mobile-rpi-board-header {
+  display: none;
 }
 
 .stat,
@@ -3807,6 +3867,1206 @@ th,
 
 .nc-map-marker.west .nc-map-marker-rank {
   stroke: var(--west);
+}
+
+/* MOBILE RESPONSIVE OVERHAUL */
+@media (max-width: 760px) {
+  html,
+  body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap {
+    width: 100%;
+    padding: 8px;
+  }
+
+  .hero,
+  .table-card {
+    border-radius: 8px;
+  }
+
+  .hero-top {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .hero-brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .brand-mark {
+    flex: 0 0 54px;
+    width: 54px;
+    max-width: 54px;
+  }
+
+  .title-block {
+    min-width: 0;
+  }
+
+  h1 {
+    font-size: clamp(18px, 5.3vw, 25px);
+    line-height: 0.98;
+    overflow-wrap: anywhere;
+  }
+
+  .sub {
+    margin-top: 4px;
+    font-size: 9px;
+    line-height: 1.2;
+    letter-spacing: 0.08em;
+  }
+
+  .hero-theme {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+  }
+
+  .app-settings-btn {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    font-size: 20px;
+  }
+
+  .hero-controls {
+    padding: 10px;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  label {
+    margin-bottom: 5px;
+    font-size: 10px;
+    letter-spacing: 0.10em;
+  }
+
+  select,
+  button,
+  .sport-picker-btn,
+  .class-picker-btn {
+    min-width: 0;
+    height: 42px;
+    font-size: 15px;
+  }
+
+  .sport-picker-btn,
+  .class-picker-btn {
+    grid-template-columns: 22px minmax(0, 1fr) 14px;
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .sport-picker-option,
+  .class-picker-option {
+    min-height: 38px;
+    font-size: 14px;
+  }
+
+  .sport-picker-menu,
+  .class-picker-menu {
+    z-index: 500;
+    max-height: 56vh;
+    overflow: auto;
+  }
+
+  .board-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .board-actions button {
+    height: 42px;
+    padding: 0 8px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+  }
+
+  .statusbar {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .status,
+  .status-meta {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .app-settings-panel {
+    position: fixed;
+    top: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto;
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 12px;
+    z-index: 10050;
+  }
+
+  .app-settings-panel::before {
+    display: none;
+  }
+
+  .app-settings-head {
+    padding-bottom: 10px;
+  }
+
+  .app-settings-title {
+    font-size: 16px;
+  }
+
+  .app-settings-close {
+    display: inline-grid;
+    width: 36px;
+    height: 36px;
+  }
+
+  .app-settings-subtitle,
+  .setting-note {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+
+  .snapshot-picker-row {
+    grid-template-columns: 40px minmax(0, 1fr) 68px;
+    gap: 6px;
+  }
+
+  .app-settings-field .snapshot-calendar-btn {
+    font-size: 32px;
+  }
+
+  .table-card {
+    margin-top: 10px;
+  }
+
+  .table-card > .table-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.regions-mode .table-card > .table-scroll,
+  body.playoff-mode .table-card > .table-scroll,
+  body.east-west-mode .table-card > .table-scroll {
+    overflow-x: hidden;
+  }
+
+  body.regions-mode .table-card > .table-scroll > table,
+  body.playoff-mode .table-card > .table-scroll > table,
+  body.east-west-mode .table-card > .table-scroll > table,
+  body.regions-mode .table-card > .table-scroll > table > tbody,
+  body.playoff-mode .table-card > .table-scroll > table > tbody,
+  body.east-west-mode .table-card > .table-scroll > table > tbody,
+  body.regions-mode .table-card > .table-scroll > table > tbody > tr,
+  body.playoff-mode .table-card > .table-scroll > table > tbody > tr,
+  body.east-west-mode .table-card > .table-scroll > table > tbody > tr,
+  body.regions-mode .table-card > .table-scroll > table > tbody > tr > td,
+  body.playoff-mode .table-card > .table-scroll > table > tbody > tr > td,
+  body.east-west-mode .table-card > .table-scroll > table > tbody > tr > td {
+    display: block;
+    width: 100% !important;
+  }
+
+  body.regions-mode .table-card > .table-scroll > table > thead,
+  body.playoff-mode .table-card > .table-scroll > table > thead,
+  body.east-west-mode .table-card > .table-scroll > table > thead {
+    display: none;
+  }
+
+  body.regions-mode .table-card > .table-scroll > table > tbody > tr > td,
+  body.playoff-mode .table-card > .table-scroll > table > tbody > tr > td,
+  body.east-west-mode .table-card > .table-scroll > table > tbody > tr > td {
+    padding: 0 !important;
+    border: 0;
+  }
+
+  .board-loading-overlay {
+    padding: 12px;
+  }
+
+  .board-loading-card {
+    grid-template-columns: 30px minmax(0, 1fr);
+    min-width: 0;
+    width: min(340px, calc(100vw - 32px));
+    padding: 12px;
+  }
+
+  body.rankings-mode .table-card > .table-scroll {
+    overflow-x: hidden;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table,
+  body.rankings-mode .table-card > .table-scroll > table > tbody,
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr,
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr > td {
+    display: block;
+    width: 100% !important;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > thead {
+    display: none;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > tbody {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 8px 10px;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)),
+      rgba(255,255,255,0.02);
+    overflow: hidden;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr.mobile-rpi-board-header {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    text-align: center;
+  }
+
+  body.rankings-mode .mobile-rpi-board-header td {
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  .mobile-rpi-board-header .playoff-header {
+    margin-bottom: 0;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr > td {
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+
+  body.rankings-mode td[colspan] {
+    grid-column: 1 / -1;
+    padding: 18px 12px !important;
+    text-align: center;
+  }
+
+  body.rankings-mode .mobile-rpi-board-header td[colspan] {
+    padding: 0 !important;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr.schedule-enabled,
+  .region-rankings-table tr.schedule-enabled,
+  .east-west-line-table tr.schedule-enabled {
+    cursor: pointer;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr.schedule-enabled .logo,
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr.schedule-enabled .logo-placeholder,
+  .region-rankings-table tr.schedule-enabled .logo,
+  .region-rankings-table tr.schedule-enabled .logo-placeholder,
+  .east-west-line-table tr.schedule-enabled .logo,
+  .east-west-line-table tr.schedule-enabled .logo-placeholder {
+    cursor: pointer;
+  }
+
+  body.rankings-mode.has-rpi-changes td[data-label="Rank"],
+  body.rankings-mode:not(.has-rpi-changes) td[data-label="Rank"] {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  body.rankings-mode.has-rpi-changes td[data-label="School"],
+  body.rankings-mode:not(.has-rpi-changes) td[data-label="School"] {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr:not(.mobile-stats-open) > td[data-label]:not([data-label="Rank"]):not([data-label="School"]) {
+    display: none !important;
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr.mobile-stats-open > td[data-label]:not([data-label="Rank"]):not([data-label="School"]) {
+    grid-column: 1 / -1;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 38px;
+    padding: 6px 8px !important;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.035);
+  }
+
+  body.rankings-mode .table-card > .table-scroll > table > tbody > tr.mobile-stats-open > td[data-label]:not([data-label="Rank"]):not([data-label="School"])::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+  }
+
+  body.rankings-mode .rank {
+    width: auto !important;
+    font-size: 23px;
+    line-height: 1;
+  }
+
+  body.rankings-mode .rank-change,
+  body.rankings-mode .rpi-change {
+    min-width: 48px;
+    min-height: 34px;
+    font-size: 16px;
+  }
+
+  body.rankings-mode .school {
+    grid-template-columns: 56px minmax(0, 1fr);
+    min-width: 0;
+    gap: 9px;
+  }
+
+  body.rankings-mode .logo,
+  body.rankings-mode .logo-placeholder {
+    width: 56px;
+    height: 42px;
+  }
+
+  body.rankings-mode .team-name {
+    font-size: 15px;
+    line-height: 1.06;
+  }
+
+  body.rankings-mode .team-sub {
+    display: none;
+    font-size: 10px;
+    line-height: 1.05;
+    letter-spacing: 0.08em;
+  }
+
+  body.rankings-mode .stat,
+  body.rankings-mode .rpi,
+  body.rankings-mode.has-rpi-changes .stat,
+  body.rankings-mode.has-rpi-changes .rpi,
+  body.rankings-mode.has-rpi-changes .rpi-change {
+    width: auto;
+    min-width: 96px;
+    min-height: 30px;
+    font-size: 14px;
+    padding: 0 9px;
+  }
+
+  .region-standings-board,
+  .playoff-board,
+  .east-west-line-board {
+    padding: 10px;
+  }
+
+  .playoff-header,
+  .east-west-line-header {
+    margin-bottom: 12px;
+    padding: 12px 10px;
+  }
+
+  .playoff-brand-row {
+    gap: 5px;
+  }
+
+  .playoff-brand {
+    flex: 0 0 34px;
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+  }
+
+  .playoff-title-wrap {
+    min-width: 0;
+  }
+
+  .playoff-kicker,
+  .east-west-line-title {
+    font-size: clamp(10px, 3.25vw, 13px);
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+
+  .playoff-kicker .sport-header-icon,
+  .east-west-line-title .sport-header-icon {
+    width: 1.05em;
+    height: 1.05em;
+  }
+
+  .playoff-title {
+    font-size: clamp(18px, 5.8vw, 24px);
+    letter-spacing: 0.035em;
+  }
+
+  .playoff-subtitle,
+  .east-west-line-subtitle {
+    margin-top: 8px;
+    font-size: 8px;
+    line-height: 1.25;
+    letter-spacing: 0.05em;
+  }
+
+  .playoff-map-btn,
+  .east-west-map-btn {
+    position: static;
+    width: 100%;
+    max-width: 190px;
+    min-width: 0;
+    height: 36px;
+    margin: 10px auto 0;
+    font-size: 11px;
+  }
+
+  .region-split,
+  .playoff-regions {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 0;
+  }
+
+  .region-title,
+  .bracket-region-title {
+    padding: 11px 10px;
+    font-size: 22px;
+  }
+
+  .region-table-wrap,
+  .east-west-line-board .table-scroll {
+    overflow-x: hidden;
+  }
+
+  .region-rankings-table,
+  .region-rankings-table tbody,
+  .region-rankings-table tr,
+  .region-rankings-table td,
+  .east-west-line-table,
+  .east-west-line-table tbody,
+  .east-west-line-table tr,
+  .east-west-line-table td {
+    display: block;
+    width: 100% !important;
+  }
+
+  .region-rankings-table,
+  .east-west-line-table {
+    margin: 0;
+    table-layout: auto;
+  }
+
+  .region-rankings-table thead,
+  .east-west-line-table thead {
+    display: none;
+  }
+
+  .region-rankings-table tbody,
+  .east-west-line-table tbody {
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .region-rankings-table tr,
+  .east-west-line-table tr.east-west-line-row {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 7px 9px;
+    min-height: 0;
+    height: auto !important;
+    padding: 9px;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .region-rankings-table tbody tr,
+  .east-west-line-table tbody tr {
+    height: auto !important;
+  }
+
+  .region-rankings-table td,
+  .east-west-line-table td {
+    min-width: 0;
+    height: auto !important;
+    padding: 0 !important;
+    border: 0;
+    white-space: normal;
+  }
+
+  .region-rankings-table td[data-label="Rank"],
+  .east-west-line-table td[data-label="#"] {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .region-rankings-table td[data-label="School"],
+  .east-west-line-table td[data-label="Team"] {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .region-rankings-table tr:not(.mobile-stats-open) td[data-label="Record"],
+  .region-rankings-table tr:not(.mobile-stats-open) td[data-label="RPI"],
+  .east-west-line-table tr.east-west-line-row:not(.mobile-stats-open) td[data-label="Longitude"],
+  .east-west-line-table tr.east-west-line-row:not(.mobile-stats-open) td[data-label="RPI"],
+  .east-west-line-table tr.east-west-line-row:not(.mobile-stats-open) td[data-label="Record"],
+  .east-west-line-table tr.east-west-line-row:not(.mobile-stats-open) td[data-label="Region"] {
+    display: none !important;
+  }
+
+  .region-rankings-table tr.mobile-stats-open td[data-label="Record"],
+  .region-rankings-table tr.mobile-stats-open td[data-label="RPI"],
+  .east-west-line-table tr.east-west-line-row.mobile-stats-open td[data-label="Longitude"],
+  .east-west-line-table tr.east-west-line-row.mobile-stats-open td[data-label="RPI"],
+  .east-west-line-table tr.east-west-line-row.mobile-stats-open td[data-label="Record"],
+  .east-west-line-table tr.east-west-line-row.mobile-stats-open td[data-label="Region"] {
+    grid-column: 1 / -1;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 34px;
+    padding: 6px 8px !important;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.035);
+  }
+
+  .region-rankings-table tr.mobile-stats-open td[data-label="Record"]::before,
+  .region-rankings-table tr.mobile-stats-open td[data-label="RPI"]::before,
+  .east-west-line-table tr.east-west-line-row.mobile-stats-open td[data-label="Longitude"]::before,
+  .east-west-line-table tr.east-west-line-row.mobile-stats-open td[data-label="RPI"]::before,
+  .east-west-line-table tr.east-west-line-row.mobile-stats-open td[data-label="Record"]::before,
+  .east-west-line-table tr.east-west-line-row.mobile-stats-open td[data-label="Region"]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+  }
+
+  .region-rankings-table .school,
+  .east-west-line-table .school {
+    grid-template-columns: 46px minmax(0, 1fr);
+    min-width: 0;
+    height: auto;
+    gap: 8px;
+  }
+
+  .region-rankings-table .logo,
+  .region-rankings-table .logo-placeholder,
+  .east-west-line-table .logo,
+  .east-west-line-table .logo-placeholder {
+    width: 46px;
+    height: 34px;
+  }
+
+  .region-rankings-table .team-meta,
+  .east-west-line-table .team-meta {
+    max-height: none;
+  }
+
+  .region-rankings-table .team-name,
+  .east-west-line-table .team-name {
+    font-size: 13px;
+    line-height: 1.08;
+  }
+
+  .region-rankings-table .team-sub,
+  .east-west-line-table .team-sub {
+    display: none;
+    font-size: 9px;
+    line-height: 1.1;
+    letter-spacing: 0.07em;
+  }
+
+  .region-rankings-table .rank,
+  .east-west-line-table .rank {
+    font-size: 21px;
+  }
+
+  .region-rankings-table .stat,
+  .region-rankings-table .rpi,
+  .east-west-line-table .stat,
+  .east-west-line-table .rpi {
+    width: auto;
+    min-width: 92px;
+    max-width: none;
+    min-height: 30px;
+    font-size: 13px;
+    padding: 0 8px;
+  }
+
+  .east-west-line-section-row {
+    display: block !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .east-west-line-section-row td {
+    display: block !important;
+  }
+
+  .east-west-line-section-title {
+    min-height: 40px;
+    font-size: 15px;
+    letter-spacing: 0.10em;
+  }
+
+  .east-west-line-region {
+    min-width: 88px;
+  }
+
+  .bracket-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .bracket-region.east .bracket-grid > .round-label:first-child {
+    order: 2;
+  }
+
+  .bracket-region.east .bracket-grid > .round-label:nth-child(3) {
+    order: 1;
+  }
+
+  .bracket-region.east .bracket-grid > .bracket-row {
+    order: 3;
+  }
+
+  .bracket-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .bracket-region.east .bracket-row > .round1-slot {
+    order: 1;
+  }
+
+  .bracket-region.east .bracket-row > .round2-slot {
+    order: 2;
+  }
+
+  .round-label {
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .game-slot {
+    height: auto;
+    min-height: 108px;
+    padding: 8px 6px;
+  }
+
+  .round2-slot {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .round1-west .game-stack,
+  .round1-east .game-stack {
+    border: 0 !important;
+    box-shadow: none;
+  }
+
+  .game-box {
+    min-height: 48px;
+    height: auto;
+    padding: 5px 8px;
+  }
+
+  .game-box.text-box {
+    font-size: 11px;
+  }
+
+  .team-card,
+  .bracket-region.east .team-card {
+    direction: ltr;
+    grid-template-columns: 26px 42px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .team-seed {
+    width: 26px;
+    height: 26px;
+    font-size: 15px;
+    border-radius: 6px;
+  }
+
+  .team-logo,
+  .team-logo-placeholder {
+    width: 42px;
+    height: 32px;
+    border-radius: 6px;
+  }
+
+  .team-copy,
+  .bracket-region.east .team-copy {
+    margin-left: 0;
+    margin-right: 0;
+    text-align: left;
+  }
+
+  .team-copy-name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    padding-top: 0;
+    font-size: 12px;
+    line-height: 1.08;
+    overflow: hidden;
+  }
+
+  .team-copy-record {
+    padding-bottom: 0;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  .odd-extra-note {
+    margin: 8px;
+    padding: 9px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+
+  .team-schedule-overlay {
+    padding: 8px;
+  }
+
+  .team-schedule-card {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .team-schedule-head {
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px 52px 12px 12px;
+    align-items: start;
+  }
+
+  .team-schedule-logo {
+    width: 54px;
+    height: 54px;
+  }
+
+  .team-schedule-title {
+    font-size: 18px;
+  }
+
+  .team-schedule-subtitle {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .team-schedule-stats {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(42px, 1fr) minmax(66px, max-content) minmax(42px, 1fr) minmax(78px, max-content);
+    gap: 6px;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .team-schedule-stat {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    aspect-ratio: 1 / 1;
+    min-height: 0;
+    padding: 5px 3px;
+    border-radius: 8px;
+    text-align: center;
+    align-content: center;
+    gap: 2px;
+  }
+
+  .team-schedule-stat-label {
+    font-size: 7px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    overflow-wrap: anywhere;
+  }
+
+  .team-schedule-stat-value {
+    font-size: clamp(10px, 2.75vw, 12px);
+    line-height: 1;
+    letter-spacing: 0.015em;
+    overflow-wrap: anywhere;
+    white-space: nowrap;
+  }
+
+  .team-schedule-record-stat,
+  .team-schedule-rpi-stat {
+    aspect-ratio: auto;
+    min-width: max-content;
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .team-schedule-record-stat .team-schedule-stat-value,
+  .team-schedule-rpi-stat .team-schedule-stat-value {
+    white-space: nowrap;
+  }
+
+  .team-schedule-body {
+    max-height: calc(100vh - 210px);
+    max-height: calc(100dvh - 210px);
+    padding: 12px;
+  }
+
+  .team-schedule-toolbar {
+    display: grid;
+    gap: 8px;
+    font-size: 10px;
+  }
+
+  .team-schedule-link {
+    margin-right: 0;
+  }
+
+  .team-schedule-game {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .team-schedule-date {
+    grid-template-columns: auto auto;
+    justify-content: space-between;
+    font-size: 14px;
+  }
+
+  .team-schedule-opponent {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .team-schedule-opponent-logo {
+    width: 42px;
+    height: 42px;
+  }
+
+  .team-schedule-opponent-name {
+    font-size: 15px;
+    line-height: 1.12;
+  }
+
+  .team-schedule-result {
+    width: 100%;
+    min-width: 0;
+    margin-right: 0;
+    font-size: 14px;
+  }
+
+  .export-preview-overlay {
+    padding: 0;
+  }
+
+  .export-preview-panel {
+    border-radius: 0;
+  }
+
+  .export-preview-topbar {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 16px 56px 12px 12px;
+  }
+
+  .export-preview-title {
+    font-size: 20px;
+  }
+
+  .export-preview-title::after {
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+
+  .export-preview-actions button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .export-preview-toolbar {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .export-preview-status {
+    min-height: 38px;
+    white-space: normal;
+  }
+
+  .export-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .export-preview-card {
+    width: auto;
+    padding: 10px;
+    gap: 7px;
+  }
+
+  .export-preview-label,
+  .export-preview-name,
+  .export-preview-progress-text,
+  .export-preview-card > .download-export-btn {
+    font-size: 10px;
+  }
+
+  .export-preview-class-menu {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    width: auto;
+    max-width: none;
+  }
+
+  .east-west-map-overlay {
+    padding: 0;
+  }
+
+  .east-west-map-panel {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    padding: 8px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .east-west-map-close {
+    top: 8px;
+    right: 8px;
+    width: 34px;
+    height: 34px;
+    z-index: 10;
+  }
+
+  .east-west-map-head {
+    margin-bottom: 8px;
+  }
+
+  .east-west-map-brand {
+    flex-basis: 34px;
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+  }
+
+  .east-west-map-title:not(.playoff-title) {
+    font-size: clamp(15px, 4.6vw, 19px);
+  }
+
+  .east-west-map-subtitle:not(.playoff-subtitle) {
+    font-size: 9px;
+    line-height: 1.25;
+    letter-spacing: 0.06em;
+  }
+
+  .east-west-map-corner-controls {
+    right: 12px;
+    bottom: 12px;
+    gap: 9px;
+  }
+
+  .east-west-map-corner-control {
+    width: 54px;
+    height: 54px;
+    border-radius: 8px;
+    font-size: 27px;
+  }
+
+  .east-west-map-canvas {
+    min-height: 0;
+  }
+
+  .east-west-map-svg {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .east-west-map-selectors {
+    top: 8px;
+    width: calc(100% - 16px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .east-west-map-class-btn,
+  .east-west-map-sport-btn {
+    height: 42px;
+    min-height: 42px;
+    padding: 0 10px;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-align: left;
+  }
+
+  .east-west-map-class-btn .class-picker-btn-text,
+  .east-west-map-sport-btn .sport-picker-btn-text {
+    text-align: left;
+    font-weight: 900;
+  }
+
+  .nc-map-logo-scale-panel {
+    gap: 16px 18px;
+    padding: 24px;
+    border-radius: 14px;
+  }
+
+  .nc-map-settings-title,
+  .nc-map-logo-scale-row,
+  .nc-map-setting-check,
+  .nc-map-setting-check.split-toggle-control {
+    font-size: 34px;
+    letter-spacing: 0.06em;
+  }
+
+  .nc-map-setting-check,
+  .nc-map-setting-check.split-toggle-control {
+    min-height: 72px;
+    padding: 0 24px;
+    border-radius: 12px;
+  }
+
+  .nc-map-setting-check input {
+    width: 34px;
+    height: 34px;
+  }
+
+  .nc-map-setting-check .split-toggle-track {
+    width: 76px;
+    height: 40px;
+  }
+
+  .nc-map-setting-check .split-toggle-thumb {
+    width: 30px;
+    height: 30px;
+  }
+
+  .nc-map-setting-check input:checked + .split-toggle-track .split-toggle-thumb {
+    transform: translateX(36px);
+  }
+
+  .east-west-map-context-menu button {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .east-west-map-card-title {
+    font-size: 16px;
+  }
+
+  .east-west-map-card-label,
+  .east-west-map-card-value {
+    font-size: 12px;
+  }
+
+  .east-west-map-sport-menu,
+  .east-west-map-class-menu {
+    max-height: 48vh;
+    overflow: auto;
+  }
+
+  .east-west-map-info-card {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    padding: 10px;
+  }
+
+  .east-west-map-card-head {
+    grid-template-columns: 50px minmax(0, 1fr) 28px;
+    gap: 9px;
+  }
+
+  .east-west-map-card-logo,
+  .east-west-map-card-logo-placeholder {
+    width: 50px;
+    height: 50px;
+  }
+
+  .east-west-map-card-title {
+    font-size: 16px;
+  }
+
+  .east-west-map-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .east-west-map-card-stat {
+    padding: 7px;
+  }
+
+  .east-west-map-context-menu {
+    width: min(220px, calc(100vw - 24px));
+  }
+}
+
+@media (max-width: 420px) {
+  .board-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .export-preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .east-west-map-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-schedule-stats {
+    grid-template-columns: minmax(42px, 1fr) minmax(66px, max-content) minmax(42px, 1fr) minmax(78px, max-content);
+  }
+
+  .east-west-map-selectors {
+    grid-template-columns: 1fr;
+  }
 }
 
 </style>
@@ -3833,6 +5093,7 @@ th,
             <div class="app-settings-title">Board Settings</div>
               <div class="app-settings-subtitle">Theme, snapshots, exports, and odd-team split</div>
             </div>
+            <button id="appSettingsCloseBtn" class="app-settings-close" type="button" aria-label="Close settings">&times;</button>
           </div>
           <div class="app-settings-grid">
             <div class="app-settings-field">
@@ -4068,13 +5329,16 @@ th,
   <div id="eastWestMapOverlay" class="east-west-map-overlay" aria-hidden="true">
     <div class="east-west-map-panel">
       <button id="eastWestMapCloseBtn" class="east-west-map-close" type="button" aria-label="Close East/West map">&times;</button>
-      <div class="east-west-map-head">
-        <img class="east-west-map-brand" src="https://iili.io/Bga3mQe.png" alt="BRSN logo" referrerpolicy="no-referrer">
-        <div class="east-west-map-title-wrap">
-          <div id="eastWestMapTitle" class="east-west-map-title">East/West Line Map</div>
-          <div id="eastWestMapSubtitle" class="east-west-map-subtitle">Eligible playoff teams by location</div>
+      <div class="east-west-map-head playoff-header">
+        <div class="playoff-brand-row">
+          <img class="playoff-brand east-west-map-brand" src="https://iili.io/Bga3mQe.png" alt="BRSN logo" crossorigin="anonymous" referrerpolicy="no-referrer">
+          <div class="playoff-title-wrap east-west-map-title-wrap">
+            <div id="eastWestMapKicker" class="playoff-kicker east-west-map-kicker">East/West Line</div>
+            <div id="eastWestMapTitle" class="playoff-title east-west-map-title">Map</div>
+            <div id="eastWestMapSubtitle" class="playoff-subtitle east-west-map-subtitle">Eligible playoff teams by location</div>
+          </div>
+          <img class="playoff-brand east-west-map-brand" src="https://iili.io/Bga3mQe.png" alt="BRSN logo" crossorigin="anonymous" referrerpolicy="no-referrer">
         </div>
-        <img class="east-west-map-brand" src="https://iili.io/Bga3mQe.png" alt="BRSN logo" referrerpolicy="no-referrer">
       </div>
       <div id="eastWestMapCanvas" class="east-west-map-canvas">
         <div class="east-west-map-selectors nc-map-ui export-hidden">
@@ -4095,6 +5359,10 @@ th,
             </button>
             <div id="eastWestMapSportPickerMenu" class="sport-picker-menu east-west-map-sport-menu" role="listbox" hidden></div>
           </div>
+        </div>
+        <div class="east-west-map-corner-controls nc-map-ui export-hidden" aria-label="Map actions">
+          <button class="east-west-map-corner-control" type="button" data-map-action="settings" aria-label="Map settings" aria-pressed="false">⚙</button>
+          <button class="east-west-map-corner-control" type="button" data-map-action="save-map" aria-label="Save map PNG">💾</button>
         </div>
       </div>
       <div id="eastWestMapInfoCards" class="east-west-map-info-cards"></div>
@@ -4189,6 +5457,7 @@ th,
     const themeEl = document.getElementById('theme');
     const appSettingsBtn = document.getElementById('appSettingsBtn');
     const appSettingsPanel = document.getElementById('appSettingsPanel');
+    const appSettingsCloseBtn = document.getElementById('appSettingsCloseBtn');
     const compareSnapshotCalendarBtn = document.getElementById('compareSnapshotCalendarBtn');
     const compareSnapshotDate = document.getElementById('compareSnapshotDate');
     const compareSnapshotResetBtn = document.getElementById('compareSnapshotResetBtn');
@@ -4212,6 +5481,7 @@ th,
     const tbody = document.getElementById('tbody');
     const eastWestMapOverlay = document.getElementById('eastWestMapOverlay');
     const eastWestMapCloseBtn = document.getElementById('eastWestMapCloseBtn');
+    const eastWestMapKicker = document.getElementById('eastWestMapKicker');
     const eastWestMapTitle = document.getElementById('eastWestMapTitle');
     const eastWestMapSubtitle = document.getElementById('eastWestMapSubtitle');
     const eastWestMapClass = document.getElementById('eastWestMapClass');
@@ -4876,9 +6146,9 @@ syncYearPickerUi_();
       return `
         <div class="team-schedule-stats">
           <div class="team-schedule-stat ${escapeHtml(regionClass)}"><div class="team-schedule-stat-label">Region</div><div class="team-schedule-stat-value">${escapeHtml(region)}</div></div>
-          <div class="team-schedule-stat"><div class="team-schedule-stat-label">Record</div><div class="team-schedule-stat-value">${escapeHtml(record || '-')}</div></div>
+          <div class="team-schedule-stat team-schedule-record-stat"><div class="team-schedule-stat-label">Record</div><div class="team-schedule-stat-value">${escapeHtml(record || '-')}</div></div>
           <div class="team-schedule-stat"><div class="team-schedule-stat-label">Region Rank</div><div class="team-schedule-stat-value">${escapeHtml(regionRank)}</div></div>
-          <div class="team-schedule-stat"><div class="team-schedule-stat-label">RPI</div><div class="team-schedule-stat-value">${escapeHtml(rpi || '-')}</div></div>
+          <div class="team-schedule-stat team-schedule-rpi-stat"><div class="team-schedule-stat-label">RPI</div><div class="team-schedule-stat-value">${escapeHtml(rpi || '-')}</div></div>
         </div>`;
     }
 
@@ -6209,30 +7479,47 @@ syncYearPickerUi_();
       const extraWestChecked = eastWestExtraEast.checked ? ' checked' : '';
       const cleanViewChecked = eastWestMapCleanView_ ? ' checked' : '';
       const regionRankViewChecked = eastWestMapRegionRankView_ ? ' checked' : '';
+      const mobile = isMobileBoardLayout_();
+      const buttonSize = mobile ? 220 : 34;
+      const buttonGap = mobile ? 238 : 42;
+      const buttonX = mobile ? 958 : 1146;
+      const buttonY = mobile ? 70 : 266;
+      const buttonRadius = mobile ? 22 : 6;
+      const buttonText = mobile ? 118 : 24;
+      const buttonCenter = buttonSize / 2;
+      const zoomHiddenClass = mobile ? ' is-mobile-hidden' : '';
+      const zoomOutTransform = `translate(0 ${buttonGap})`;
+      const actionHiddenClass = ' is-mobile-hidden';
+      const settingsTransform = `translate(0 ${buttonGap * 2})`;
+      const saveTransform = `translate(0 ${buttonGap * 3})`;
+      const settingsX = mobile ? 24 : 18;
+      const settingsY = mobile ? 70 : 408;
+      const settingsWidth = mobile ? 760 : 320;
+      const settingsHeight = mobile ? 560 : 224;
       return `
-        <g class="nc-map-zoom-controls nc-map-ui" transform="translate(1146 266)">
-          <g id="eastWestMapZoomInBtn" class="nc-map-svg-button" data-map-action="zoom-in" role="button" tabindex="0" aria-label="Zoom in">
+        <g class="nc-map-zoom-controls nc-map-ui" transform="translate(${buttonX} ${buttonY})" style="--map-button-text:${buttonText}px;">
+          <g id="eastWestMapZoomInBtn" class="nc-map-svg-button${zoomHiddenClass}" data-map-action="zoom-in" role="button" tabindex="0" aria-label="Zoom in">
             <title>Zoom in</title>
-            <rect x="0" y="0" width="34" height="34" rx="6"></rect>
-            <text x="17" y="18">+</text>
+            <rect x="0" y="0" width="${buttonSize}" height="${buttonSize}" rx="${buttonRadius}"></rect>
+            <text x="${buttonCenter}" y="${buttonCenter}">+</text>
           </g>
-          <g id="eastWestMapZoomOutBtn" class="nc-map-svg-button" data-map-action="zoom-out" role="button" tabindex="0" aria-label="Zoom out" transform="translate(0 42)">
+          <g id="eastWestMapZoomOutBtn" class="nc-map-svg-button${zoomHiddenClass}" data-map-action="zoom-out" role="button" tabindex="0" aria-label="Zoom out" transform="${zoomOutTransform}">
             <title>Zoom out</title>
-            <rect x="0" y="0" width="34" height="34" rx="6"></rect>
-            <text x="17" y="17">-</text>
+            <rect x="0" y="0" width="${buttonSize}" height="${buttonSize}" rx="${buttonRadius}"></rect>
+            <text x="${buttonCenter}" y="${buttonCenter}">-</text>
           </g>
-          <g id="eastWestMapSettingsBtn" class="nc-map-svg-button${settingsActiveClass}" data-map-action="settings" role="button" tabindex="0" aria-label="Toggle logo size settings" aria-pressed="${eastWestMapLogoControlsOpen_ ? 'true' : 'false'}" transform="translate(0 84)">
+          <g id="eastWestMapSettingsBtn" class="nc-map-svg-button${settingsActiveClass}${actionHiddenClass}" data-map-action="settings" role="button" tabindex="0" aria-label="Toggle logo size settings" aria-pressed="${eastWestMapLogoControlsOpen_ ? 'true' : 'false'}" transform="${settingsTransform}">
             <title>Logo settings</title>
-            <rect x="0" y="0" width="34" height="34" rx="6"></rect>
-            <text x="17" y="17">⚙</text>
+            <rect x="0" y="0" width="${buttonSize}" height="${buttonSize}" rx="${buttonRadius}"></rect>
+            <text x="${buttonCenter}" y="${buttonCenter}">⚙</text>
           </g>
-          <g id="eastWestMapSaveBtn" class="nc-map-svg-button" data-map-action="save-map" role="button" tabindex="0" aria-label="Save map PNG" transform="translate(0 126)">
+          <g id="eastWestMapSaveBtn" class="nc-map-svg-button${actionHiddenClass}" data-map-action="save-map" role="button" tabindex="0" aria-label="Save map PNG" transform="${saveTransform}">
             <title>Save map PNG</title>
-            <rect x="0" y="0" width="34" height="34" rx="6"></rect>
-            <text x="17" y="17">💾</text>
+            <rect x="0" y="0" width="${buttonSize}" height="${buttonSize}" rx="${buttonRadius}"></rect>
+            <text x="${buttonCenter}" y="${buttonCenter}">💾</text>
           </g>
         </g>
-        <foreignObject id="eastWestMapLogoScaleWrap" class="nc-map-logo-scale-wrap nc-map-ui${scaleHiddenClass}" x="18" y="408" width="320" height="224">
+        <foreignObject id="eastWestMapLogoScaleWrap" class="nc-map-logo-scale-wrap nc-map-ui${scaleHiddenClass}" x="${settingsX}" y="${settingsY}" width="${settingsWidth}" height="${settingsHeight}">
           <div xmlns="http://www.w3.org/1999/xhtml" class="nc-map-logo-scale-panel">
             <div class="nc-map-settings-title">
               <span>Map Settings</span>
@@ -6290,8 +7577,10 @@ syncYearPickerUi_();
       if (!eastWestLineMapState_) return;
       const { lineData, classification, sportLabel } = eastWestLineMapState_;
       const selectorOverlay = eastWestMapCanvas.querySelector('.east-west-map-selectors');
+      const cornerControls = eastWestMapCanvas.querySelector('.east-west-map-corner-controls');
       eastWestMapCanvas.innerHTML = '';
       if (selectorOverlay) eastWestMapCanvas.appendChild(selectorOverlay);
+      if (cornerControls) eastWestMapCanvas.appendChild(cornerControls);
       eastWestMapCanvas.insertAdjacentHTML('beforeend', '<div class="muted" style="height:100%;display:flex;align-items:center;justify-content:center;">Loading North Carolina map...</div>');
       const [ncBoundary, countyRings] = await Promise.all([
         getNcBoundary_(),
@@ -6330,7 +7619,8 @@ syncYearPickerUi_();
       const classText = String(classification || '').replace(/^Class\s+/i, '');
       const sportEmoji = sportEmojiFromLabel_(sportLabel);
       const sportIconHtml = sportHeaderIconHtml_(sportLabel);
-      eastWestMapTitle.innerHTML = `${sportIconHtml} ${escapeHtml(classText)} ${escapeHtml(sportLabel || '')} East/West Line Map ${sportIconHtml}`;
+      if (eastWestMapKicker) eastWestMapKicker.innerHTML = `${sportIconHtml} ${escapeHtml(classText)} ${escapeHtml(sportLabel || '')} ${sportIconHtml}`;
+      eastWestMapTitle.textContent = 'East/West Line Map';
       eastWestMapSubtitle.textContent = `${rows.length} playoff teams plotted${missingLonCount ? ` • ${missingLonCount} missing longitude` : ''}${missingLatCount ? ` • ${missingLatCount} using default latitude` : ''}`;
       syncEastWestMapSelectors_();
       eastWestMapCanvas.querySelector('.muted')?.remove();
@@ -6776,10 +8066,22 @@ syncYearPickerUi_();
       }, 110);
     }
 
-    function applyEastWestMapZoom_(options = {}) {
+    function applyEastWestMapViewport_() {
       const viewport = eastWestMapCanvas.querySelector('#eastWestMapViewport');
       if (!viewport) return;
       viewport.setAttribute('transform', `translate(${eastWestMapTransform_.x.toFixed(2)} ${eastWestMapTransform_.y.toFixed(2)}) scale(${eastWestMapTransform_.scale.toFixed(4)})`);
+    }
+
+    function requestEastWestMapViewportApply_() {
+      if (eastWestMapViewportFrame_) return;
+      eastWestMapViewportFrame_ = requestAnimationFrame(() => {
+        eastWestMapViewportFrame_ = 0;
+        applyEastWestMapViewport_();
+      });
+    }
+
+    function applyEastWestMapZoom_(options = {}) {
+      applyEastWestMapViewport_();
       const markerScale = eastWestMapMarkerScale_();
       const markers = [...eastWestMapCanvas.querySelectorAll('.nc-map-marker')];
       let placements = null;
@@ -6810,13 +8112,44 @@ syncYearPickerUi_();
       });
     }
 
+    function requestEastWestMapZoomApply_(options = {}) {
+      if (!isMobileBoardLayout_()) {
+        applyEastWestMapZoom_(options);
+        return;
+      }
+      eastWestMapPendingApplyOptions_ = {
+        ...(eastWestMapPendingApplyOptions_ || {}),
+        ...options,
+        forcePlacement: Boolean(eastWestMapPendingApplyOptions_?.forcePlacement || options.forcePlacement),
+        deferPlacement: Boolean(eastWestMapPendingApplyOptions_?.deferPlacement || options.deferPlacement)
+      };
+      if (eastWestMapApplyFrame_) return;
+      eastWestMapApplyFrame_ = requestAnimationFrame(() => {
+        const nextOptions = eastWestMapPendingApplyOptions_ || {};
+        eastWestMapPendingApplyOptions_ = null;
+        eastWestMapApplyFrame_ = 0;
+        applyEastWestMapZoom_(nextOptions);
+      });
+    }
+
     function eastWestMapMarkerScale_() {
       const scale = Math.max(EAST_WEST_MAP_MIN_SCALE_, eastWestMapTransform_.scale || 1);
       const zoomScale = Math.max(0.13, Math.min(1, 1 / Math.pow(scale, 1.08)));
-      return zoomScale * eastWestMapLogoScale_;
+      const mobileBoost = isMobileBoardLayout_() ? 1.85 : 1;
+      const markerScale = zoomScale * eastWestMapLogoScale_ * mobileBoost;
+      return isMobileBoardLayout_() ? Math.min(2, markerScale) : markerScale;
     }
 
     function resetEastWestMapZoom_() {
+      if (eastWestMapViewportFrame_) {
+        cancelAnimationFrame(eastWestMapViewportFrame_);
+        eastWestMapViewportFrame_ = 0;
+      }
+      if (eastWestMapApplyFrame_) {
+        cancelAnimationFrame(eastWestMapApplyFrame_);
+        eastWestMapApplyFrame_ = 0;
+        eastWestMapPendingApplyOptions_ = null;
+      }
       eastWestMapTransform_.scale = 1;
       eastWestMapTransform_.x = 0;
       eastWestMapTransform_.y = 0;
@@ -6853,11 +8186,26 @@ syncYearPickerUi_();
       eastWestMapTransform_.scale = newScale;
       eastWestMapTransform_.x = point.x - mapX * newScale;
       eastWestMapTransform_.y = point.y - mapY * newScale;
-      applyEastWestMapZoom_({ deferPlacement: true });
+      requestEastWestMapZoomApply_({ deferPlacement: true });
     }
 
     function closestFromTarget_(target, selector) {
       return target?.closest ? target.closest(selector) : null;
+    }
+
+    function isMobileBoardLayout_() {
+      return window.matchMedia?.('(max-width: 760px)').matches || window.innerWidth <= 760;
+    }
+
+    function isScheduleLogoTarget_(target) {
+      return Boolean(closestFromTarget_(target, '.logo, .logo-placeholder'));
+    }
+
+    function toggleMobileStatsRow_(row) {
+      if (!row) return;
+      const isOpen = !row.classList.contains('mobile-stats-open');
+      row.classList.toggle('mobile-stats-open', isOpen);
+      row.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     }
 
     function eastWestMapUiTarget_(target) {
@@ -6900,6 +8248,10 @@ syncYearPickerUi_();
         settingsBtn.classList.toggle('is-active', eastWestMapLogoControlsOpen_);
         settingsBtn.setAttribute('aria-pressed', eastWestMapLogoControlsOpen_ ? 'true' : 'false');
       }
+      eastWestMapCanvas.querySelectorAll('[data-map-action="settings"]').forEach(btn => {
+        btn.classList.toggle('is-active', eastWestMapLogoControlsOpen_);
+        btn.setAttribute('aria-pressed', eastWestMapLogoControlsOpen_ ? 'true' : 'false');
+      });
     }
 
     function toggleEastWestMapLogoControls_() {
@@ -7412,6 +8764,15 @@ syncYearPickerUi_();
       return `<img class="${className}" src="${first}" data-src-candidates="${all}" data-src-index="0" alt="${escapeHtml(alt)}" loading="lazy" referrerpolicy="no-referrer">`;
     }
 
+    function mobileRpiBoardHeaderHtml_() {
+      return `
+        <tr class="mobile-rpi-board-header" aria-hidden="true">
+          <td colspan="${MAIN_TABLE_COLSPAN_}">
+            ${playoffHeaderHtml_(classEl.value, sportEl.value, 'RPI Standings')}
+          </td>
+        </tr>`;
+    }
+
     function rowsHaveLiveChanges_(rows) {
       return (rows || []).some(row =>
         Number.isFinite(Number(row.rankChange)) ||
@@ -7487,7 +8848,7 @@ syncYearPickerUi_();
       }
 
       const regionInfoByTeam = regionInfoLookupForRows_(rows, classEl.value);
-      tbody.innerHTML = rows.map(row => {
+      const rowHtml = rows.map(row => {
         const regionInfo = regionInfoByTeam.get(canonicalTeamName_(row.school)) || {};
         const scheduleRow = row.regionRank
           ? row
@@ -7504,9 +8865,9 @@ syncYearPickerUi_();
 
         return `
           <tr class="${escapeHtml(scheduleRowClass_(scheduleRow))}" ${scheduleRowDataAttrs_(scheduleRow)}>
-            ${showChanges ? `<td><span class="rank-change ${rankChangeClass}">${rankChangeHtml_(row)}</span></td>` : ''}
-            <td class="rank">${escapeHtml(row.rank)}</td>
-            <td>
+            ${showChanges ? `<td data-label="Change"><span class="rank-change ${rankChangeClass}">${rankChangeHtml_(row)}</span></td>` : ''}
+            <td class="rank" data-label="Rank">${escapeHtml(row.rank)}</td>
+            <td data-label="School">
               <div class="school">
                 ${logo}
                 <div class="team-meta">
@@ -7515,15 +8876,16 @@ syncYearPickerUi_();
                 </div>
               </div>
             </td>
-            <td><span class="stat">${escapeHtml(row.record)}</span></td>
+            <td data-label="Record"><span class="stat">${escapeHtml(row.record)}</span></td>
             ${hasDetailedStats ? `
-            <td><span class="stat">${escapeHtml(row.wp)}</span></td>
-            <td><span class="stat">${escapeHtml(row.owp)}</span></td>
-            <td><span class="stat">${escapeHtml(row.oowp)}</span></td>` : ''}
-            <td><span class="rpi">${escapeHtml(row.rpi)}</span></td>
-            ${showChanges ? `<td><span class="rpi-change ${rpiChangeClass}">${escapeHtml(formatRpiChange_(row))}</span></td>` : ''}
+            <td data-label="WP"><span class="stat">${escapeHtml(row.wp)}</span></td>
+            <td data-label="OWP"><span class="stat">${escapeHtml(row.owp)}</span></td>
+            <td data-label="OOWP"><span class="stat">${escapeHtml(row.oowp)}</span></td>` : ''}
+            <td data-label="RPI"><span class="rpi">${escapeHtml(row.rpi)}</span></td>
+            ${showChanges ? `<td data-label="RPI +/-"><span class="rpi-change ${rpiChangeClass}">${escapeHtml(formatRpiChange_(row))}</span></td>` : ''}
           </tr>`;
       }).join('');
+      tbody.innerHTML = `${mobileRpiBoardHeaderHtml_()}${rowHtml}`;
     }
 
     function renderRegionRows(regionData, classification, sportLabel) {
@@ -7536,8 +8898,8 @@ syncYearPickerUi_();
 
           return `
             <tr class="${escapeHtml(scheduleRowClass_(row, oddExtraClass_(row)))}" ${scheduleRowDataAttrs_(row)}>
-              <td class="rank">${escapeHtml(row.regionRank)}</td>
-              <td>
+              <td class="rank" data-label="Rank">${escapeHtml(row.regionRank)}</td>
+              <td data-label="School">
                 <div class="school">
                   ${logo}
                   <div class="team-meta">
@@ -7546,8 +8908,8 @@ syncYearPickerUi_();
                   </div>
                 </div>
               </td>
-              <td><span class="stat">${escapeHtml(row.record)}</span></td>
-              <td><span class="rpi">${escapeHtml(row.rpi)}</span></td>
+              <td data-label="Record"><span class="stat">${escapeHtml(row.record)}</span></td>
+              <td data-label="RPI"><span class="rpi">${escapeHtml(row.rpi)}</span></td>
             </tr>`;
         }).join('');
 
@@ -7613,8 +8975,8 @@ syncYearPickerUi_();
         const rowClass = scheduleRowClass_(row, `east-west-line-row ${side} ${oddExtraClass}`);
         return `
           <tr class="${escapeHtml(rowClass)}" ${scheduleRowDataAttrs_(row)}>
-            <td class="rank">${escapeHtml(row.lineRank)}</td>
-            <td>
+            <td class="rank" data-label="#">${escapeHtml(row.lineRank)}</td>
+            <td data-label="Team">
               <div class="school">
                 ${logo}
                 <div class="team-meta">
@@ -7623,10 +8985,10 @@ syncYearPickerUi_();
                 </div>
               </div>
             </td>
-            <td><span class="stat">${escapeHtml(formatLongitude_(row.longitude))}</span></td>
-            <td><span class="rpi">${escapeHtml(row.rpi)}</span></td>
-            <td><span class="stat">${escapeHtml(row.record || '')}</span></td>
-            <td><span class="east-west-line-region ${side}">${escapeHtml(row.lineRegion)}</span></td>
+            <td data-label="Longitude"><span class="stat">${escapeHtml(formatLongitude_(row.longitude))}</span></td>
+            <td data-label="RPI"><span class="rpi">${escapeHtml(row.rpi)}</span></td>
+            <td data-label="Record"><span class="stat">${escapeHtml(row.record || '')}</span></td>
+            <td data-label="Region"><span class="east-west-line-region ${side}">${escapeHtml(row.lineRegion)}</span></td>
           </tr>`;
       };
       const westRows = lineData.west.map(renderTeamRow).join('');
@@ -7697,7 +9059,7 @@ syncYearPickerUi_();
 
       const rows = bracketData.slots.map(slot => {
         const round1Class = isWest ? 'round1-west' : 'round1-east';
-        const round1Cell = `<div class="game-slot ${round1Class}"><div class="game-stack">${renderBracketEntry_(slot.firstRound.top)}${renderBracketEntry_(slot.firstRound.bottom)}</div></div>`;
+        const round1Cell = `<div class="game-slot round1-slot ${round1Class}"><div class="game-stack">${renderBracketEntry_(slot.firstRound.top)}${renderBracketEntry_(slot.firstRound.bottom)}</div></div>`;
         const round2Cell = `<div class="game-slot round2-slot"><div class="game-stack">${renderBracketEntry_(slot.secondRound.top)}${renderBracketEntry_(slot.secondRound.bottom)}</div></div>`;
         const connector = `<div class="connector-cell"><div class="connector-line ${side}"></div></div>`;
         return isWest ? `<div class="bracket-row">${round1Cell}${connector}${round2Cell}</div>` : `<div class="bracket-row">${round2Cell}${connector}${round1Cell}</div>`;
@@ -7870,6 +9232,9 @@ syncYearPickerUi_();
     const EAST_WEST_MAP_LOGO_MAX_ = 1.5;
     const OSRM_ROUTE_BASE_URL_ = 'https://router.project-osrm.org/route/v1/driving/';
     const eastWestMapTransform_ = { scale: 1, x: 0, y: 0 };
+    let eastWestMapViewportFrame_ = 0;
+    let eastWestMapApplyFrame_ = 0;
+    let eastWestMapPendingApplyOptions_ = null;
     const eastWestMapRowsByKey_ = new Map();
     const eastWestMapInfoCardsByKey_ = new Map();
     const eastWestMapFocusedTeams_ = new Set();
@@ -8730,6 +10095,17 @@ syncYearPickerUi_();
       if (e.target.closest('[data-east-west-map-btn], #eastWestMapBtn')) openEastWestMap_();
       if (e.target.closest('button, a, input, select, textarea')) return;
       const scheduleRow = e.target.closest('tr[data-schedule-row="1"]');
+      if (isMobileBoardLayout_()) {
+        const mobileStatsRow = e.target.closest('tr');
+        if (!mobileStatsRow?.querySelector?.('td[data-label]')) return;
+        if (scheduleRow && isScheduleLogoTarget_(e.target)) {
+          e.stopPropagation();
+          openTeamScheduleCard_(scheduleRowFromDataset_(scheduleRow.dataset));
+          return;
+        }
+        toggleMobileStatsRow_(mobileStatsRow);
+        return;
+      }
       if (scheduleRow) openTeamScheduleCard_(scheduleRowFromDataset_(scheduleRow.dataset));
     });
 
@@ -8835,11 +10211,67 @@ syncYearPickerUi_();
     }, { passive: false });
 
     let eastWestMapPanStart_ = null;
+    let eastWestMapPinchStart_ = null;
+    const eastWestMapActivePointers_ = new Map();
+
+    function eastWestMapPointerPair_() {
+      return [...eastWestMapActivePointers_.values()].slice(0, 2);
+    }
+
+    function eastWestMapPointerDistance_(a, b) {
+      return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    }
+
+    function eastWestMapPointerMidpoint_(a, b) {
+      return {
+        clientX: (a.clientX + b.clientX) / 2,
+        clientY: (a.clientY + b.clientY) / 2
+      };
+    }
+
+    function beginEastWestMapPinch_() {
+      const [a, b] = eastWestMapPointerPair_();
+      if (!a || !b) return;
+      const point = eastWestMapSvgPoint_(eastWestMapPointerMidpoint_(a, b));
+      const distance = eastWestMapPointerDistance_(a, b);
+      if (!point || distance <= 0) return;
+      eastWestMapPinchStart_ = {
+        distance,
+        scale: eastWestMapTransform_.scale,
+        mapX: (point.x - eastWestMapTransform_.x) / eastWestMapTransform_.scale,
+        mapY: (point.y - eastWestMapTransform_.y) / eastWestMapTransform_.scale
+      };
+      eastWestMapPanStart_ = null;
+      eastWestMapCanvas.classList.add('is-panning');
+    }
+
+    function updateEastWestMapPinch_() {
+      const [a, b] = eastWestMapPointerPair_();
+      if (!eastWestMapPinchStart_ || !a || !b) return false;
+      const point = eastWestMapSvgPoint_(eastWestMapPointerMidpoint_(a, b));
+      const distance = eastWestMapPointerDistance_(a, b);
+      if (!point || distance <= 0) return true;
+      const newScale = Math.min(EAST_WEST_MAP_MAX_SCALE_, Math.max(EAST_WEST_MAP_MIN_SCALE_, eastWestMapPinchStart_.scale * (distance / eastWestMapPinchStart_.distance)));
+      eastWestMapTransform_.scale = newScale;
+      eastWestMapTransform_.x = point.x - eastWestMapPinchStart_.mapX * newScale;
+      eastWestMapTransform_.y = point.y - eastWestMapPinchStart_.mapY * newScale;
+      hideEastWestMapContextMenu_();
+      requestEastWestMapViewportApply_();
+      return true;
+    }
+
     eastWestMapCanvas.addEventListener('pointerdown', (e) => {
       if (!eastWestMapCanvas.querySelector('svg')) return;
       if (eastWestMapUiTarget_(e.target) || markerFromMapTarget_(e.target)) return;
       const point = eastWestMapSvgPoint_(e);
       if (!point) return;
+      eastWestMapActivePointers_.set(e.pointerId, { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY });
+      try { eastWestMapCanvas.setPointerCapture(e.pointerId); } catch {}
+      hideEastWestMapContextMenu_();
+      if (eastWestMapActivePointers_.size >= 2) {
+        beginEastWestMapPinch_();
+        return;
+      }
       eastWestMapPanStart_ = {
         pointerId: e.pointerId,
         clientX: e.clientX,
@@ -8849,23 +10281,50 @@ syncYearPickerUi_();
         rect: point.rect
       };
       eastWestMapCanvas.classList.add('is-panning');
-      eastWestMapCanvas.setPointerCapture(e.pointerId);
     });
 
     eastWestMapCanvas.addEventListener('pointermove', (e) => {
+      if (eastWestMapActivePointers_.has(e.pointerId)) {
+        eastWestMapActivePointers_.set(e.pointerId, { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY });
+      }
+      if (eastWestMapPinchStart_ && eastWestMapActivePointers_.size >= 2) {
+        e.preventDefault();
+        updateEastWestMapPinch_();
+        return;
+      }
       if (!eastWestMapPanStart_ || e.pointerId !== eastWestMapPanStart_.pointerId) return;
       const dx = ((e.clientX - eastWestMapPanStart_.clientX) / eastWestMapPanStart_.rect.width) * 1200;
       const dy = ((e.clientY - eastWestMapPanStart_.clientY) / eastWestMapPanStart_.rect.height) * 650;
       eastWestMapTransform_.x = eastWestMapPanStart_.startX + dx;
       eastWestMapTransform_.y = eastWestMapPanStart_.startY + dy;
-      hideEastWestMapContextMenu_();
-      applyEastWestMapZoom_();
+      requestEastWestMapViewportApply_();
     });
 
     const finishEastWestMapPan_ = (e) => {
+      if (eastWestMapActivePointers_.has(e.pointerId)) {
+        eastWestMapActivePointers_.delete(e.pointerId);
+        try { eastWestMapCanvas.releasePointerCapture(e.pointerId); } catch {}
+      }
       if (eastWestMapPanStart_ && e.pointerId === eastWestMapPanStart_.pointerId) {
         eastWestMapPanStart_ = null;
+      }
+      if (eastWestMapPinchStart_ && eastWestMapActivePointers_.size < 2) {
+        eastWestMapPinchStart_ = null;
+        requestEastWestMapZoomApply_({ deferPlacement: true });
+        const remaining = eastWestMapPointerPair_()[0];
+        const point = remaining ? eastWestMapSvgPoint_(remaining) : null;
+        eastWestMapPanStart_ = remaining && point ? {
+          pointerId: remaining.pointerId,
+          clientX: remaining.clientX,
+          clientY: remaining.clientY,
+          startX: eastWestMapTransform_.x,
+          startY: eastWestMapTransform_.y,
+          rect: point.rect
+        } : null;
+      }
+      if (!eastWestMapPanStart_ && eastWestMapActivePointers_.size === 0) {
         eastWestMapCanvas.classList.remove('is-panning');
+        requestEastWestMapZoomApply_({ deferPlacement: true });
       }
     };
     eastWestMapCanvas.addEventListener('pointerup', finishEastWestMapPan_);
@@ -8932,6 +10391,11 @@ syncYearPickerUi_();
     appSettingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       setAppSettingsOpen_(appSettingsPanel.hidden);
+    });
+
+    appSettingsCloseBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setAppSettingsOpen_(false);
     });
 
     appSettingsPanel.addEventListener('click', (e) => {
