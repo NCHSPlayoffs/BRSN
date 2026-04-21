@@ -2015,10 +2015,26 @@
       cursor: grab;
       touch-action: none;
       user-select: none;
+      contain: layout paint;
     }
 
     .east-west-map-canvas.is-panning {
       cursor: grabbing;
+    }
+
+    .east-west-map-canvas.is-panning .nc-map-counties,
+    .east-west-map-canvas.is-transforming .nc-map-counties {
+      opacity: 0;
+    }
+
+    .east-west-map-canvas.is-panning .nc-map-marker rect,
+    .east-west-map-canvas.is-panning .nc-map-cut-line,
+    .east-west-map-canvas.is-panning .nc-map-measure-line,
+    .east-west-map-canvas.is-transforming .nc-map-marker rect,
+    .east-west-map-canvas.is-transforming .nc-map-cut-line,
+    .east-west-map-canvas.is-transforming .nc-map-measure-line {
+      animation: none !important;
+      filter: none !important;
     }
 
     .east-west-map-canvas.is-measuring {
@@ -5103,6 +5119,8 @@ th,
 
   .east-west-map-overlay {
     padding: 0;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .east-west-map-panel {
@@ -5114,6 +5132,8 @@ th,
     border-left: 0;
     border-right: 0;
     grid-template-rows: auto minmax(0, 1fr);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .east-west-map-close {
@@ -5162,6 +5182,8 @@ th,
     height: 54px;
     border-radius: 8px;
     font-size: 27px;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .east-west-map-canvas {
@@ -5189,12 +5211,28 @@ th,
     font-weight: 900;
     letter-spacing: 0;
     text-align: left;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .east-west-map-class-btn .class-picker-btn-text,
   .east-west-map-sport-btn .sport-picker-btn-text {
     text-align: left;
     font-weight: 900;
+  }
+
+  .east-west-map-canvas .nc-map-counties {
+    display: none;
+  }
+
+  .east-west-map-canvas .nc-map-cut-line,
+  .east-west-map-canvas .nc-map-marker rect {
+    filter: none !important;
+  }
+
+  .east-west-map-canvas .nc-map-marker.odd-extra-east rect,
+  .east-west-map-canvas .nc-map-marker.odd-extra-west rect {
+    animation: none !important;
   }
 
   .nc-map-logo-scale-panel {
@@ -8929,6 +8967,7 @@ syncYearPickerUi_();
       eastWestMapOverlay.setAttribute('aria-hidden', 'true');
       eastWestMapCanvas.classList.remove('is-panning');
       eastWestMapCanvas.classList.remove('is-measuring');
+      setEastWestMapTransforming_(false);
       hideEastWestMapContextMenu_();
       hideEastWestMapInfoCard_();
       clearEastWestMapPlacementSolve_();
@@ -9263,6 +9302,19 @@ syncYearPickerUi_();
       });
     }
 
+    function setEastWestMapTransforming_(active, settleMs = 0) {
+      if (eastWestMapTransformingTimer_) {
+        clearTimeout(eastWestMapTransformingTimer_);
+        eastWestMapTransformingTimer_ = 0;
+      }
+      eastWestMapCanvas.classList.toggle('is-transforming', Boolean(active));
+      if (!active || !settleMs) return;
+      eastWestMapTransformingTimer_ = setTimeout(() => {
+        eastWestMapTransformingTimer_ = 0;
+        eastWestMapCanvas.classList.remove('is-transforming');
+      }, settleMs);
+    }
+
     function applyEastWestMapZoom_(options = {}) {
       applyEastWestMapViewport_();
       const markerScale = eastWestMapMarkerScale_();
@@ -9296,10 +9348,6 @@ syncYearPickerUi_();
     }
 
     function requestEastWestMapZoomApply_(options = {}) {
-      if (!isMobileBoardLayout_()) {
-        applyEastWestMapZoom_(options);
-        return;
-      }
       eastWestMapPendingApplyOptions_ = {
         ...(eastWestMapPendingApplyOptions_ || {}),
         ...options,
@@ -9333,6 +9381,7 @@ syncYearPickerUi_();
         eastWestMapApplyFrame_ = 0;
         eastWestMapPendingApplyOptions_ = null;
       }
+      setEastWestMapTransforming_(false);
       eastWestMapTransform_.scale = 1;
       eastWestMapTransform_.x = 0;
       eastWestMapTransform_.y = 0;
@@ -10425,6 +10474,7 @@ syncYearPickerUi_();
     let eastWestMapViewportFrame_ = 0;
     let eastWestMapApplyFrame_ = 0;
     let eastWestMapPendingApplyOptions_ = null;
+    let eastWestMapTransformingTimer_ = 0;
     const eastWestMapRowsByKey_ = new Map();
     const eastWestMapInfoCardsByKey_ = new Map();
     const eastWestMapFocusedTeams_ = new Set();
@@ -11363,6 +11413,11 @@ syncYearPickerUi_();
         return;
       }
       if (eastWestMapUiTarget_(e.target)) return;
+      if (Date.now() < eastWestMapSuppressClickUntil_) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       hideEastWestMapContextMenu_();
       const marker = markerFromMapTarget_(e.target);
       const row = rowFromMapMarker_(marker);
@@ -11403,11 +11458,14 @@ syncYearPickerUi_();
       e.preventDefault();
       const point = eastWestMapSvgPoint_(e);
       if (!point) return;
+      setEastWestMapTransforming_(true, 180);
       zoomEastWestMapAt_(e.deltaY < 0 ? EAST_WEST_MAP_ZOOM_STEP_ : 1 / EAST_WEST_MAP_ZOOM_STEP_, point);
     }, { passive: false });
 
     let eastWestMapPanStart_ = null;
     let eastWestMapPinchStart_ = null;
+    let eastWestMapGestureMoved_ = false;
+    let eastWestMapSuppressClickUntil_ = 0;
     const eastWestMapActivePointers_ = new Map();
 
     function eastWestMapPointerPair_() {
@@ -11438,6 +11496,7 @@ syncYearPickerUi_();
         mapY: (point.y - eastWestMapTransform_.y) / eastWestMapTransform_.scale
       };
       eastWestMapPanStart_ = null;
+      eastWestMapGestureMoved_ = true;
       eastWestMapCanvas.classList.add('is-panning');
     }
 
@@ -11451,6 +11510,7 @@ syncYearPickerUi_();
       eastWestMapTransform_.scale = newScale;
       eastWestMapTransform_.x = point.x - eastWestMapPinchStart_.mapX * newScale;
       eastWestMapTransform_.y = point.y - eastWestMapPinchStart_.mapY * newScale;
+      eastWestMapGestureMoved_ = true;
       hideEastWestMapContextMenu_();
       requestEastWestMapViewportApply_();
       return true;
@@ -11458,12 +11518,20 @@ syncYearPickerUi_();
 
     eastWestMapCanvas.addEventListener('pointerdown', (e) => {
       if (!eastWestMapCanvas.querySelector('svg')) return;
-      if (eastWestMapUiTarget_(e.target) || markerFromMapTarget_(e.target)) return;
+      const markerTarget = markerFromMapTarget_(e.target);
+      if (eastWestMapUiTarget_(e.target) || (markerTarget && e.pointerType !== 'touch')) return;
       const point = eastWestMapSvgPoint_(e);
       if (!point) return;
+      if (eastWestMapActivePointers_.size === 0) {
+        eastWestMapGestureMoved_ = false;
+        eastWestMapSuppressClickUntil_ = 0;
+      }
       eastWestMapActivePointers_.set(e.pointerId, { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY });
-      try { eastWestMapCanvas.setPointerCapture(e.pointerId); } catch {}
+      if (!markerTarget) {
+        try { eastWestMapCanvas.setPointerCapture(e.pointerId); } catch {}
+      }
       hideEastWestMapContextMenu_();
+      setEastWestMapTransforming_(true);
       if (eastWestMapActivePointers_.size >= 2) {
         beginEastWestMapPinch_();
         return;
@@ -11489,10 +11557,13 @@ syncYearPickerUi_();
         return;
       }
       if (!eastWestMapPanStart_ || e.pointerId !== eastWestMapPanStart_.pointerId) return;
+      const pointerDistance = Math.hypot(e.clientX - eastWestMapPanStart_.clientX, e.clientY - eastWestMapPanStart_.clientY);
+      if (pointerDistance > 4) eastWestMapGestureMoved_ = true;
       const dx = ((e.clientX - eastWestMapPanStart_.clientX) / eastWestMapPanStart_.rect.width) * 1200;
       const dy = ((e.clientY - eastWestMapPanStart_.clientY) / eastWestMapPanStart_.rect.height) * 650;
       eastWestMapTransform_.x = eastWestMapPanStart_.startX + dx;
       eastWestMapTransform_.y = eastWestMapPanStart_.startY + dy;
+      if (e.pointerType === 'touch') e.preventDefault();
       requestEastWestMapViewportApply_();
     });
 
@@ -11520,6 +11591,9 @@ syncYearPickerUi_();
       }
       if (!eastWestMapPanStart_ && eastWestMapActivePointers_.size === 0) {
         eastWestMapCanvas.classList.remove('is-panning');
+        setEastWestMapTransforming_(false);
+        if (eastWestMapGestureMoved_) eastWestMapSuppressClickUntil_ = Date.now() + 360;
+        eastWestMapGestureMoved_ = false;
         requestEastWestMapZoomApply_({ deferPlacement: true });
       }
     };
