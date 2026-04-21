@@ -4140,7 +4140,8 @@ th,
 
   .wrap {
     width: 100%;
-    padding: 8px;
+    max-width: none;
+    padding: 0;
   }
 
   .hero,
@@ -4268,12 +4269,12 @@ th,
 
   .app-settings-panel {
     position: fixed;
-    top: 8px !important;
-    left: 8px !important;
-    right: 8px !important;
+    top: 2px !important;
+    left: 2px !important;
+    right: 2px !important;
     width: auto;
-    max-height: calc(100vh - 16px);
-    max-height: calc(100dvh - 16px);
+    max-height: calc(100vh - 4px);
+    max-height: calc(100dvh - 4px);
     padding: 12px;
     z-index: 10050;
   }
@@ -4680,6 +4681,12 @@ th,
     padding: 0 !important;
     border: 0;
     white-space: normal;
+  }
+
+  .east-west-line-table tr.east-west-line-row.east td,
+  .east-west-line-table tr.east-west-line-row.west td {
+    border-top: 0 !important;
+    border-bottom: 0 !important;
   }
 
   .region-rankings-table td[data-label="Rank"],
@@ -5132,6 +5139,9 @@ th,
     border-left: 0;
     border-right: 0;
     grid-template-rows: auto minmax(0, 1fr);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.016)),
+      rgba(5,8,14,0.94) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
@@ -5172,9 +5182,7 @@ th,
   }
 
   .east-west-map-zoom-controls {
-    right: 12px;
-    top: calc(50% - 59px);
-    gap: 9px;
+    display: none !important;
   }
 
   .east-west-map-corner-control {
@@ -5188,6 +5196,10 @@ th,
 
   .east-west-map-canvas {
     min-height: 0;
+    background:
+      radial-gradient(circle at 74% 32%, rgba(31,120,255,0.13), transparent 30%),
+      radial-gradient(circle at 23% 62%, rgba(255,47,58,0.12), transparent 32%),
+      rgba(7,10,18,0.86) !important;
   }
 
   .east-west-map-svg {
@@ -5221,8 +5233,8 @@ th,
     font-weight: 900;
   }
 
-  .east-west-map-canvas .nc-map-counties {
-    display: none;
+  .east-west-map-canvas:not(.is-panning):not(.is-transforming) .nc-map-counties {
+    opacity: .62;
   }
 
   .east-west-map-canvas .nc-map-cut-line,
@@ -9365,10 +9377,13 @@ syncYearPickerUi_();
 
     function eastWestMapMarkerScale_() {
       const scale = Math.max(EAST_WEST_MAP_MIN_SCALE_, eastWestMapTransform_.scale || 1);
-      const zoomScale = Math.max(0.13, Math.min(1, 1 / Math.pow(scale, 1.08)));
+      const isMobile = isMobileBoardLayout_();
+      const zoomMin = isMobile ? 0.18 : 0.13;
+      const zoomPower = isMobile ? 0.98 : 1.08;
+      const zoomScale = Math.max(zoomMin, Math.min(1, 1 / Math.pow(scale, zoomPower)));
       const mobileBoost = isMobileBoardLayout_() ? 1.85 : 1;
       const markerScale = zoomScale * eastWestMapLogoScale_ * mobileBoost;
-      return isMobileBoardLayout_() ? Math.min(2, markerScale) : markerScale;
+      return isMobile ? Math.min(2, markerScale) : markerScale;
     }
 
     function resetEastWestMapZoom_() {
