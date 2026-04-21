@@ -1,0 +1,9 @@
+node_modules/
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+data/rpi-snapshots.json
+supabase/.temp/
+supabase/functions/.env*
+!supabase/functions/.env.example

@@ -1,0 +1,15 @@
+{
+  "name": "playoff-board-headless-export",
+  "private": true,
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server-headless-export-v2.js"
+  },
+  "dependencies": {
+    "playwright": "^1.53.0"
+  },
+  "devDependencies": {
+    "supabase": "^2.93.0"
+  }
+}

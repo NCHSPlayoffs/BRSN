@@ -1,0 +1,4 @@
+project_id = "rpi-rankings-board"
+
+[functions.rpi-api]
+verify_jwt = false
