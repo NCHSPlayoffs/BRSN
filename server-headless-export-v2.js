@@ -57,6 +57,33 @@ function sendHtml(res, status, html) {
   send(res, status, html, 'text/html; charset=utf-8');
 }
 
+function contentTypeForFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case '.html':
+      return 'text/html; charset=utf-8';
+    case '.css':
+      return 'text/css; charset=utf-8';
+    case '.js':
+      return 'application/javascript; charset=utf-8';
+    case '.json':
+      return 'application/json; charset=utf-8';
+    case '.svg':
+      return 'image/svg+xml';
+    case '.png':
+      return 'image/png';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.webp':
+      return 'image/webp';
+    case '.ico':
+      return 'image/x-icon';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
 function safePath(urlPath) {
   const clean = decodeURIComponent(urlPath.split('?')[0]);
   const rel = clean === '/' ? '/playoff_board.html' : clean;
@@ -1149,7 +1176,10 @@ node server-headless-export-v2.js</pre>
 
     fs.readFile(file, (err, data) => {
       if (err) return send(res, 404, 'Not found');
-      res.writeHead(200);
+      res.writeHead(200, {
+        'Content-Type': contentTypeForFile(file),
+        'Access-Control-Allow-Origin': '*'
+      });
       res.end(data);
     });
 
