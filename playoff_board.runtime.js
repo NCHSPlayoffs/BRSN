@@ -179,7 +179,31 @@ try {
       if (e.target === teamLogOverlay) closeTeamLogCard_();
     });
     teamLogCalendarBtn?.addEventListener('click', () => openDatePicker_(teamLogDateInput));
+    teamLogViewBtn?.addEventListener('click', toggleTeamLogView_);
     teamLogDateInput?.addEventListener('change', () => applyTeamLogDateSelection_(teamLogDateInput.value));
+    teamLogContent?.addEventListener('click', (e) => {
+      if (e.target.closest('.team-log-inline-calendar-btn')) {
+        openDatePicker_(teamLogDateInput);
+        return;
+      }
+      if (e.target.closest('.team-log-inline-view-btn')) {
+        toggleTeamLogView_();
+        return;
+      }
+      const dateStepBtn = e.target.closest('[data-team-log-date-step]');
+      if (dateStepBtn) {
+        stepTeamLogDate_(dateStepBtn.dataset.teamLogDateStep);
+        return;
+      }
+      const mobileRow = e.target.closest('[data-team-log-entry]');
+      if (mobileRow) {
+        toggleTeamLogEntry_(mobileRow.dataset.teamLogEntry);
+        return;
+      }
+      const rangeBtn = e.target.closest('[data-team-log-range]');
+      if (!rangeBtn) return;
+      applyTeamLogRangeSelection_(rangeBtn.dataset.teamLogRange);
+    });
 
     eastWestMapCloseBtn.addEventListener('click', closeEastWestMap_);
     eastWestMapOverlay.addEventListener('click', (e) => {

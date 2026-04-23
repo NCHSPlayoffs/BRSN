@@ -2998,12 +2998,42 @@
     }
 
     .team-schedule-close,
-    .team-log-close,
-    .team-log-calendar-btn {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      z-index: 2;
+    #teamLogCalendarBtn,
+    #teamLogViewBtn {
+      display: none;
+    }
+
+    .team-log-title-wrap {
+      min-width: 0;
+      width: auto;
+      max-width: 100%;
+    }
+
+    .team-log-heading-copy {
+      min-width: 0;
+      flex: 0 1 auto;
+      max-width: 100%;
+    }
+
+    .team-log-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 10px;
+      min-width: 0;
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    .team-log-inline-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      padding-top: 1px;
+    }
+
+    .team-log-inline-btn {
       width: 36px;
       height: 36px;
       padding: 0;
@@ -3017,26 +3047,23 @@
       line-height: 1;
       letter-spacing: 0;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
-    }
-
-    .team-log-calendar-btn {
-      top: 56px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
-    .team-log-calendar-btn svg {
-      width: 18px;
-      height: 18px;
+    .team-log-inline-btn svg {
+      width: 17px;
+      height: 17px;
       stroke: #ffffff;
-      stroke-width: 1.9;
+      stroke-width: 1.8;
       fill: none;
       stroke-linecap: round;
       stroke-linejoin: round;
+      overflow: visible;
     }
 
-    .team-log-calendar-btn:disabled {
+    .team-log-inline-btn:disabled {
       opacity: 0.45;
       cursor: default;
     }
@@ -3059,7 +3086,7 @@
 
     .team-schedule-head {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr);
       gap: 16px;
       align-items: center;
       padding: 20px 64px 18px 22px;
@@ -3116,10 +3143,12 @@
     }
 
     .team-schedule-stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(78px, 1fr));
-      gap: 5px;
-      min-width: 390px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(78px, 1fr));
+  gap: 10px;
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
     }
 
     .team-schedule-stat {
@@ -3362,6 +3391,20 @@
     }
 
     .team-log-table-wrap {
+      /* Team Logs table tuning
+         - adjust row spacing with --team-log-row-pad-y / --team-log-row-pad-x
+         - adjust all narrow stat columns together with --team-log-col-stat
+         - adjust any individual column with the vars below
+         These only affect the Team Logs card, not the main standings tables. */
+      --team-log-row-pad-y: 11px;
+      --team-log-row-pad-x: 12px;
+      --team-log-col-timestamp: 146px;
+      --team-log-col-change: 72px;
+      --team-log-col-rank: 84px;
+      --team-log-col-record: 112px;
+      --team-log-col-stat: 110px;
+      --team-log-col-rpi: 116px;
+      --team-log-col-rpi-delta: 96px;
       overflow: auto;
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 8px;
@@ -3370,13 +3413,21 @@
 
     .team-log-table {
       width: 100%;
-      min-width: 620px;
+      min-width: 900px;
       border-collapse: collapse;
     }
 
+    .team-log-col-timestamp { width: var(--team-log-col-timestamp); }
+    .team-log-col-change { width: var(--team-log-col-change); }
+    .team-log-col-rank { width: var(--team-log-col-rank); }
+    .team-log-col-record { width: var(--team-log-col-record); }
+    .team-log-col-stat { width: var(--team-log-col-stat); }
+    .team-log-col-rpi { width: var(--team-log-col-rpi); }
+    .team-log-col-rpi-delta { width: var(--team-log-col-rpi-delta); }
+
     .team-log-table th,
     .team-log-table td {
-      padding: 11px 12px;
+      padding: var(--team-log-row-pad-y) var(--team-log-row-pad-x);
       border-bottom: 1px solid rgba(255,255,255,0.08);
       text-align: left;
       white-space: nowrap;
@@ -3403,21 +3454,26 @@
       letter-spacing: 0.03em;
     }
 
-    .team-log-table th:nth-child(1),
-    .team-log-table td:nth-child(1) {
-      min-width: 60px;
+    .team-log-table th[data-col="timestamp"],
+    .team-log-table td[data-col="timestamp"] {
+      text-align: center;
     }
 
     .team-log-timestamp-cell {
       white-space: normal !important;
+      padding-left: 0;
+      padding-right: 0;
     }
 
     .team-log-timestamp {
-      display: inline-flex;
+      display: flex;
+      width: 100%;
       flex-direction: column;
-      align-items: flex-start;
+      align-items: center;
+      justify-content: center;
       gap: 2px;
       line-height: 1.05;
+      text-align: center;
     }
 
     .team-log-timestamp-date {
@@ -3431,23 +3487,18 @@
       letter-spacing: 0.02em;
     }
 
-    .team-log-table th:nth-child(2),
-    .team-log-table td:nth-child(2),
-    .team-log-table th:nth-child(3),
-    .team-log-table td:nth-child(3),
-    .team-log-table th:nth-child(4),
-    .team-log-table td:nth-child(4),
-    .team-log-table th:nth-child(5),
-    .team-log-table td:nth-child(5),
-    .team-log-table th:nth-child(6),
-    .team-log-table td:nth-child(6),
-    .team-log-table th:nth-child(7),
-    .team-log-table td:nth-child(7),
-    .team-log-table th:nth-child(8),
-    .team-log-table td:nth-child(8),
-    .team-log-table th:nth-child(9),
-    .team-log-table td:nth-child(9) {
+    .team-log-table .is-centered,
+    .team-log-table th[data-col]:not([data-col="timestamp"]),
+    .team-log-table td[data-col]:not([data-col="timestamp"]) {
       text-align: center;
+    }
+
+    .team-log-row.is-rank-up td {
+      background: linear-gradient(90deg, rgba(34,197,94,0.15), rgba(34,197,94,0.06));
+    }
+
+    .team-log-row.is-rank-down td {
+      background: linear-gradient(90deg, rgba(255,47,58,0.15), rgba(255,47,58,0.06));
     }
 
     .team-log-table tbody tr:last-child td {
@@ -3484,6 +3535,258 @@
 
     .team-log-change.down {
       color: #ff9aa2;
+    }
+
+    .team-log-graph-shell {
+      display: grid;
+      gap: 12px;
+    }
+
+    .team-log-range-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .team-log-range-btn {
+      width: auto;
+      flex: 0 0 auto;
+      min-width: 58px;
+      height: 36px;
+      padding: 0 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03)),
+        var(--surface-sheen),
+        rgba(12,16,26,0.42);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.10),
+        0 8px 18px rgba(0,0,0,0.18);
+    }
+
+    .team-log-range-btn.is-active {
+      border-color: rgba(255,255,255,0.24);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)),
+        var(--surface-sheen),
+        rgba(18,24,38,0.50);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.14),
+        0 10px 24px rgba(0,0,0,0.22),
+        0 0 18px rgba(255,255,255,0.08);
+    }
+
+    .team-log-graph-card {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018)),
+        rgba(7,10,18,0.74);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.10),
+        0 12px 28px rgba(0,0,0,0.22);
+    }
+
+    .team-log-graph-meta {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .team-log-graph-kicker {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .team-log-graph-subtitle {
+      margin-top: 4px;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+
+    .team-log-graph-change {
+      display: grid;
+      justify-items: end;
+      gap: 4px;
+      color: #ffffff;
+      font-family: var(--font-number);
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+    }
+
+    .team-log-graph-change.up { color: #89f0ad; }
+    .team-log-graph-change.down { color: #ff9aa2; }
+    .team-log-graph-change.flat { color: #ffffff; }
+
+    .team-log-graph-change small {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .team-log-toolbar-date-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .team-log-date-step-btn {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font: inherit;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .team-log-date-step-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .team-log-date-step-btn:not(:disabled):hover {
+      border-color: rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.10);
+    }
+
+    .team-log-toolbar-date-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 132px;
+      text-align: center;
+    }
+
+    .team-log-graph-frame {
+      position: relative;
+      min-height: 360px;
+      padding: 10px 10px 26px;
+      border-radius: 12px;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(255,255,255,0.08), transparent 30%),
+        radial-gradient(circle at 82% 24%, rgba(31,120,255,0.08), transparent 34%),
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.014)),
+        rgba(4,8,14,0.64);
+      overflow: hidden;
+    }
+
+    .team-log-graph-svg {
+      width: 100%;
+      height: 100%;
+      min-height: 340px;
+      display: block;
+    }
+
+    .team-log-graph-grid-row line {
+      stroke: rgba(255,255,255,0.10);
+      stroke-width: 1;
+    }
+
+    .team-log-graph-grid-row text {
+      fill: rgba(220,228,242,0.78);
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      text-anchor: start;
+    }
+
+    .team-log-graph-area {
+      fill: rgba(255,255,255,0.10);
+    }
+
+    .team-log-graph-line {
+      fill: none;
+      stroke: rgba(255,255,255,0.96);
+      stroke-width: 3.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 12px rgba(255,255,255,0.18));
+    }
+
+    .team-log-graph-point {
+      fill: rgba(255,255,255,0.82);
+      stroke: rgba(7,10,18,0.84);
+      stroke-width: 2;
+    }
+
+    .team-log-graph-point.is-last {
+      fill: #ffffff;
+      stroke: rgba(255,255,255,0.24);
+      filter: drop-shadow(0 0 10px rgba(255,255,255,0.22));
+    }
+
+    .team-log-graph-axis {
+      position: absolute;
+      bottom: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .team-log-graph-axis-start { left: 16px; }
+    .team-log-graph-axis-end { right: 16px; text-align: right; }
+
+    .team-log-content .team-schedule-head {
+      padding-right: 64px;
+    }
+
+    .team-log-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 3;
+      width: 34px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04)),
+        rgba(0,0,0,0.34);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+      color: var(--text);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .team-log-close:hover {
+      border-color: rgba(255,90,102,0.38);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        0 0 18px rgba(255,72,86,0.26);
+      color: #ffffff;
     }
 
     .team-log-empty {
@@ -3935,7 +4238,7 @@
 
     body.rankings-mode.has-rpi-changes th:nth-child(2),
     body.rankings-mode.has-rpi-changes td:nth-child(2) {
-      width: 80px;
+      width: 40px;
       padding-left: 4px;
     }
 
@@ -5013,4 +5316,209 @@ body.theme-bigred .board-actions button:not(:disabled):hover {
     inset 0 -1px 0 rgba(0,0,0,0.10),
     0 14px 32px rgba(0,0,0,0.34),
     0 0 26px rgba(255,255,255,0.36);
+}
+
+/* ACTUAL PERFORMANCE MODE
+   This keeps the same layout/theme language, but removes the most expensive
+   layers: backdrop blur, repeated radial glows, heavy drop-shadows, and deep
+   multi-shadow stacks on repeated UI pieces. */
+body.performance-mode {
+  background:
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%) !important;
+}
+
+body.performance-mode .hero,
+body.performance-mode .table-card,
+body.performance-mode .app-settings-panel,
+body.performance-mode .export-preview-panel,
+body.performance-mode .east-west-map-panel,
+body.performance-mode .team-schedule-card,
+body.performance-mode .team-log-card {
+  background:
+    var(--surface-sheen),
+    var(--card-bg) !important;
+  box-shadow:
+    0 14px 30px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.10) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.performance-mode .app-settings-panel::before {
+  display: none !important;
+}
+
+body.performance-mode .hero-top,
+body.performance-mode .app-settings-head,
+body.performance-mode .team-schedule-head,
+body.performance-mode .export-preview-topbar,
+body.performance-mode .team-log-toolbar,
+body.performance-mode .east-west-map-head {
+
+
+}
+
+body.performance-mode .app-settings-field,
+body.performance-mode .app-settings-section,
+body.performance-mode .app-settings-section-body,
+body.performance-mode .export-preview-card,
+body.performance-mode .team-schedule-game,
+body.performance-mode .team-log-table-wrap,
+body.performance-mode .east-west-map-info-card,
+body.performance-mode .east-west-map-card-stat,
+body.performance-mode .nc-map-logo-scale-panel,
+body.performance-mode .board-loading-card,
+body.performance-mode .east-west-map-class-btn,
+body.performance-mode .east-west-map-sport-btn,
+body.performance-mode .east-west-map-corner-control,
+body.performance-mode .export-preview-toolbar,
+body.performance-mode .team-schedule-body {
+  background: var(--surface-sheen), rgba(40, 34, 35, 0.22) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 8px 18px rgba(0,0,0,0.20) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.performance-mode .board-actions button,
+body.performance-mode .hero-controls .sport-picker-btn,
+body.performance-mode .hero-controls .class-picker-btn,
+body.performance-mode .hero-controls .year-picker-btn,
+body.performance-mode .east-west-map-class-btn,
+body.performance-mode .east-west-map-sport-btn,
+body.performance-mode .export-preview-toolbar button,
+body.performance-mode .team-schedule-link {
+  background:
+    var(--surface-sheen),
+    linear-gradient(180deg, var(--control-bg) 0%, var(--control-panel-bg) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    0 6px 14px rgba(0,0,0,0.20) !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+body.performance-mode .board-actions button,
+body.performance-mode .export-preview-toolbar button,
+body.performance-mode .team-schedule-link {
+  background: var(--button-bg) !important;
+  color: var(--button-text) !important;
+}
+
+body.performance-mode .region-panel,
+body.performance-mode .bracket-region,
+body.performance-mode .east-west-line-table,
+body.performance-mode .game-stack,
+body.performance-mode .round-label,
+body.performance-mode .connector-header,
+body.performance-mode .east-west-map-canvas {
+
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.performance-mode .region-panel.west,
+body.performance-mode .bracket-region.west,
+body.performance-mode .round1-west .game-stack {
+  background:
+    linear-gradient(90deg, rgba(255,47,58,0.065), rgba(255,255,255,0.01) 60%),
+    var(--surface-sheen),
+    var(--glass-bg) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 8px 18px rgba(0,0,0,0.18) !important;
+}
+
+body.performance-mode .region-panel.east,
+body.performance-mode .bracket-region.east,
+body.performance-mode .round1-east .game-stack {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.01), rgba(31,120,255,0.065) 60%),
+    var(--surface-sheen),
+    var(--glass-bg) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 8px 18px rgba(0,0,0,0.18) !important;
+}
+
+body.performance-mode .east-west-map-overlay,
+body.performance-mode .export-preview-overlay,
+body.performance-mode .team-schedule-overlay,
+body.performance-mode .team-log-overlay {
+  background: rgba(4,8,14,0.72) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.performance-mode .connector-line,
+body.performance-mode .nc-map-shape,
+body.performance-mode .nc-map-cut-line,
+body.performance-mode .nc-map-measure-line,
+body.performance-mode .nc-map-marker.is-focused rect,
+body.performance-mode .app-settings-field .snapshot-calendar-btn,
+body.performance-mode .hero-controls .sport-picker-option,
+body.performance-mode .hero-controls .class-picker-option,
+body.performance-mode .east-west-map-sport-menu .sport-picker-option,
+body.performance-mode .east-west-map-class-menu .class-picker-option {
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+body.performance-mode .connector-line {
+  background: linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.48), rgba(255,255,255,0.16)) !important;
+}
+
+body.performance-mode .connector-line.west {
+  background: linear-gradient(90deg, rgba(255,72,86,0.62), rgba(255,72,86,0.40), rgba(255,72,86,0.06)) !important;
+}
+
+body.performance-mode .connector-line.east {
+  background: linear-gradient(90deg, rgba(31,120,255,0.06), rgba(70,150,255,0.40), rgba(70,150,255,0.62)) !important;
+}
+
+body.performance-mode .hero-controls .sport-picker-menu,
+body.performance-mode .hero-controls .class-picker-menu,
+body.performance-mode .east-west-map-sport-menu,
+body.performance-mode .east-west-map-class-menu {
+  background:
+    var(--surface-sheen),
+    linear-gradient(180deg, var(--control-bg) 0%, var(--control-panel-bg) 100%) !important;
+  box-shadow:
+    0 12px 24px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.12) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.performance-mode .hero-controls .sport-picker-option,
+body.performance-mode .hero-controls .class-picker-option,
+body.performance-mode .east-west-map-sport-menu .sport-picker-option,
+body.performance-mode .east-west-map-class-menu .class-picker-option {
+  background: var(--control-soft-bg) !important;
+}
+
+body.performance-mode .hero-controls .sport-picker-option:hover,
+body.performance-mode .hero-controls .sport-picker-option.is-selected,
+body.performance-mode .hero-controls .class-picker-option:hover,
+body.performance-mode .hero-controls .class-picker-option.is-selected,
+body.performance-mode .east-west-map-sport-menu .sport-picker-option:hover,
+body.performance-mode .east-west-map-sport-menu .sport-picker-option.is-selected,
+body.performance-mode .east-west-map-class-menu .class-picker-option:hover,
+body.performance-mode .east-west-map-class-menu .class-picker-option.is-selected {
+  background: rgba(255,255,255,0.07) !important;
+}
+
+body.performance-mode .split-toggle-control input:checked + .split-toggle-track {
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.30) !important;
+}
+
+body.performance-mode .team-name,
+body.performance-mode .team-copy-name,
+body.performance-mode .region-title,
+body.performance-mode .bracket-region-title,
+body.performance-mode .export-preview-title,
+body.performance-mode .team-schedule-title,
+body.performance-mode .east-west-map-card-title {
+  text-shadow: none !important;
 }
