@@ -885,6 +885,57 @@ function getSnapshotById(id) {
   return readSnapshotStore().snapshots.find(snapshot => snapshot.id === snapshotId) || null;
 }
 
+function buildTeamSnapshotLog({ sport, classification, seasonYear, source, school, limit = 80 }) {
+  const teamKey = normalizeTeamKey(school);
+  if (!sport || !classification || !teamKey) throw new Error('Missing sport, classification, or school');
+
+  const snapshots = readSnapshotStore().snapshots
+    .filter(snapshot =>
+      snapshot.sport === sport &&
+      snapshot.classification === classification &&
+      snapshot.seasonYear === seasonYear &&
+      snapshot.source === source
+    )
+    .sort((a, b) => String(b.fetchedAt).localeCompare(String(a.fetchedAt)));
+
+  const matchingLogs = snapshots
+    .map(snapshot => {
+      const row = (snapshot.rows || []).find(item =>
+        item.teamKey === teamKey ||
+        normalizeTeamKey(item.school) === teamKey
+      ) || null;
+      return row ? { snapshot, row } : null;
+    })
+    .filter(Boolean)
+    .slice(0, Math.max(1, Number(limit) || 80));
+
+  const logs = matchingLogs.map((entry, index) => {
+    const older = matchingLogs[index + 1]?.row || null;
+    return {
+      snapshotId: entry.snapshot.id,
+      fetchedAt: entry.snapshot.fetchedAt,
+      school: entry.row.school,
+      rank: entry.row.rank,
+      record: entry.row.record || '',
+      wp: entry.row.wp || '',
+      owp: entry.row.owp || '',
+      oowp: entry.row.oowp || '',
+      rpi: entry.row.rpi,
+      rankChange: older ? rankSnapshotDelta(entry.row, older) : null,
+      rpiChange: older ? rpiSnapshotDelta(entry.row, older) : null
+    };
+  });
+
+  return {
+    sport,
+    classification,
+    seasonYear,
+    source,
+    school: matchingLogs[0]?.row?.school || String(school || '').trim(),
+    logs
+  };
+}
+
 function adjustedRpi(value, delta) {
   const n = numericRpi(value);
   if (n === null) return value;
@@ -1152,6 +1203,19 @@ node server-headless-export-v2.js</pre>
       const snapshot = getSnapshotById(requestUrl.searchParams.get('id'));
       if (!snapshot) return sendJson(res, 404, { error: 'Snapshot not found' });
       return sendJson(res, 200, { snapshot });
+    }
+
+    if (req.method === 'GET' && requestUrl.pathname === '/rpi-snapshots/team-log') {
+      if (!LOCAL_SNAPSHOTS_ENABLED) {
+        return sendJson(res, 503, { error: 'Local snapshots are disabled. Use Supabase for team RPI logs.' });
+      }
+      const sport = String(requestUrl.searchParams.get('sport') || '').trim();
+      const classification = String(requestUrl.searchParams.get('classification') || '').trim();
+      const seasonYear = String(requestUrl.searchParams.get('seasonYear') || 'live').trim();
+      const source = String(requestUrl.searchParams.get('source') || 'official').trim();
+      const school = String(requestUrl.searchParams.get('school') || '').trim();
+      const limit = Number(requestUrl.searchParams.get('limit') || 80);
+      return sendJson(res, 200, buildTeamSnapshotLog({ sport, classification, seasonYear, source, school, limit }));
     }
 
     if (req.method === 'POST' && req.url === '/rpi-snapshots/capture') {

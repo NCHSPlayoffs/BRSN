@@ -1,0 +1,358 @@
+﻿:root {
+      --bg-top: #09111c;
+      --bg-bottom: #0b1320;
+      --panel: #0f1b2d;
+      --panel-top: #162742;
+      --line: rgba(255,255,255,0.08);
+      --line-strong: rgba(255,255,255,0.14);
+      --text: #f4f7fd;
+      --muted: #97a8c7;
+      --danger: #ffb8b8;
+      --west: #ff2f3a;
+      --east: #1f78ff;
+      --font-body: 'Goldman', Arial, Helvetica, sans-serif;
+      --font-header: 'Russo One', Arial, Helvetica, sans-serif;
+      --font-number: var(--font-body);
+
+      --hero-top-bg: linear-gradient(180deg, #1a2c49 0%, #13233c 100%);
+      --card-bg: linear-gradient(180deg, #101a2b 0%, #0c1727 100%);
+      --table-head-bg: linear-gradient(180deg, #182948 0%, #13233b 100%);
+      --control-bg: #13233b;
+      --control-panel-bg: #0d1828;
+      --control-soft-bg: rgba(255,255,255,0.03);
+      --button-bg: linear-gradient(180deg, #f1f5fd 0%, #ccd8f1 100%);
+      --button-text: #08111d;
+      --modal-bg: var(--card-bg);
+      --progress-bg: linear-gradient(180deg, #09111c 0%, #0b1320 100%);
+      --accent: #8fc4ff;
+      --accent-2: #ff8e9a;
+      --glass-bg: rgba(12, 22, 38, 0.68);
+      --glass-bg-strong: rgba(12, 22, 38, 0.86);
+      --glass-border: rgba(255,255,255,0.17);
+      --glass-border-strong: rgba(255,255,255,0.27);
+      --glass-highlight: rgba(255,255,255,0.13);
+      --glass-shadow: 0 24px 70px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.12);
+      --soft-shadow: 0 14px 34px rgba(0,0,0,0.30);
+      --glow: rgba(86, 165, 255, 0.24);
+      --glow-2: rgba(255, 77, 96, 0.16);
+      --control-glass: rgba(255,255,255,0.075);
+      --row-glass: rgba(255,255,255,0.035);
+      --pill-glass: rgba(255,255,255,0.10);
+      --map-glass: rgba(7,10,18,0.58);
+      --surface-sheen: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.026));
+      --board-glass-sheen: linear-gradient(112deg, rgba(255,255,255,0.165) 0%, rgba(255,255,255,0.064) 35%, rgba(255,255,255,0.028) 64%, rgba(255,255,255,0.080) 100%);
+      --board-glass-wash: linear-gradient(180deg, rgba(255,255,255,0.120), rgba(255,255,255,0.045));
+      --board-glass-milk: linear-gradient(0deg, rgba(255,255,255,0.036), rgba(255,255,255,0.036));
+      --round-glass-sheen: linear-gradient(112deg, rgba(255,255,255,0.155) 0%, rgba(255,255,255,0.060) 36%, rgba(255,255,255,0.026) 68%, rgba(255,255,255,0.072) 100%);
+      --frost-panel-sheen: linear-gradient(112deg, rgba(255,255,255,0.185) 0%, rgba(255,255,255,0.076) 38%, rgba(255,255,255,0.038) 68%, rgba(255,255,255,0.110) 100%);
+      --frost-panel-wash: linear-gradient(180deg, rgba(255,255,255,0.135), rgba(255,255,255,0.052));
+      --frost-card-wash: linear-gradient(180deg, rgba(255,255,255,0.115), rgba(255,255,255,0.040));
+      --button-glow: rgba(255,255,255,0.28);
+      --focus-ring: rgba(143,196,255,0.62);
+      --logo-glow: rgba(143,196,255,0.16);
+      --playoff-header-bg:
+        linear-gradient(90deg, rgba(255,47,58,0.34) 0%, rgba(255,47,58,0.12) 30%, rgba(31,120,255,0.12) 70%, rgba(31,120,255,0.34) 100%),
+        linear-gradient(180deg, #121d31 0%, #0e1829 100%);
+    }
+
+    body.theme-carbon {
+      --bg-top: #09111c;
+      --bg-bottom: #0b1320;
+      --hero-top-bg: linear-gradient(180deg, #1a2c49 0%, #13233c 100%);
+      --card-bg: linear-gradient(180deg, #101a2b 0%, #0c1727 100%);
+      --table-head-bg: linear-gradient(180deg, #182948 0%, #13233b 100%);
+      --control-bg: #13233b;
+      --control-panel-bg: #0d1828;
+      --button-bg: linear-gradient(180deg, #f1f5fd 0%, #ccd8f1 100%);
+      --button-text: #08111d;
+      --modal-bg: var(--card-bg);
+      --progress-bg: linear-gradient(180deg, #09111c 0%, #0b1320 100%);
+      --accent: #8fc4ff;
+      --accent-2: #ff8e9a;
+      --glass-bg: rgba(12, 22, 38, 0.68);
+      --glass-bg-strong: rgba(12, 22, 38, 0.86);
+      --glass-border: rgba(255,255,255,0.17);
+      --glass-border-strong: rgba(255,255,255,0.27);
+      --glass-highlight: rgba(255,255,255,0.13);
+      --glass-shadow: 0 24px 70px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.12);
+      --soft-shadow: 0 14px 34px rgba(0,0,0,0.30);
+      --glow: rgba(86, 165, 255, 0.24);
+      --glow-2: rgba(255, 77, 96, 0.16);
+      --control-glass: rgba(255,255,255,0.075);
+      --row-glass: rgba(255,255,255,0.035);
+      --pill-glass: rgba(255,255,255,0.10);
+      --map-glass: rgba(7,10,18,0.58);
+      --surface-sheen: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.026));
+      --button-glow: rgba(255,255,255,0.28);
+      --focus-ring: rgba(143,196,255,0.62);
+      --logo-glow: rgba(143,196,255,0.16);
+      --playoff-header-bg:
+        linear-gradient(90deg, rgba(255,47,58,0.34) 0%, rgba(255,47,58,0.12) 30%, rgba(31,120,255,0.12) 70%, rgba(31,120,255,0.34) 100%),
+        linear-gradient(180deg, #121d31 0%, #0e1829 100%);
+    }
+
+    body.theme-midnight {
+      --bg-top: #05070c;
+      --bg-bottom: #0a1020;
+      --hero-top-bg: linear-gradient(180deg, #131b32 0%, #0d1528 100%);
+      --card-bg: linear-gradient(180deg, #0b1322 0%, #08101c 100%);
+      --table-head-bg: linear-gradient(180deg, #111d35 0%, #0c1628 100%);
+      --control-bg: #101a2e;
+      --control-panel-bg: #080f1c;
+      --button-bg: linear-gradient(180deg, #27395f 0%, #16233e 100%);
+      --button-text: #f4f7fd;
+      --modal-bg: var(--card-bg);
+      --progress-bg: linear-gradient(180deg, #05070c 0%, #0a1020 100%);
+      --accent: #7ee8ff;
+      --accent-2: #9a7dff;
+      --glass-bg: rgba(9, 15, 28, 0.72);
+      --glass-bg-strong: rgba(9, 15, 28, 0.90);
+      --glass-border: rgba(126,232,255,0.16);
+      --glass-border-strong: rgba(255,255,255,0.28);
+      --glass-highlight: rgba(255,255,255,0.11);
+      --glass-shadow: 0 24px 72px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.10);
+      --soft-shadow: 0 14px 34px rgba(0,0,0,0.38);
+      --glow: rgba(126,232,255,0.18);
+      --glow-2: rgba(154,125,255,0.13);
+      --control-glass: rgba(255,255,255,0.065);
+      --row-glass: rgba(126,232,255,0.026);
+      --pill-glass: rgba(126,232,255,0.085);
+      --map-glass: rgba(4,7,14,0.64);
+      --surface-sheen: linear-gradient(180deg, rgba(255,255,255,0.105), rgba(126,232,255,0.018));
+      --button-glow: rgba(126,232,255,0.30);
+      --focus-ring: rgba(126,232,255,0.65);
+      --logo-glow: rgba(126,232,255,0.14);
+      --playoff-header-bg:
+        linear-gradient(90deg, rgba(242,64,64,0.22) 0%, rgba(242,64,64,0.06) 30%, rgba(43,140,255,0.06) 70%, rgba(43,140,255,0.22) 100%),
+        linear-gradient(180deg, #0f1628 0%, #0a1220 100%);
+    }
+
+    body.theme-slate {
+      --bg-top: #17202d;
+      --bg-bottom: #1d2735;
+      --hero-top-bg: linear-gradient(180deg, #33455f 0%, #29384d 100%);
+      --card-bg: linear-gradient(180deg, #202c3e 0%, #1a2433 100%);
+      --table-head-bg: linear-gradient(180deg, #2f425b 0%, #26364a 100%);
+      --control-bg: #29384d;
+      --control-panel-bg: #1a2433;
+      --button-bg: linear-gradient(180deg, #536b8c 0%, #33455f 100%);
+      --button-text: #f4f7fd;
+      --modal-bg: var(--card-bg);
+      --progress-bg: linear-gradient(180deg, #17202d 0%, #1d2735 100%);
+      --accent: #d6e3f4;
+      --accent-2: #91a9c9;
+      --glass-bg: rgba(28, 39, 54, 0.70);
+      --glass-bg-strong: rgba(28, 39, 54, 0.88);
+      --glass-border: rgba(225,235,248,0.18);
+      --glass-border-strong: rgba(225,235,248,0.28);
+      --glass-highlight: rgba(255,255,255,0.13);
+      --glass-shadow: 0 24px 68px rgba(5,8,13,0.44), inset 0 1px 0 rgba(255,255,255,0.13);
+      --soft-shadow: 0 14px 32px rgba(5,8,13,0.28);
+      --glow: rgba(214,227,244,0.16);
+      --glow-2: rgba(114,146,186,0.14);
+      --control-glass: rgba(255,255,255,0.07);
+      --row-glass: rgba(255,255,255,0.032);
+      --pill-glass: rgba(255,255,255,0.095);
+      --map-glass: rgba(23,32,45,0.62);
+      --surface-sheen: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.032));
+      --button-glow: rgba(214,227,244,0.24);
+      --focus-ring: rgba(214,227,244,0.58);
+      --logo-glow: rgba(214,227,244,0.13);
+      --playoff-header-bg:
+        linear-gradient(90deg, rgba(242,64,64,0.16) 0%, rgba(242,64,64,0.05) 30%, rgba(43,140,255,0.05) 70%, rgba(242,64,64,0.10) 100%),
+        linear-gradient(180deg, #223146 0%, #1b2839 100%);
+    }
+
+    body.theme-gold {
+      --bg-top: #171108;
+      --bg-bottom: #1d1408;
+      --hero-top-bg: linear-gradient(180deg, #43311a 0%, #342413 100%);
+      --card-bg: linear-gradient(180deg, #241b12 0%, #1d160f 100%);
+      --table-head-bg: linear-gradient(180deg, #3a2a17 0%, #2c2012 100%);
+      --control-bg: #342413;
+      --control-panel-bg: #1d160f;
+      --button-bg: linear-gradient(180deg, #ffd678 0%, #a87528 100%);
+      --button-text: #171108;
+      --modal-bg: var(--card-bg);
+      --progress-bg: linear-gradient(180deg, #171108 0%, #1d1408 100%);
+      --accent: #ffd678;
+      --accent-2: #7fc7ff;
+      --glass-bg: rgba(34, 24, 13, 0.70);
+      --glass-bg-strong: rgba(34, 24, 13, 0.88);
+      --glass-border: rgba(255,214,120,0.20);
+      --glass-border-strong: rgba(255,230,160,0.34);
+      --glass-highlight: rgba(255,239,198,0.15);
+      --glass-shadow: 0 24px 68px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,239,198,0.13);
+      --soft-shadow: 0 14px 34px rgba(0,0,0,0.32);
+      --glow: rgba(255,214,120,0.22);
+      --glow-2: rgba(127,199,255,0.13);
+      --control-glass: rgba(255,214,120,0.075);
+      --row-glass: rgba(255,214,120,0.028);
+      --pill-glass: rgba(255,214,120,0.105);
+      --map-glass: rgba(24,17,9,0.60);
+      --surface-sheen: linear-gradient(180deg, rgba(255,239,198,0.13), rgba(255,214,120,0.024));
+      --button-glow: rgba(255,214,120,0.34);
+      --focus-ring: rgba(255,214,120,0.64);
+      --logo-glow: rgba(255,214,120,0.16);
+      --playoff-header-bg:
+        linear-gradient(90deg, rgba(242,64,64,0.16) 0%, rgba(255,214,120,0.06) 35%, rgba(43,140,255,0.06) 70%, rgba(242,64,64,0.16) 100%),
+        linear-gradient(180deg, #302314 0%, #241a10 100%);
+    }
+
+    body.theme-bigred {
+      --bg-top: #120405;
+      --bg-bottom: #080808;
+      --hero-top-bg: linear-gradient(180deg, #8f0f18 0%, #3d060c 100%);
+      --card-bg: linear-gradient(180deg, #141010 0%, #0a0a0a 100%);
+      --table-head-bg: linear-gradient(180deg, #c31623 0%, #53080f 100%);
+      --control-bg: #17090b;
+      --control-panel-bg: #160709;
+      --button-bg: linear-gradient(180deg, #fff7f7 0%, #d8d2d2 100%);
+      --button-text: #120405;
+      --modal-bg: var(--card-bg);
+      --progress-bg: linear-gradient(180deg, #120405 0%, #080808 100%);
+      --accent: #ff9aa4;
+      --accent-2: #86bfff;
+      --glass-bg: rgba(16, 7, 9, 0.72);
+      --glass-bg-strong: rgba(16, 7, 9, 0.90);
+      --glass-border: rgba(255,166,174,0.19);
+      --glass-border-strong: rgba(255,218,221,0.32);
+      --glass-highlight: rgba(255,255,255,0.13);
+      --glass-shadow: 0 24px 72px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.12);
+      --soft-shadow: 0 14px 34px rgba(0,0,0,0.38);
+      --glow: rgba(255,47,58,0.24);
+      --glow-2: rgba(31,120,255,0.16);
+      --control-glass: rgba(255,255,255,0.075);
+      --row-glass: rgba(255,47,58,0.026);
+      --pill-glass: rgba(255,255,255,0.10);
+      --map-glass: rgba(10,6,8,0.62);
+      --surface-sheen: linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,47,58,0.025));
+      --button-glow: rgba(255,190,196,0.32);
+      --focus-ring: rgba(255,154,164,0.62);
+      --logo-glow: rgba(255,47,58,0.16);
+    }
+
+    body.theme-royal {
+      --bg-top: #060b18;
+      --bg-bottom: #0a1430;
+      --hero-top-bg: linear-gradient(180deg, #17306a 0%, #11214b 100%);
+      --card-bg: linear-gradient(180deg, #101c3d 0%, #0b1530 100%);
+      --table-head-bg: linear-gradient(180deg, #20468c 0%, #16336a 100%);
+      --control-bg: #11214b;
+      --control-panel-bg: #0b1530;
+      --button-bg: linear-gradient(180deg, #7fa6ff 0%, #315fc4 100%);
+      --button-text: #060b18;
+      --modal-bg: var(--card-bg);
+      --progress-bg: linear-gradient(180deg, #060b18 0%, #0a1430 100%);
+      --accent: #91b8ff;
+      --accent-2: #aee7ff;
+      --glass-bg: rgba(11, 23, 52, 0.70);
+      --glass-bg-strong: rgba(11, 23, 52, 0.88);
+      --glass-border: rgba(145,184,255,0.19);
+      --glass-border-strong: rgba(184,210,255,0.30);
+      --glass-highlight: rgba(255,255,255,0.13);
+      --glass-shadow: 0 24px 70px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.12);
+      --soft-shadow: 0 14px 34px rgba(0,0,0,0.34);
+      --glow: rgba(67,126,255,0.24);
+      --glow-2: rgba(174,231,255,0.13);
+      --control-glass: rgba(145,184,255,0.072);
+      --row-glass: rgba(145,184,255,0.028);
+      --pill-glass: rgba(145,184,255,0.10);
+      --map-glass: rgba(6,12,28,0.62);
+      --surface-sheen: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(145,184,255,0.026));
+      --button-glow: rgba(127,166,255,0.36);
+      --focus-ring: rgba(145,184,255,0.66);
+      --logo-glow: rgba(67,126,255,0.16);
+      --playoff-header-bg:
+        linear-gradient(90deg, rgba(242,64,64,0.16) 0%, rgba(57,111,224,0.10) 45%, rgba(43,140,255,0.18) 100%),
+        linear-gradient(180deg, #132758 0%, #0d1b3f 100%);
+    }
+
+    body.theme-emerald {
+      --bg-top: #07130e;
+      --bg-bottom: #0b1c15;
+      --hero-top-bg: linear-gradient(180deg, #18402d 0%, #113021 100%);
+      --card-bg: linear-gradient(180deg, #10261b 0%, #0c1d15 100%);
+      --table-head-bg: linear-gradient(180deg, #225c40 0%, #18432f 100%);
+      --control-bg: #113021;
+      --control-panel-bg: #0c1d15;
+      --button-bg: linear-gradient(180deg, #8ce1b7 0%, #319365 100%);
+      --button-text: #07130e;
+      --modal-bg: var(--card-bg);
+      --progress-bg: linear-gradient(180deg, #07130e 0%, #0b1c15 100%);
+      --accent: #92edbe;
+      --accent-2: #87c8ff;
+      --glass-bg: rgba(11, 30, 21, 0.70);
+      --glass-bg-strong: rgba(11, 30, 21, 0.88);
+      --glass-border: rgba(146,237,190,0.18);
+      --glass-border-strong: rgba(190,255,220,0.30);
+      --glass-highlight: rgba(255,255,255,0.13);
+      --glass-shadow: 0 24px 68px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.12);
+      --soft-shadow: 0 14px 34px rgba(0,0,0,0.32);
+      --glow: rgba(96,226,151,0.20);
+      --glow-2: rgba(135,200,255,0.13);
+      --control-glass: rgba(146,237,190,0.070);
+      --row-glass: rgba(146,237,190,0.026);
+      --pill-glass: rgba(146,237,190,0.095);
+      --map-glass: rgba(7,19,14,0.62);
+      --surface-sheen: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(146,237,190,0.025));
+      --button-glow: rgba(140,225,183,0.34);
+      --focus-ring: rgba(146,237,190,0.62);
+      --logo-glow: rgba(96,226,151,0.15);
+      --playoff-header-bg:
+        linear-gradient(90deg, rgba(242,64,64,0.16) 0%, rgba(44,128,88,0.10) 45%, rgba(43,140,255,0.16) 100%),
+        linear-gradient(180deg, #163726 0%, #10281d 100%);
+    }
+
+    body.theme-plum {
+      --bg-top: #12081e;
+      --bg-bottom: #1a0f29;
+      --hero-top-bg: linear-gradient(180deg, #4a236e 0%, #31184d 100%);
+      --card-bg: linear-gradient(180deg, #26153a 0%, #1a102b 100%);
+      --table-head-bg: linear-gradient(180deg, #63348f 0%, #432466 100%);
+      --control-bg: #31184d;
+      --control-panel-bg: #1a102b;
+      --button-bg: linear-gradient(180deg, #c695f3 0%, #7243b6 100%);
+      --button-text: #12081e;
+      --modal-bg: var(--card-bg);
+      --progress-bg: linear-gradient(180deg, #12081e 0%, #1a0f29 100%);
+      --accent: #d4a9ff;
+      --accent-2: #89d8ff;
+      --glass-bg: rgba(28, 15, 43, 0.70);
+      --glass-bg-strong: rgba(28, 15, 43, 0.88);
+      --glass-border: rgba(212,169,255,0.18);
+      --glass-border-strong: rgba(232,208,255,0.30);
+      --glass-highlight: rgba(255,255,255,0.13);
+      --glass-shadow: 0 24px 70px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.12);
+      --soft-shadow: 0 14px 34px rgba(0,0,0,0.34);
+      --glow: rgba(174,111,255,0.22);
+      --glow-2: rgba(137,216,255,0.13);
+      --control-glass: rgba(212,169,255,0.072);
+      --row-glass: rgba(212,169,255,0.026);
+      --pill-glass: rgba(212,169,255,0.095);
+      --map-glass: rgba(18,9,30,0.62);
+      --surface-sheen: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(212,169,255,0.026));
+      --button-glow: rgba(198,149,243,0.34);
+      --focus-ring: rgba(212,169,255,0.62);
+      --logo-glow: rgba(174,111,255,0.16);
+      --playoff-header-bg:
+        linear-gradient(90deg, rgba(242,64,64,0.16) 0%, rgba(114,67,182,0.10) 45%, rgba(43,140,255,0.16) 100%),
+        linear-gradient(180deg, #341b52 0%, #231238 100%);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0) 180px),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    }
+
+    .wrap {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 20px;
+    }

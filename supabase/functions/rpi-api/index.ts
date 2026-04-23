@@ -190,6 +190,41 @@ function snapshotSummary(snapshot: any) {
   };
 }
 
+function buildTeamSnapshotLog(snapshots: any[], school: string, fallbackSchool = "") {
+  const teamKey = normalizeTeamKey(school);
+  const matchingLogs = snapshots
+    .map((snapshot) => {
+      const row = (snapshot.rows || []).find((item: any) =>
+        item.teamKey === teamKey ||
+        normalizeTeamKey(item.school) === teamKey
+      ) || null;
+      return row ? { snapshot, row } : null;
+    })
+    .filter(Boolean) as Array<{ snapshot: any; row: any }>;
+
+  const logs = matchingLogs.map((entry, index) => {
+    const older = matchingLogs[index + 1]?.row || null;
+    return {
+      snapshotId: entry.snapshot.id,
+      fetchedAt: entry.snapshot.fetchedAt,
+      school: entry.row.school,
+      rank: entry.row.rank,
+      record: entry.row.record || "",
+      wp: entry.row.wp || "",
+      owp: entry.row.owp || "",
+      oowp: entry.row.oowp || "",
+      rpi: entry.row.rpi,
+      rankChange: older ? rankSnapshotDelta(entry.row, older) : null,
+      rpiChange: older ? rpiSnapshotDelta(entry.row, older) : null,
+    };
+  });
+
+  return {
+    school: matchingLogs[0]?.row?.school || String(fallbackSchool || "").trim(),
+    logs,
+  };
+}
+
 function snapshotLocalDate(fetchedAt: string, tzOffsetMinutes: string) {
   const time = Date.parse(fetchedAt);
   if (!Number.isFinite(time)) return "";
@@ -809,6 +844,25 @@ Deno.serve(async (req) => {
       const snapshots = await selectSnapshots({ id }, 1);
       if (!snapshots.length) return jsonResponse({ error: "Snapshot not found" }, 404);
       return jsonResponse({ snapshot: snapshots[0] });
+    }
+
+    if (req.method === "GET" && path === "/rpi-snapshots/team-log") {
+      const sport = url.searchParams.get("sport") || "";
+      const classification = url.searchParams.get("classification") || "";
+      const seasonYear = url.searchParams.get("seasonYear") || "live";
+      const source = url.searchParams.get("source") || "official";
+      const school = url.searchParams.get("school") || "";
+      const limit = Math.max(1, Number(url.searchParams.get("limit") || 80));
+      const snapshots = await selectSnapshots({ sport, classification, season_year: seasonYear, source }, Math.min(limit, 200));
+      const logResult = buildTeamSnapshotLog(snapshots, school, school);
+      return jsonResponse({
+        sport,
+        classification,
+        seasonYear,
+        source,
+        school: logResult.school,
+        logs: logResult.logs,
+      });
     }
 
     if (path === "/rpi-snapshots/capture" && req.method === "POST") {
