@@ -1,4 +1,8 @@
-﻿:root {
+﻿/* ==========================================================================
+   Root Variables / Theme Tokens
+   ========================================================================== */
+
+:root {
       --bg-top: #09111c;
       --bg-bottom: #0b1320;
       --panel: #0f1b2d;
@@ -10,9 +14,60 @@
       --danger: #ffb8b8;
       --west: #ff2f3a;
       --east: #1f78ff;
+      --color-west: var(--west);
+      --color-east: var(--east);
+      --color-west-soft: rgba(255,47,58,0.18);
+      --color-east-soft: rgba(31,120,255,0.18);
       --font-body: 'Goldman', Arial, Helvetica, sans-serif;
       --font-header: 'Russo One', Arial, Helvetica, sans-serif;
       --font-number: var(--font-body);
+
+      /* Shared spacing tokens */
+      --space-1: 4px;
+      --space-2: 6px;
+      --space-3: 8px;
+      --space-4: 10px;
+      --space-5: 12px;
+      --space-6: 14px;
+      --space-7: 16px;
+      --space-8: 18px;
+      --space-9: 20px;
+      --space-10: 22px;
+      --space-card-pad: 18px;
+      --space-card-pad-sm: 16px;
+      --space-card-pad-lg: 22px;
+      --space-section-gap: 18px;
+      --space-control-gap: 12px;
+      --space-toolbar-gap: 14px;
+      --space-cell-pad-x: 8px;
+      --space-cell-pad-y: 8px;
+
+      /* Shared sizing tokens */
+      --size-control-height: 46px;
+      --size-control-height-sm: 42px;
+      --size-icon-btn: 38px;
+      --size-icon-btn-sm: 34px;
+      --size-logo-wide: 120px;
+      --size-logo-wide-h: 42px;
+      --size-logo-card: 62px;
+      --size-row-height: 76px;
+      --graph-min-height: 320px;
+      --map-panel-pad: 35px;
+      --export-toolbar-pad-x: 22px;
+      --export-toolbar-pad-y: 14px;
+
+      /* Shared radii */
+      --radius-button: 8px;
+      --radius-card: 8px;
+      --radius-menu: 8px;
+      --radius-pill: 6px;
+      --radius-panel: 14px;
+
+      /* Shared table sizing */
+      --table-pill-width: 122px;
+      --table-logo-gap: 8px;
+      --table-header-pad-x: var(--space-cell-pad-x);
+      --table-header-pad-y: var(--space-cell-pad-y);
 
       --hero-top-bg: linear-gradient(180deg, #1a2c49 0%, #13233c 100%);
       --card-bg: linear-gradient(180deg, #101a2b 0%, #0c1727 100%);
@@ -50,10 +105,25 @@
       --button-glow: rgba(255,255,255,0.28);
       --focus-ring: rgba(143,196,255,0.62);
       --logo-glow: rgba(143,196,255,0.16);
+      --border-line-soft: 1px solid var(--line);
+      --border-line-strong: 1px solid var(--line-strong);
+      --border-glass: 1px solid var(--glass-border);
+      --border-glass-strong: 1px solid var(--glass-border-strong);
+      --border-east-accent: 1px solid rgba(31,120,255,0.85);
+      --border-west-accent: 1px solid rgba(255,47,58,0.85);
+      --shadow-card: var(--glass-shadow);
+      --shadow-soft: var(--soft-shadow);
+      --shadow-button-hover: 0 0 22px var(--button-glow);
+      --export-overlay-bg: rgba(2, 6, 12, 0.76);
+      --export-panel-shadow: 0 28px 80px rgba(0,0,0,0.55);
       --playoff-header-bg:
         linear-gradient(90deg, rgba(255,47,58,0.34) 0%, rgba(255,47,58,0.12) 30%, rgba(31,120,255,0.12) 70%, rgba(31,120,255,0.34) 100%),
         linear-gradient(180deg, #121d31 0%, #0e1829 100%);
     }
+
+    /* ==========================================================================
+       Theme Palette Overrides
+       ========================================================================== */
 
     body.theme-carbon {
       --bg-top: #09111c;
@@ -340,6 +410,10 @@
         linear-gradient(180deg, #341b52 0%, #231238 100%);
     }
 
+    /* ==========================================================================
+       Shared Document Defaults
+       ========================================================================== */
+
     * { box-sizing: border-box; }
 
     body {
@@ -352,7 +426,7 @@
     }
 
     .wrap {
-      max-width: 100%;
+      max-width: 97%;
       margin: 0 auto;
-      padding: 20px;
+      padding: 10px;
     }

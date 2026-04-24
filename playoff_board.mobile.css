@@ -1,3 +1,25 @@
+/* ==========================================================================
+   Mobile Layout Variables
+   ========================================================================== */
+
+:root {
+  --space-page-pad-mobile: 14px;
+  --space-panel-pad-mobile: 14px;
+  --space-card-gap-mobile: 10px;
+  --space-control-gap-mobile: 8px;
+  --space-toolbar-gap-mobile: 12px;
+  --size-mobile-brand: 54px;
+  --size-mobile-close-btn: 28px;
+  --size-mobile-icon-btn: 28px;
+  --size-mobile-table-rank: 54px;
+  --radius-card-mobile: var(--radius-card);
+  --radius-panel-mobile: var(--radius-panel);
+}
+
+/* ==========================================================================
+   Mobile Shared Component Overrides
+   ========================================================================== */
+
 @media (max-width: 980px) {
       .app-settings-grid {
         grid-template-columns: 1fr;
@@ -11,12 +33,12 @@
 @media (max-width: 640px) {
       .app-settings-panel {
         top: 128px;
-        left: 14px;
-        right: 14px;
+        left: var(--space-page-pad-mobile);
+        right: var(--space-page-pad-mobile);
         width: auto;
         max-height: calc(100vh - 150px);
         margin: 0;
-        padding: 14px;
+        padding: var(--space-panel-pad-mobile);
       }
 
       .app-settings-head {
@@ -118,7 +140,12 @@
   }
 }
 
+/* ==========================================================================
+   Mobile Export / Overlay Overrides
+   ========================================================================== */
+
 @media (max-width: 760px) {
+  /* Export selectors and hidden states are consumed by PNG preview/export. */
   .export-preview-overlay {
     padding: 0;
     z-index: 10070;
@@ -170,6 +197,10 @@
   }
 }
 
+/* ==========================================================================
+   Mobile Controls / Selectors / Core Layout Overrides
+   ========================================================================== */
+
 @media (max-width: 760px) {
   html,
   body {
@@ -189,26 +220,26 @@
 
   .hero,
   .table-card {
-    border-radius: 8px;
+    border-radius: var(--radius-card-mobile);
   }
 
   .hero-top {
     flex-direction: row;
     align-items: center;
-    gap: 10px;
-    padding: 10px;
+    gap: var(--space-card-gap-mobile);
+    padding: var(--space-card-gap-mobile);
   }
 
   .hero-brand {
     flex: 1 1 auto;
     min-width: 0;
-    gap: 8px;
+    gap: var(--space-control-gap-mobile);
   }
 
   .brand-mark {
-    flex: 0 0 54px;
-    width: 54px;
-    max-width: 54px;
+    flex: 0 0 var(--size-mobile-brand);
+    width: var(--size-mobile-brand);
+    max-width: var(--size-mobile-brand);
   }
 
   .title-block {
@@ -428,19 +459,59 @@
     display: none;
   }
 
+/* ==========================================================================
+   Mobile Table / Cardified Row Overrides
+   ========================================================================== */
+
+  /* Mobile singular board table tuning
+     Applies to the main RPI standings cards on mobile. */
+  body.rankings-mode .table-card > .table-scroll > table {
+    --mobile-board-card-gap: var(--space-card-gap-mobile);
+    --mobile-board-row-pad: var(--space-card-gap-mobile);
+    --mobile-board-rank-width: 54px;
+    --mobile-board-grid-gap-x: 10px;
+    --mobile-board-grid-gap-y: 8px;
+    --mobile-board-logo-width: 56px;
+    --mobile-board-logo-height: 42px;
+    --mobile-board-team-gap: 9px;
+    --mobile-board-pill-min-width: 96px;
+    --mobile-board-pill-min-height: 30px;
+    --mobile-board-pill-pad-x: 9px;
+    --mobile-board-change-min-width: 48px;
+    --mobile-board-change-min-height: 34px;
+  }
+
+  /* Mobile grouped table tuning
+     Applies to region standings and east/west line cards on mobile. */
+  .region-rankings-table,
+  .east-west-line-table {
+    --mobile-grouped-card-gap: 8px;
+    --mobile-grouped-row-pad: 9px;
+    --mobile-grouped-rank-width: 44px;
+    --mobile-grouped-grid-gap-x: 9px;
+    --mobile-grouped-grid-gap-y: 7px;
+    --mobile-grouped-logo-width: 46px;
+    --mobile-grouped-logo-height: 34px;
+    --mobile-grouped-team-gap: 8px;
+    --mobile-grouped-pill-min-width: 92px;
+    --mobile-grouped-pill-min-height: 30px;
+    --mobile-grouped-pill-pad-x: 8px;
+    --mobile-grouped-region-width: 88px;
+  }
+
   body.rankings-mode .table-card > .table-scroll > table > tbody {
     display: grid;
-    gap: 10px;
-    padding: 10px;
+    gap: var(--mobile-board-card-gap);
+    padding: var(--mobile-board-card-gap);
   }
 
   body.rankings-mode .table-card > .table-scroll > table > tbody > tr {
     display: grid;
-    grid-template-columns: 54px minmax(0, 1fr);
-    gap: 8px 10px;
-    padding: 10px;
+    grid-template-columns: var(--mobile-board-rank-width) minmax(0, 1fr);
+    gap: var(--mobile-board-grid-gap-y) var(--mobile-board-grid-gap-x);
+    padding: var(--mobile-board-row-pad);
     border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 8px;
+    border-radius: var(--radius-card-mobile);
     background:
       linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)),
       rgba(255,255,255,0.02);
@@ -546,21 +617,21 @@
 
   body.rankings-mode .rank-change,
   body.rankings-mode .rpi-change {
-    min-width: 48px;
-    min-height: 34px;
+    min-width: var(--mobile-board-change-min-width);
+    min-height: var(--mobile-board-change-min-height);
     font-size: 16px;
   }
 
   body.rankings-mode .school {
-    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-columns: var(--mobile-board-logo-width) minmax(0, 1fr);
     min-width: 0;
-    gap: 9px;
+    gap: var(--mobile-board-team-gap);
   }
 
   body.rankings-mode .logo,
   body.rankings-mode .logo-placeholder {
-    width: 56px;
-    height: 42px;
+    width: var(--mobile-board-logo-width);
+    height: var(--mobile-board-logo-height);
   }
 
   body.rankings-mode .team-name {
@@ -581,10 +652,10 @@
   body.rankings-mode.has-rpi-changes .rpi,
   body.rankings-mode.has-rpi-changes .rpi-change {
     width: auto;
-    min-width: 96px;
-    min-height: 30px;
+    min-width: var(--mobile-board-pill-min-width);
+    min-height: var(--mobile-board-pill-min-height);
     font-size: 14px;
-    padding: 0 9px;
+    padding: 0 var(--mobile-board-pill-pad-x);
   }
 
   .region-standings-board,
@@ -697,18 +768,18 @@
   .region-rankings-table tbody,
   .east-west-line-table tbody {
     display: grid;
-    gap: 8px;
-    padding: 8px;
+    gap: var(--mobile-grouped-card-gap);
+    padding: var(--mobile-grouped-card-gap);
   }
 
   .region-rankings-table tr,
   .east-west-line-table tr.east-west-line-row {
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr);
-    gap: 7px 9px;
+    grid-template-columns: var(--mobile-grouped-rank-width) minmax(0, 1fr);
+    gap: var(--mobile-grouped-grid-gap-y) var(--mobile-grouped-grid-gap-x);
     min-height: 0;
     height: auto !important;
-    padding: 9px;
+    padding: var(--mobile-grouped-row-pad);
     border: 1px solid rgba(255,255,255,0.09);
     border-radius: 8px;
     overflow: hidden;
@@ -790,18 +861,18 @@
 
   .region-rankings-table .school,
   .east-west-line-table .school {
-    grid-template-columns: 46px minmax(0, 1fr);
+    grid-template-columns: var(--mobile-grouped-logo-width) minmax(0, 1fr);
     min-width: 0;
     height: auto;
-    gap: 8px;
+    gap: var(--mobile-grouped-team-gap);
   }
 
   .region-rankings-table .logo,
   .region-rankings-table .logo-placeholder,
   .east-west-line-table .logo,
   .east-west-line-table .logo-placeholder {
-    width: 46px;
-    height: 34px;
+    width: var(--mobile-grouped-logo-width);
+    height: var(--mobile-grouped-logo-height);
   }
 
   .region-rankings-table .team-meta,
@@ -833,11 +904,11 @@
   .east-west-line-table .stat,
   .east-west-line-table .rpi {
     width: auto;
-    min-width: 92px;
+    min-width: var(--mobile-grouped-pill-min-width);
     max-width: none;
-    min-height: 30px;
+    min-height: var(--mobile-grouped-pill-min-height);
     font-size: 13px;
-    padding: 0 8px;
+    padding: 0 var(--mobile-grouped-pill-pad-x);
   }
 
   .east-west-line-section-row {
@@ -857,7 +928,7 @@
   }
 
   .east-west-line-region {
-    min-width: 88px;
+    min-width: var(--mobile-grouped-region-width);
   }
 
   .bracket-grid {
@@ -875,6 +946,26 @@
 
   .bracket-region.east .bracket-grid > .bracket-row {
     order: 3;
+  }
+
+/* ==========================================================================
+   Mobile Playoff / Region / East-West Overrides
+   ========================================================================== */
+
+  /* Mobile playoff / graph-related sizing
+     Controls mobile bracket slot sizing without touching data logic. */
+  .playoff-board,
+  .bracket-region {
+    --mobile-bracket-slot-min-height: 148px;
+    --mobile-bracket-slot-pad-x: 6px;
+    --mobile-bracket-slot-pad-y: 8px;
+    --mobile-bracket-game-box-min-height: 58px;
+    --mobile-bracket-team-gap: 10px;
+    --mobile-bracket-seed-size: 26px;
+    --mobile-bracket-logo-width: 60px;
+    --mobile-bracket-logo-height: 44px;
+    --mobile-bracket-pill-min-height: 24px;
+    --mobile-bracket-pill-pad-x: 7px;
   }
 
   .bracket-row {
@@ -909,13 +1000,13 @@
 
   .game-slot {
     height: auto;
-    min-height: 148px;
-    padding: 8px 6px;
+    min-height: var(--mobile-bracket-slot-min-height);
+    padding: var(--mobile-bracket-slot-pad-y) var(--mobile-bracket-slot-pad-x);
   }
 
   .round2-slot {
-    padding-top: 8px;
-    padding-bottom: 8px;
+    padding-top: var(--mobile-bracket-slot-pad-y);
+    padding-bottom: var(--mobile-bracket-slot-pad-y);
   }
 
   .bracket-region.west .round1-slot .game-stack,
@@ -951,7 +1042,7 @@
   }
 
   .game-box {
-    min-height: 58px;
+    min-height: var(--mobile-bracket-game-box-min-height);
     height: auto;
     padding: 6px 10px;
   }
@@ -963,21 +1054,21 @@
   .team-card,
   .bracket-region.east .team-card {
     direction: ltr;
-    grid-template-columns: 26px 60px minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: var(--mobile-bracket-seed-size) var(--mobile-bracket-logo-width) minmax(0, 1fr);
+    gap: var(--mobile-bracket-team-gap);
   }
 
   .team-seed {
-    width: 26px;
-    height: 26px;
+    width: var(--mobile-bracket-seed-size);
+    height: var(--mobile-bracket-seed-size);
     font-size: 15px;
     border-radius: 6px;
   }
 
   .team-logo,
   .team-logo-placeholder {
-    width: 60px;
-    height: 44px;
+    width: var(--mobile-bracket-logo-width);
+    height: var(--mobile-bracket-logo-height);
     border-radius: 10px;
     border: 0 !important;
     background: transparent !important;
@@ -1014,8 +1105,8 @@
   }
 
   .team-copy-stat-pill {
-    min-height: 24px;
-    padding: 0 7px;
+    min-height: var(--mobile-bracket-pill-min-height);
+    padding: 0 var(--mobile-bracket-pill-pad-x);
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 6px;
     background:
@@ -1065,8 +1156,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: var(--mobile-bracket-seed-size);
+    height: var(--mobile-bracket-seed-size);
     font-size: 15px;
     font-weight: 900;
     color: #ffffff;
@@ -1104,6 +1195,10 @@
     letter-spacing: 0.05em;
   }
 
+/* ==========================================================================
+   Mobile Graph / Team Log / Schedule Overrides
+   ========================================================================== */
+
   .team-schedule-overlay,
   .team-log-overlay {
     padding: 6px;
@@ -1130,6 +1225,35 @@
     max-height: calc(100dvh - 12px) !important;
   }
 
+  .team-schedule-card,
+  .team-log-card,
+  .team-schedule-head,
+  .team-schedule-stats,
+  .team-schedule-body,
+  .team-log-body,
+  .team-log-inline-btn,
+  .team-log-date-step-btn,
+  .team-log-zoom-btn,
+  .team-schedule-close,
+  .team-log-close {
+    --team-panel-head-pad-y: 10px;
+    --team-panel-head-pad-x: 10px;
+    --team-panel-head-pad-right: 44px;
+    --team-panel-stats-gap: 6px;
+    --team-panel-stat-min-height: 40px;
+    --team-panel-stat-pad-y: 4px;
+    --team-panel-stat-pad-x: 3px;
+    --team-panel-body-pad-top: 12px;
+    --team-panel-body-pad-x: 12px;
+    --team-panel-body-pad-bottom: 12px;
+    --team-panel-icon-btn-size: 30px;
+    --team-panel-icon-btn-radius: 7px;
+    --team-panel-icon-size: 15px;
+    --team-panel-icon-stroke: 1.9;
+    --team-panel-date-btn-size: 24px;
+    --team-panel-logo-size: 62px;
+  }
+
   .team-log-content {
     height: 100%;
     min-height: 100%;
@@ -1143,20 +1267,26 @@
     position: absolute;
     top: 6px;
     right: 6px;
-    width: 28px;
-    height: 28px;
+    width: var(--size-mobile-close-btn);
+    height: var(--size-mobile-close-btn);
     z-index: 3;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     padding: 0;
     font-size: 20px;
-    border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.18);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04)),
-      rgba(0,0,0,0.34);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+    border-radius: var(--radius-button);
+    border: 1px solid var(--line-strong);
+    background: var(--button-bg);
+    color: var(--button-text);
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0;
+    text-transform: none;
+    box-shadow:
+      0 10px 22px rgba(0,0,0,0.22),
+      inset 0 1px 0 rgba(255,255,255,0.24);
   }
 
   #teamLogCalendarBtn,
@@ -1169,7 +1299,7 @@
     gap: 8px;
     align-items: stretch;
     max-height: min(178px, 24dvh);
-    padding: 10px 44px 10px 10px;
+    padding: var(--team-panel-head-pad-y) var(--team-panel-head-pad-right) var(--team-panel-head-pad-y) var(--team-panel-head-pad-x);
     overflow: hidden;
     background:
       radial-gradient(circle at 18% 0%, rgba(255,255,255,0.15), transparent 30%),
@@ -1189,8 +1319,7 @@
   }
 
   .team-schedule-logo {
-   
-    height: 62px;
+    height: var(--team-panel-logo-size);
     padding: 0;
     border: 0;
     background: transparent;
@@ -1214,7 +1343,7 @@
   .team-schedule-stats {
     grid-column: 1 / -1;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
+    gap: var(--team-panel-stats-gap);
     min-width: 0;
     width: 100%;
   }
@@ -1232,8 +1361,8 @@
     box-sizing: border-box;
     aspect-ratio: auto;
     min-height: 0;
-    height: 40px;
-    padding: 4px 3px;
+    height: var(--team-panel-stat-min-height);
+    padding: var(--team-panel-stat-pad-y) var(--team-panel-stat-pad-x);
     border-radius: 8px;
     text-align: center;
     align-content: center;
@@ -1272,13 +1401,13 @@
   .team-schedule-body {
     max-height: calc(100vh - 176px);
     max-height: calc(100dvh - 176px);
-    padding: 12px;
+    padding: var(--team-panel-body-pad-top) var(--team-panel-body-pad-x) var(--team-panel-body-pad-bottom);
   }
 
   .team-log-body {
     min-height: 0;
     max-height: none;
-    padding: 12px;
+    padding: var(--team-panel-body-pad-top) var(--team-panel-body-pad-x) var(--team-panel-body-pad-bottom);
     overflow: auto;
   }
 
@@ -1292,6 +1421,10 @@
     color: var(--muted);
   }
 
+  .team-log-toolbar-actions {
+    display: none;
+  }
+
   .team-log-toolbar-date-nav {
     display: inline-flex;
     align-items: center;
@@ -1301,8 +1434,8 @@
   }
 
   .team-log-date-step-btn {
-    width: 24px;
-    height: 24px;
+    width: var(--team-panel-date-btn-size);
+    height: var(--team-panel-date-btn-size);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1415,7 +1548,7 @@
   .team-log-inline-actions {
     display: inline-flex;
     position: absolute;
-    top: 30px;
+    top: 66px;
     right: 2px;
     align-items: center;
     gap: 5px;
@@ -1424,11 +1557,11 @@
   }
 
   .team-log-inline-btn {
-    width: 30px;
-    height: 30px;
+    width: var(--team-panel-icon-btn-size);
+    height: var(--team-panel-icon-btn-size);
     padding: 0;
     border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 7px;
+    border-radius: var(--team-panel-icon-btn-radius);
     background:
       linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04)),
       rgba(0,0,0,0.34);
@@ -1441,10 +1574,10 @@
   }
 
   .team-log-inline-btn svg {
-    width: 15px;
-    height: 15px;
+    width: var(--team-panel-icon-size);
+    height: var(--team-panel-icon-size);
     stroke: #ffffff;
-    stroke-width: 1.9;
+    stroke-width: var(--team-panel-icon-stroke);
     fill: none;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -1514,6 +1647,11 @@
     gap: 10px;
   }
 
+  .team-log-graph-controls {
+    display: grid;
+    gap: 10px;
+  }
+
   .team-log-range-bar {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1545,15 +1683,151 @@
       rgba(18,24,38,0.50);
   }
 
+  .team-log-team-selectors {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: start;
+  }
+
+  .team-log-graph-select-team {
+    grid-column: 1 / -1;
+  }
+
+  .team-log-graph-select {
+    position: relative;
+    display: grid;
+    gap: 4px;
+  }
+
+  .team-log-graph-select-label {
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .team-log-class-select,
+  .team-log-team-search {
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03)),
+      rgba(12,16,26,0.48);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+  }
+
+  .team-log-team-search-wrap {
+    position: relative;
+    display: block;
+  }
+
+  .team-log-team-search {
+    padding-right: 38px;
+  }
+
+  .team-log-team-toggle {
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .team-log-team-search::placeholder {
+    color: rgba(220,228,242,0.52);
+  }
+
+  .team-log-team-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    display: none;
+    max-height: 180px;
+    overflow: auto;
+    padding: 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)),
+      rgba(8,11,18,0.96);
+    box-shadow: 0 18px 34px rgba(0,0,0,0.34);
+    z-index: 6;
+  }
+
+  .team-log-team-menu.is-open {
+    display: grid;
+    gap: 4px;
+  }
+
+  .team-log-team-option,
+  .team-log-team-empty {
+    width: 100%;
+    min-height: 34px;
+    padding: 7px 9px;
+    border-radius: 8px;
+  }
+
+  .team-log-team-option {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+  }
+
+  .team-log-team-option.is-selected {
+    border-color: rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.08);
+  }
+
+  .team-log-team-option-name {
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+  }
+
+  .team-log-team-option-meta,
+  .team-log-team-empty {
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Team Log mobile rows */
   .team-log-mobile-list {
     display: grid;
-    gap: 10px;
+    gap: var(--space-card-gap-mobile);
   }
 
   .team-log-mobile-card {
     min-height: 112px;
     border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 14px;
+    border-radius: var(--radius-panel-mobile);
     background:
       radial-gradient(circle at 18% 12%, rgba(255,255,255,0.06), transparent 28%),
       radial-gradient(circle at 86% 18%, rgba(31,120,255,0.08), transparent 32%),
@@ -1564,24 +1838,6 @@
       inset 0 1px 0 rgba(255,255,255,0.08);
     overflow: hidden;
     backdrop-filter: blur(10px) saturate(1.05);
-  }
-
-  .team-log-mobile-card.is-rank-up {
-    border-color: rgba(34,197,94,0.18);
-    background:
-      radial-gradient(circle at 18% 12%, rgba(255,255,255,0.06), transparent 28%),
-      linear-gradient(90deg, rgba(34,197,94,0.12), rgba(34,197,94,0.03) 36%, rgba(11,15,24,0.02)),
-      linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)),
-      rgba(9,13,22,0.74);
-  }
-
-  .team-log-mobile-card.is-rank-down {
-    border-color: rgba(255,47,58,0.18);
-    background:
-      radial-gradient(circle at 18% 12%, rgba(255,255,255,0.06), transparent 28%),
-      linear-gradient(90deg, rgba(255,47,58,0.12), rgba(255,47,58,0.03) 36%, rgba(11,15,24,0.02)),
-      linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)),
-      rgba(9,13,22,0.74);
   }
 
   .team-log-mobile-row {
@@ -1602,10 +1858,10 @@
   .team-log-mobile-timeband {
     display: grid;
     grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
-    gap: 12px;
+    gap: var(--space-toolbar-gap-mobile);
     align-items: center;
     min-height: 30px;
-    padding: 12px 14px 8px;
+    padding: var(--space-5) var(--space-panel-pad-mobile) var(--space-3);
     border-bottom: 1px solid rgba(255,255,255,0.08);
   }
 
@@ -1638,10 +1894,10 @@
   .team-log-mobile-summary-grid {
     display: grid;
     grid-template-columns: 0.72fr 0.72fr 1.08fr 1.2fr;
-    gap: 8px;
+    gap: var(--space-control-gap-mobile);
     align-items: start;
     min-height: 52px;
-    padding: 8px 10px 10px;
+    padding: var(--space-3) var(--space-card-gap-mobile) var(--space-card-gap-mobile);
     opacity: 1;
     max-height: 120px;
     transition: opacity 0.18s ease, max-height 0.22s ease, padding 0.22s ease;
@@ -1746,7 +2002,7 @@
   .team-log-mobile-pills {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--space-control-gap-mobile);
     padding: 12px 0 0;
     border-top: 1px solid rgba(255,255,255,0.08);
   }
@@ -1843,6 +2099,15 @@
     overflow: hidden;
   }
 
+  .team-log-graph-frame.is-pannable {
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .team-log-graph-frame.is-pannable.is-dragging {
+    cursor: grabbing;
+  }
+
   .team-log-graph-svg {
     width: 100%;
     height: 100%;
@@ -1858,7 +2123,7 @@
   .team-log-graph-grid-row text {
     fill: rgba(220,228,242,0.78);
     font-family: var(--font-body);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 900;
     text-anchor: start;
   }
@@ -1875,15 +2140,68 @@
     stroke-linejoin: round;
   }
 
+  .team-log-graph-card.up .team-log-graph-area {
+    fill: rgba(90, 227, 144, 0.14);
+  }
+
+  .team-log-graph-card.down .team-log-graph-area {
+    fill: rgba(255, 96, 120, 0.14);
+  }
+
+  .team-log-graph-card.up .team-log-graph-line {
+    stroke: #78f3ab;
+  }
+
+  .team-log-graph-card.down .team-log-graph-line {
+    stroke: #ff8f9c;
+  }
+
   .team-log-graph-point {
     fill: rgba(255,255,255,0.82);
     stroke: rgba(7,10,18,0.84);
     stroke-width: 2;
   }
 
+  .team-log-graph-card.up .team-log-graph-point.is-last {
+    fill: #78f3ab;
+    stroke: rgba(120,243,171,0.24);
+  }
+
+  .team-log-graph-card.down .team-log-graph-point.is-last {
+    fill: #ff8f9c;
+    stroke: rgba(255,143,156,0.24);
+  }
+
   .team-log-graph-point.is-last {
     fill: #ffffff;
     stroke: rgba(255,255,255,0.24);
+  }
+
+  .team-log-graph-card-all .team-log-graph-area {
+    display: none;
+  }
+
+  .team-log-graph-multi-line {
+    fill: none;
+    stroke: var(--team-log-series-color, rgba(255,255,255,0.24));
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .team-log-graph-series.is-selected .team-log-graph-multi-line {
+    stroke-width: 2.8;
+  }
+
+  .team-log-graph-logo-bg {
+    fill: rgba(12,16,26,0.82);
+    stroke: rgba(255,255,255,0.16);
+    stroke-width: 1.5;
+  }
+
+  .team-log-graph-logo-bg.is-selected {
+    stroke: rgba(255,255,255,0.92);
+    stroke-width: 2.4;
   }
 
   .team-log-graph-axis {
@@ -1919,7 +2237,7 @@
   }
 
   .team-log-content .team-log-inline-actions {
-    top: 42px;
+    top: 60px;
     right: 10px;
   }
 
@@ -2753,6 +3071,10 @@
   }
 
 }
+
+/* ==========================================================================
+   Mobile Performance Mode Overrides
+   ========================================================================== */
 
 /* PERFORMANCE MODE: mobile clean path.
    These overrides intentionally sit at the end of the mobile sheet so they

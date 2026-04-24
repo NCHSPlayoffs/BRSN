@@ -1,117 +1,65 @@
 // Runtime wiring and startup for the playoff board.
 
-// Picker menus and lightweight control wiring.
-sportPickerBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  setSportPickerOpen_(sportPickerMenu.hidden);
-});
+// ============================================================================
+// 1. Small shared runtime helpers
+// ============================================================================
 
-classPickerBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  setClassPickerOpen_(classPickerMenu.hidden);
-});
+function bindPickerToggle_(button, menu, setOpen) {
+  if (!button || !menu || !setOpen) return;
+  button.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setOpen(menu.hidden);
+  });
+}
 
-yearPickerBtn?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  setYearPickerOpen_(yearPickerMenu.hidden);
-});
-
-eastWestMapClassPickerBtn?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  setEastWestMapClassPickerOpen_(eastWestMapClassPickerMenu.hidden);
-});
-
-eastWestMapSportPickerBtn?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  setEastWestMapSportPickerOpen_(eastWestMapSportPickerMenu.hidden);
-});
-
-sportPickerMenu.addEventListener('click', (e) => {
-  const btn = e.target.closest('.sport-picker-option');
-  if (!btn) return;
-  const nextValue = btn.dataset.value;
-  if (sportEl.value !== nextValue) {
-    sportEl.value = nextValue;
-    syncSportPickerUi_();
-    sportEl.dispatchEvent(new Event('change', { bubbles: true }));
-  } else {
-    syncSportPickerUi_();
+function applyPickerValue_(selectEl, nextValue, syncUi) {
+  if (!selectEl) return;
+  if (selectEl.value !== nextValue) {
+    selectEl.value = nextValue;
+    syncUi?.();
+    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
   }
-  setSportPickerOpen_(false);
-});
+  syncUi?.();
+}
 
-classPickerMenu.addEventListener('click', (e) => {
-  const btn = e.target.closest('.class-picker-option');
-  if (!btn) return;
-  const nextValue = btn.dataset.value;
-  if (classEl.value !== nextValue) {
-    classEl.value = nextValue;
-    syncClassPickerUi_();
-    classEl.dispatchEvent(new Event('change', { bubbles: true }));
-  } else {
-    syncClassPickerUi_();
-  }
-  setClassPickerOpen_(false);
-});
+function bindPickerSelection_(menu, optionSelector, selectEl, syncUi, setOpen) {
+  if (!menu || !selectEl || !setOpen) return;
+  menu.addEventListener('click', (e) => {
+    const btn = e.target.closest(optionSelector);
+    if (!btn) return;
+    applyPickerValue_(selectEl, btn.dataset.value, syncUi);
+    setOpen(false);
+  });
+}
 
-yearPickerMenu?.addEventListener('click', (e) => {
-  const btn = e.target.closest('.class-picker-option');
-  if (!btn) return;
-  const nextValue = btn.dataset.value;
-  if (yearEl.value !== nextValue) {
-    yearEl.value = nextValue;
-    syncYearPickerUi_();
-    yearEl.dispatchEvent(new Event('change', { bubbles: true }));
-  } else {
-    syncYearPickerUi_();
-  }
-  setYearPickerOpen_(false);
-});
+function closePickerIfOutside_(event, picker, setOpen) {
+  if (!picker || !setOpen || picker.contains(event.target)) return;
+  setOpen(false);
+}
 
-eastWestMapClassPickerMenu?.addEventListener('click', (e) => {
-  const btn = e.target.closest('.class-picker-option');
-  if (!btn) return;
-  const nextValue = btn.dataset.value;
-  if (eastWestMapClass.value !== nextValue) {
-    eastWestMapClass.value = nextValue;
-    syncEastWestMapClassPickerUi_();
-    eastWestMapClass.dispatchEvent(new Event('change', { bubbles: true }));
-  } else {
-    syncEastWestMapClassPickerUi_();
-  }
-  setEastWestMapClassPickerOpen_(false);
-});
+// ============================================================================
+// 2. Picker menus and lightweight control wiring
+// ============================================================================
 
-eastWestMapSportPickerMenu?.addEventListener('click', (e) => {
-  const btn = e.target.closest('.sport-picker-option');
-  if (!btn) return;
-  const nextValue = btn.dataset.value;
-  if (eastWestMapSport.value !== nextValue) {
-    eastWestMapSport.value = nextValue;
-    syncEastWestMapSportPickerUi_();
-    eastWestMapSport.dispatchEvent(new Event('change', { bubbles: true }));
-  } else {
-    syncEastWestMapSportPickerUi_();
-  }
-  setEastWestMapSportPickerOpen_(false);
-});
+bindPickerToggle_(sportPickerBtn, sportPickerMenu, setSportPickerOpen_);
+bindPickerToggle_(classPickerBtn, classPickerMenu, setClassPickerOpen_);
+bindPickerToggle_(yearPickerBtn, yearPickerMenu, setYearPickerOpen_);
+bindPickerToggle_(eastWestMapClassPickerBtn, eastWestMapClassPickerMenu, setEastWestMapClassPickerOpen_);
+bindPickerToggle_(eastWestMapSportPickerBtn, eastWestMapSportPickerMenu, setEastWestMapSportPickerOpen_);
+
+bindPickerSelection_(sportPickerMenu, '.sport-picker-option', sportEl, syncSportPickerUi_, setSportPickerOpen_);
+bindPickerSelection_(classPickerMenu, '.class-picker-option', classEl, syncClassPickerUi_, setClassPickerOpen_);
+bindPickerSelection_(yearPickerMenu, '.class-picker-option', yearEl, syncYearPickerUi_, setYearPickerOpen_);
+bindPickerSelection_(eastWestMapClassPickerMenu, '.class-picker-option', eastWestMapClass, syncEastWestMapClassPickerUi_, setEastWestMapClassPickerOpen_);
+bindPickerSelection_(eastWestMapSportPickerMenu, '.sport-picker-option', eastWestMapSport, syncEastWestMapSportPickerUi_, setEastWestMapSportPickerOpen_);
 
 document.addEventListener('click', (e) => {
-  if (sportPicker && !sportPicker.contains(e.target)) {
-    setSportPickerOpen_(false);
-  }
-  if (classPicker && !classPicker.contains(e.target)) {
-    setClassPickerOpen_(false);
-  }
-  if (yearPicker && !yearPicker.contains(e.target)) {
-    setYearPickerOpen_(false);
-  }
-  if (eastWestMapClassPicker && !eastWestMapClassPicker.contains(e.target)) {
-    setEastWestMapClassPickerOpen_(false);
-  }
-  if (eastWestMapSportPicker && !eastWestMapSportPicker.contains(e.target)) {
-    setEastWestMapSportPickerOpen_(false);
-  }
+  closePickerIfOutside_(e, sportPicker, setSportPickerOpen_);
+  closePickerIfOutside_(e, classPicker, setClassPickerOpen_);
+  closePickerIfOutside_(e, yearPicker, setYearPickerOpen_);
+  closePickerIfOutside_(e, eastWestMapClassPicker, setEastWestMapClassPickerOpen_);
+  closePickerIfOutside_(e, eastWestMapSportPicker, setEastWestMapSportPickerOpen_);
 });
 
 renderSportPickerOptions_();
@@ -121,7 +69,10 @@ syncSportPickerUi_();
 syncClassPickerUi_();
 syncYearPickerUi_();
 
-// Startup preferences, overlays, and board event wiring.
+// ============================================================================
+// 3. Startup preferences, overlays, and Team Log interactions
+// ============================================================================
+
 try {
       const savedTheme = localStorage.getItem('nchsaa-theme');
       if (savedTheme && themeEl.querySelector(`option[value="${savedTheme}"]`)) themeEl.value = savedTheme;
@@ -178,14 +129,62 @@ try {
     teamLogOverlay?.addEventListener('click', (e) => {
       if (e.target === teamLogOverlay) closeTeamLogCard_();
     });
-    teamLogCalendarBtn?.addEventListener('click', () => openDatePicker_(teamLogDateInput));
-    teamLogViewBtn?.addEventListener('click', toggleTeamLogView_);
-    teamLogDateInput?.addEventListener('change', () => applyTeamLogDateSelection_(teamLogDateInput.value));
-    teamLogContent?.addEventListener('click', (e) => {
-      if (e.target.closest('.team-log-inline-calendar-btn')) {
-        openDatePicker_(teamLogDateInput);
-        return;
-      }
+teamLogCalendarBtn?.addEventListener('click', () => openDatePicker_(teamLogDateInput));
+teamLogViewBtn?.addEventListener('click', toggleTeamLogView_);
+teamLogDateInput?.addEventListener('change', () => applyTeamLogDateSelection_(teamLogDateInput.value));
+let teamLogGraphDrag_ = null;
+let teamLogGraphActivePointers_ = new Map();
+let teamLogGraphPinchStart_ = null;
+teamLogContent?.addEventListener('input', (e) => {
+  const teamSearch = e.target.closest('[data-team-log-team-search]');
+  if (!teamSearch) return;
+  const value = teamSearch.value || '';
+  updateTeamLogTeamSearch_(value);
+  requestAnimationFrame(() => {
+    const input = teamLogContent.querySelector('[data-team-log-team-search]');
+    if (!input) return;
+    input.focus();
+    const cursor = value.length;
+    input.setSelectionRange(cursor, cursor);
+  });
+});
+teamLogContent?.addEventListener('keydown', (e) => {
+  const teamSearch = e.target.closest('[data-team-log-team-search]');
+  if (!teamSearch) return;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    selectTeamLogTeamByName_(teamSearch.value);
+  }
+});
+teamLogContent?.addEventListener('focusin', (e) => {
+  const teamSearch = e.target.closest('[data-team-log-team-search]');
+  if (!teamSearch) return;
+  if (teamLogTeamMenuOpen_) return;
+  teamLogTeamMenuOpen_ = true;
+  teamLogTeamSearch_ = '';
+  renderTeamLog_();
+  requestAnimationFrame(() => {
+    const input = teamLogContent.querySelector('[data-team-log-team-search]');
+    input?.focus();
+  });
+});
+teamLogContent?.addEventListener('change', (e) => {
+  const classSelect = e.target.closest('[data-team-log-class]');
+  if (classSelect) {
+    applyTeamLogSelectorClass_(classSelect.value);
+    return;
+  }
+  const regionSelect = e.target.closest('[data-team-log-region]');
+  if (regionSelect) {
+    applyTeamLogSelectorRegion_(regionSelect.value);
+  }
+});
+teamLogContent?.addEventListener('click', (e) => {
+  const withinTeamSelector = e.target.closest('.team-log-graph-select-team');
+  if (e.target.closest('.team-log-inline-calendar-btn')) {
+    openDatePicker_(teamLogDateInput);
+    return;
+  }
       if (e.target.closest('.team-log-inline-view-btn')) {
         toggleTeamLogView_();
         return;
@@ -200,10 +199,123 @@ try {
         toggleTeamLogEntry_(mobileRow.dataset.teamLogEntry);
         return;
       }
-      const rangeBtn = e.target.closest('[data-team-log-range]');
-      if (!rangeBtn) return;
-      applyTeamLogRangeSelection_(rangeBtn.dataset.teamLogRange);
-    });
+  const rangeBtn = e.target.closest('[data-team-log-range]');
+  if (rangeBtn) {
+    applyTeamLogRangeSelection_(rangeBtn.dataset.teamLogRange);
+    return;
+  }
+  const teamBtn = e.target.closest('[data-team-log-team]');
+  if (teamBtn) {
+    selectTeamLogTeamByName_(teamBtn.dataset.teamLogTeam);
+    return;
+  }
+  const teamToggle = e.target.closest('[data-team-log-team-toggle]');
+  if (teamToggle) {
+    teamLogTeamMenuOpen_ = !teamLogTeamMenuOpen_;
+    if (teamLogTeamMenuOpen_) teamLogTeamSearch_ = '';
+    renderTeamLog_();
+    return;
+  }
+  const zoomBtn = e.target.closest('[data-team-log-zoom]');
+  if (zoomBtn) {
+    applyTeamLogGraphZoom_(zoomBtn.dataset.teamLogZoom);
+    return;
+  }
+  if (teamLogTeamMenuOpen_ && !withinTeamSelector) {
+    teamLogTeamMenuOpen_ = false;
+    teamLogTeamSearch_ = '';
+    renderTeamLog_();
+  }
+});
+teamLogContent?.addEventListener('pointerdown', (e) => {
+  const panArea = e.target.closest('[data-team-log-pan-area]');
+  if (!panArea || teamLogGraphZoom_ <= 1) return;
+  const rect = panArea.getBoundingClientRect();
+  teamLogGraphActivePointers_.set(e.pointerId, { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY });
+  if (e.pointerType === 'touch' && teamLogGraphActivePointers_.size >= 2) {
+    const pointers = [...teamLogGraphActivePointers_.values()].slice(0, 2);
+    const dx = pointers[1].clientX - pointers[0].clientX;
+    const dy = pointers[1].clientY - pointers[0].clientY;
+    teamLogGraphPinchStart_ = {
+      distance: Math.hypot(dx, dy) || 1,
+      rect
+    };
+    teamLogGraphDrag_ = null;
+    panArea.classList.add('is-dragging');
+    e.preventDefault();
+    return;
+  }
+  teamLogGraphDrag_ = {
+    pointerId: e.pointerId,
+    startX: e.clientX,
+    startY: e.clientY,
+    frameWidth: rect.width,
+    frameHeight: rect.height
+  };
+  panArea.setPointerCapture?.(e.pointerId);
+  panArea.classList.add('is-dragging');
+  e.preventDefault();
+});
+teamLogContent?.addEventListener('pointermove', (e) => {
+  if (teamLogGraphActivePointers_.has(e.pointerId)) {
+    teamLogGraphActivePointers_.set(e.pointerId, { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY });
+  }
+  if (teamLogGraphPinchStart_ && teamLogGraphActivePointers_.size >= 2) {
+    const pointers = [...teamLogGraphActivePointers_.values()].slice(0, 2);
+    const dx = pointers[1].clientX - pointers[0].clientX;
+    const dy = pointers[1].clientY - pointers[0].clientY;
+    const distance = Math.hypot(dx, dy) || 1;
+    const centerX = (pointers[0].clientX + pointers[1].clientX) / 2;
+    const centerY = (pointers[0].clientY + pointers[1].clientY) / 2;
+    const rect = teamLogGraphPinchStart_.rect;
+    const anchorXRatio = rect.width ? Math.max(0, Math.min(1, (centerX - rect.left) / rect.width)) : 0.88;
+    const anchorYRatio = rect.height ? Math.max(0, Math.min(1, (centerY - rect.top) / rect.height)) : 0.16;
+    applyTeamLogGraphGestureZoom_(distance / teamLogGraphPinchStart_.distance, anchorXRatio, anchorYRatio);
+    teamLogGraphPinchStart_ = {
+      ...teamLogGraphPinchStart_,
+      distance
+    };
+    e.preventDefault();
+    return;
+  }
+  if (!teamLogGraphDrag_ || e.pointerId !== teamLogGraphDrag_.pointerId) return;
+  const deltaX = e.clientX - teamLogGraphDrag_.startX;
+  const deltaY = e.clientY - teamLogGraphDrag_.startY;
+  if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+  teamLogGraphDrag_.startX = e.clientX;
+  teamLogGraphDrag_.startY = e.clientY;
+  applyTeamLogGraphPanDelta_(deltaX, deltaY, teamLogGraphDrag_.frameWidth, teamLogGraphDrag_.frameHeight);
+  e.preventDefault();
+});
+const finishTeamLogGraphDrag_ = (e) => {
+  teamLogGraphActivePointers_.delete(e.pointerId);
+  if (teamLogGraphPinchStart_ && teamLogGraphActivePointers_.size < 2) {
+    teamLogGraphPinchStart_ = null;
+  }
+  if (!teamLogGraphDrag_ || e.pointerId !== teamLogGraphDrag_.pointerId) {
+    const panArea = teamLogContent?.querySelector('[data-team-log-pan-area].is-dragging');
+    if (!teamLogGraphPinchStart_) panArea?.classList.remove('is-dragging');
+    return;
+  }
+  const panArea = teamLogContent?.querySelector('[data-team-log-pan-area].is-dragging');
+  panArea?.classList.remove('is-dragging');
+  teamLogGraphDrag_ = null;
+};
+teamLogContent?.addEventListener('pointerup', finishTeamLogGraphDrag_);
+teamLogContent?.addEventListener('pointercancel', finishTeamLogGraphDrag_);
+teamLogContent?.addEventListener('wheel', (e) => {
+  const panArea = e.target.closest('[data-team-log-pan-area]');
+  if (!panArea) return;
+  e.preventDefault();
+  const rect = panArea.getBoundingClientRect();
+  const anchorXRatio = rect.width ? Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) : 0.88;
+  const anchorYRatio = rect.height ? Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)) : 0.16;
+  applyTeamLogGraphGestureZoom_(e.deltaY < 0 ? 1.12 : (1 / 1.12), anchorXRatio, anchorYRatio);
+}, { passive: false });
+
+    // ============================================================================
+    // 4. East/West map interactions
+    // ============================================================================
 
     eastWestMapCloseBtn.addEventListener('click', closeEastWestMap_);
     eastWestMapOverlay.addEventListener('click', (e) => {
@@ -626,6 +738,10 @@ try {
     eastWestMapCanvas.addEventListener('pointerup', finishEastWestMapPan_);
     eastWestMapCanvas.addEventListener('pointercancel', finishEastWestMapPan_);
 
+    // ============================================================================
+    // 5. Export preview controls and app settings
+    // ============================================================================
+
     exportPreviewClassMenuBtn.addEventListener('click', () => {
       setExportPreviewClassMenuOpen_(exportPreviewClassMenu.hidden);
     });
@@ -767,6 +883,10 @@ try {
         setStatus(`Unable to load history snapshot. ${err.message}`, true);
       });
     });
+
+    // ============================================================================
+    // 6. Main board controls and initialization
+    // ============================================================================
 
     themeEl.addEventListener('change', () => applyTheme_(themeEl.value));
     sportEl.addEventListener('change', async () => {

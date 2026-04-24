@@ -1,4 +1,13 @@
 // Core app logic for the playoff board.
+//
+// Refactor note:
+// This file still owns most application behavior, but the logic is grouped into
+// labeled sections so future prompted changes can land in the right area faster
+// without rewriting stable behavior.
+
+// ============================================================================
+// 1. Config, constants, DOM references, and shared UI state
+// ============================================================================
 
 const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const TEAMDETAILS_GID = '510129710';
@@ -64,6 +73,7 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
       [-82.78, 35.10], [-83.48, 35.00], [-84.32, 35.21]
     ];
 
+    // Core page controls, overlays, and view containers.
     const sportEl = document.getElementById('sport');
     const classEl = document.getElementById('classification');
     const classPicker = document.getElementById('classPicker');
@@ -158,6 +168,7 @@ const sportPickerBtn = document.getElementById('sportPickerBtn');
 const sportPickerBtnIcon = document.getElementById('sportPickerBtnIcon');
 const sportPickerBtnText = document.getElementById('sportPickerBtnText');
     const sportPickerMenu = document.getElementById('sportPickerMenu');
+    // Picker option caches and view-level state.
     let classPickerOptions = [];
     let yearPickerOptions = [];
     let eastWestMapClassPickerOptions = [];
@@ -169,14 +180,34 @@ const sportPickerBtnText = document.getElementById('sportPickerBtnText');
     let teamLogCurrentRow_ = null;
     let teamLogCurrentResult_ = null;
     let teamLogSelectedDate_ = '';
-    let teamLogExpandedEntryKey_ = '';
-    let teamLogViewMode_ = 'table';
-    let teamLogRange_ = '1D';
-    let compareSnapshotId_ = '';
+let teamLogExpandedEntryKey_ = '';
+let teamLogViewMode_ = 'graph';
+let teamLogRange_ = 'ALL';
+let teamLogGraphZoom_ = 1;
+let teamLogGraphPanX_ = 0;
+let teamLogGraphPanY_ = 0;
+let teamLogSelectorClass_ = '';
+let teamLogSelectorRegion_ = 'both';
+let teamLogTeamSearch_ = '';
+let teamLogSelectorRows_ = [];
+let teamLogSelectorLoading_ = false;
+let teamLogTeamMenuOpen_ = false;
+let teamLogSelectorRequestToken_ = 0;
+let teamLogShowAllTeams_ = false;
+let teamLogSelectedTeamKey_ = '';
+let teamLogGraphAllSeries_ = [];
+let teamLogGraphAllLoading_ = false;
+let teamLogGraphAllRequestToken_ = 0;
+let compareSnapshotId_ = '';
 let compareSnapshotLabel_ = '';
 let historySnapshotId_ = '';
 let historySnapshotLabel_ = '';
+const TEAM_LOG_ALL_TEAMS_VALUE_ = '__all_teams__';
+const teamLogSelectorCache_ = new Map();
+const teamLogSeriesCache_ = new Map();
+const teamLogSnapshotBundleCache_ = new Map();
 
+// Team Log graph range metadata and sport-display helpers.
 const TEAM_LOG_GRAPH_RANGES_ = [
   { key: '1D', label: '1D', days: 1 },
   { key: '7D', label: '7D', days: 7 },
@@ -215,6 +246,10 @@ const SPORT_KEY_LABEL_ = {
   girls_soccer: 'Girls Soccer',
   boys_soccer: 'Boys Soccer'
 };
+
+// ============================================================================
+// 2. Config-backed display metadata and lightweight picker helpers
+// ============================================================================
 
 function sportUiKey_(label) {
   const raw = String(label || '').toLowerCase();
@@ -366,7 +401,9 @@ function setEastWestMapSportPickerOpen_(isOpen) {
   eastWestMapSportPickerBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 }
 
-// Shared board UI state, status, and layout helpers.
+// ============================================================================
+// 3. Shared board UI state, status text, and layout helpers
+// ============================================================================
     function setViewMode_(mode) {
       document.body.classList.remove('rankings-mode', 'regions-mode', 'playoff-mode', 'east-west-mode');
       document.body.classList.remove('has-rpi-changes');
@@ -746,7 +783,9 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       return sportKeyFromLabel_(v);
     }
 
-    // Team schedule fetching, caching, and schedule-card rendering.
+    // ============================================================================
+    // 4. Generic utility helpers plus Team Schedule card rendering
+    // ============================================================================
     function cacheMaxPrepsUrl_(teamName, sportLabel, url) {
       const normalized = normalizeMaxPrepsUrl_(url);
       const key = maxPrepsCacheKey_(teamName, sportLabel);
@@ -911,6 +950,45 @@ function setEastWestMapSportPickerOpen_(isOpen) {
         </div>`;
     }
 
+    function teamPanelHeadingHtml_({ titleId, title, subtitleHtml, actionsHtml = '', wrapClass = '', copyClass = '' } = {}) {
+      const copyClasses = copyClass ? ` class="${escapeHtml(copyClass)}"` : '';
+      const headingCopyHtml = `
+        <div${copyClasses}>
+          <h2 id="${escapeHtml(titleId || 'teamPanelTitle')}" class="team-schedule-title">${escapeHtml(title || 'Team')}</h2>
+          <div class="team-schedule-subtitle">${subtitleHtml || ''}</div>
+        </div>`;
+      if (!actionsHtml) return headingCopyHtml;
+      const wrapClasses = wrapClass ? ` class="${escapeHtml(wrapClass)}"` : '';
+      return `
+        <div${wrapClasses}>
+          <div class="team-log-title-row">
+            ${headingCopyHtml}
+            ${actionsHtml}
+          </div>
+        </div>`;
+    }
+
+    function teamPanelHeadHtml_({
+      row = {},
+      team = {},
+      titleId,
+      title,
+      subtitleHtml = '',
+      statsOverrides = {},
+      actionsHtml = '',
+      wrapClass = '',
+      copyClass = ''
+    } = {}) {
+      return `
+        <div class="team-schedule-head">
+          <div class="team-schedule-team">
+            ${teamScheduleLogoHtml_(row, team)}
+            ${teamPanelHeadingHtml_({ titleId, title, subtitleHtml, actionsHtml, wrapClass, copyClass })}
+          </div>
+          ${teamScheduleStatsHtml_(row, statsOverrides)}
+        </div>`;
+    }
+
     function teamScheduleSubtitleHtml_(team = {}) {
       const displayYear = teamScheduleDisplayYear_(team);
       const lineOne = [displayYear, team.sport || ''].filter(Boolean).join(' ');
@@ -931,18 +1009,13 @@ function setEastWestMapSportPickerOpen_(isOpen) {
     }
 
     function renderTeamScheduleLoading_(row) {
-      const logo = teamScheduleLogoHtml_(row);
       teamScheduleContent.innerHTML = `
-        <div class="team-schedule-head">
-          <div class="team-schedule-team">
-            ${logo}
-            <div>
-              <h2 id="teamScheduleTitle" class="team-schedule-title">${escapeHtml(row.school || 'Team Schedule')}</h2>
-              <div class="team-schedule-subtitle">Loading MaxPreps schedule</div>
-            </div>
-          </div>
-          ${teamScheduleStatsHtml_(row)}
-        </div>
+        ${teamPanelHeadHtml_({
+          row,
+          titleId: 'teamScheduleTitle',
+          title: row.school || 'Team Schedule',
+          subtitleHtml: escapeHtml('Loading MaxPreps schedule')
+        })}
         <div class="team-schedule-loading">
           <div>
             <div class="team-schedule-spinner" aria-hidden="true"></div>
@@ -969,16 +1042,12 @@ function setEastWestMapSportPickerOpen_(isOpen) {
 
     function renderTeamScheduleError_(row, err) {
       teamScheduleContent.innerHTML = `
-        <div class="team-schedule-head">
-          <div class="team-schedule-team">
-            ${teamScheduleLogoHtml_(row)}
-            <div>
-              <h2 id="teamScheduleTitle" class="team-schedule-title">${escapeHtml(row.school || 'Team Schedule')}</h2>
-              <div class="team-schedule-subtitle">Schedule unavailable</div>
-            </div>
-          </div>
-          ${teamScheduleStatsHtml_(row)}
-        </div>
+        ${teamPanelHeadHtml_({
+          row,
+          titleId: 'teamScheduleTitle',
+          title: row.school || 'Team Schedule',
+          subtitleHtml: escapeHtml('Schedule unavailable')
+        })}
         <div class="team-schedule-empty">
           Could not load this MaxPreps schedule.<br>${escapeHtml(err?.message || String(err || ''))}
         </div>`;
@@ -987,7 +1056,6 @@ function setEastWestMapSportPickerOpen_(isOpen) {
 
     function renderTeamSchedule_(row, schedule) {
       const team = schedule?.team || {};
-      const logo = teamScheduleLogoHtml_(row, team);
       const record = row.record || team.record || '-';
       const rpi = row.rpi || '-';
       const games = Array.isArray(schedule?.games) ? schedule.games : [];
@@ -1020,16 +1088,14 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       }).join('');
 
       teamScheduleContent.innerHTML = `
-        <div class="team-schedule-head">
-          <div class="team-schedule-team">
-            ${logo}
-            <div>
-              <h2 id="teamScheduleTitle" class="team-schedule-title">${escapeHtml(row.school || team.name || 'Team Schedule')}</h2>
-              <div class="team-schedule-subtitle">${teamScheduleSubtitleHtml_(team)}</div>
-            </div>
-          </div>
-          ${teamScheduleStatsHtml_(row, { record, rpi })}
-        </div>
+        ${teamPanelHeadHtml_({
+          row,
+          team,
+          titleId: 'teamScheduleTitle',
+          title: row.school || team.name || 'Team Schedule',
+          subtitleHtml: teamScheduleSubtitleHtml_(team),
+          statsOverrides: { record, rpi }
+        })}
         <div class="team-schedule-body">
           <div class="team-schedule-toolbar">
             <span>${escapeHtml(games.length)} games loaded${schedule?.cached ? ' from cache' : ''}</span>
@@ -1083,16 +1149,20 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       teamLogOverlay?.setAttribute('aria-hidden', 'true');
     }
 
-    async function fetchTeamRpiLog_(row) {
-      return requestSnapshotApiJson_('/rpi-snapshots/team-log', {
-        sport: sportEl?.value || '',
-        classification: classEl?.value || '',
-        seasonYear: selectedRpiYear_() || 'live',
-        source: 'official',
-        school: row?.school || '',
-        limit: 200
-      });
-    }
+// ============================================================================
+// 5. Team Log card state, filtering, and view rendering
+// ============================================================================
+
+async function fetchTeamRpiLog_(row, options = {}) {
+  return requestSnapshotApiJson_('/rpi-snapshots/team-log', {
+    sport: options.sport || row?.sport || sportEl?.value || '',
+    classification: options.classification || row?.classification || classEl?.value || '',
+    seasonYear: options.seasonYear || selectedRpiYear_() || 'live',
+    source: 'official',
+    school: row?.school || '',
+    limit: 200
+  });
+}
 
     function teamLogLocalDateKey_(value) {
       const date = new Date(value);
@@ -1153,15 +1223,344 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       }
     }
 
-    function teamLogToolbarDateHtml_(label) {
-      const nav = teamLogDateNavState_();
-      return `
+function teamLogToolbarDateHtml_(label) {
+  const nav = teamLogDateNavState_();
+  return `
         <span class="team-log-toolbar-date-nav">
           <button type="button" class="team-log-date-step-btn" data-team-log-date-step="older" aria-label="Show older log date"${nav.hasOlder ? '' : ' disabled'}>&lsaquo;</button>
           <span class="team-log-toolbar-date-label">${escapeHtml(label)}</span>
           <button type="button" class="team-log-date-step-btn" data-team-log-date-step="newer" aria-label="Show newer log date"${nav.hasNewer ? '' : ' disabled'}>&rsaquo;</button>
         </span>`;
+}
+
+function teamLogCalendarButtonHtml_() {
+  return `
+    <button type="button" class="team-log-inline-btn team-panel-icon-btn team-log-inline-calendar-btn" aria-label="Choose team log date" title="Choose team log date">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M7 2v3M17 2v3M3.5 9.5h17M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18V7A1.5 1.5 0 0 1 5 5.5Z" />
+        <path d="M8 13h3M8 16h3M13 13h3M13 16h3" />
+      </svg>
+    </button>`;
+}
+
+function teamLogViewButtonHtml_() {
+  return `
+    <button type="button" class="team-log-inline-btn team-panel-icon-btn team-log-inline-view-btn${teamLogViewMode_ === 'graph' ? ' is-graph-view' : ''}" aria-label="${escapeHtml(teamLogViewMode_ === 'graph' ? 'Show team RPI log table' : 'Show team RPI graph')}" title="${escapeHtml(teamLogViewMode_ === 'graph' ? 'Show team RPI log table' : 'Show team RPI graph')}">
+      ${teamLogViewIconSvg_(teamLogViewMode_)}
+    </button>`;
+}
+
+function teamLogInlineActionButtonsHtml_() {
+  return `
+    <div class="team-log-inline-actions">
+      ${teamLogCalendarButtonHtml_()}
+      ${teamLogViewButtonHtml_()}
+    </div>`;
+}
+
+function teamLogToolbarActionsHtml_() {
+  return `
+    <span class="team-log-toolbar-actions">
+      ${teamLogCalendarButtonHtml_()}
+      ${teamLogViewButtonHtml_()}
+      <span class="team-log-toolbar-zoom" aria-label="Graph zoom controls">
+        <button type="button" class="team-log-inline-btn team-panel-icon-btn team-log-zoom-btn" data-team-log-zoom="out" aria-label="Zoom out graph" title="Zoom out graph"${teamLogViewMode_ === 'graph' ? '' : ' disabled'}>−</button>
+        <span class="team-log-zoom-label">${escapeHtml(teamLogGraphZoomLabel_())}</span>
+        <button type="button" class="team-log-inline-btn team-panel-icon-btn team-log-zoom-btn" data-team-log-zoom="in" aria-label="Zoom in graph" title="Zoom in graph"${teamLogViewMode_ === 'graph' ? '' : ' disabled'}>+</button>
+      </span>
+    </span>`;
+}
+
+function teamLogClassOptions_() {
+  const values = [...(classEl?.options || [])]
+    .map(option => String(option.value || '').trim())
+    .filter(value => /\b\d+A\b/i.test(value));
+  return [...new Set(values)].map(value => ({ value, label: value }));
+}
+
+function teamLogSelectorCacheKey_(classification) {
+  return `${selectedRpiYear_() || 'live'}|${sportEl?.value || ''}|${classification || classEl?.value || ''}`;
+}
+
+function sortedUniqueTeamLogRows_(rows) {
+  const seen = new Set();
+  return (Array.isArray(rows) ? rows : [])
+    .filter(row => row?.school)
+    .filter(row => {
+      const key = canonicalTeamName_(row.school);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => String(a.school || '').localeCompare(String(b.school || '')));
+}
+
+function teamLogSelectedTeamLabel_() {
+  return teamLogShowAllTeams_
+    ? 'All Teams'
+    : String(teamLogCurrentRow_?.school || 'Search team');
+}
+
+function teamLogSeriesCacheKey_(row, options = {}) {
+  const classification = options.classification || row?.classification || classEl?.value || '';
+  const sport = options.sport || row?.sport || sportEl?.value || '';
+  const seasonYear = options.seasonYear || selectedRpiYear_() || 'live';
+  const school = canonicalTeamName_(row?.school || '');
+  return `${seasonYear}|${sport}|${classification}|${school}`;
+}
+
+function teamLogSnapshotBundleCacheKey_(options = {}) {
+  const classification = options.classification || teamLogSelectorClass_ || classEl?.value || '';
+  const sport = options.sport || teamLogCurrentResult_?.sport || sportEl?.value || '';
+  const seasonYear = options.seasonYear || teamLogCurrentResult_?.seasonYear || selectedRpiYear_() || 'live';
+  const source = options.source || teamLogCurrentResult_?.source || 'official';
+  return `${seasonYear}|${source}|${sport}|${classification}`;
+}
+
+async function fetchTeamLogSnapshotBundle_(options = {}) {
+  const cacheKey = teamLogSnapshotBundleCacheKey_(options);
+  if (teamLogSnapshotBundleCache_.has(cacheKey)) return teamLogSnapshotBundleCache_.get(cacheKey);
+  const sport = options.sport || teamLogCurrentResult_?.sport || sportEl?.value || '';
+  const classification = options.classification || teamLogSelectorClass_ || classEl?.value || '';
+  const seasonYear = options.seasonYear || teamLogCurrentResult_?.seasonYear || selectedRpiYear_() || 'live';
+  const source = options.source || teamLogCurrentResult_?.source || 'official';
+  const listResult = await requestSnapshotApiJson_('/rpi-snapshots/list', { sport, classification });
+  const snapshots = (Array.isArray(listResult?.snapshots) ? listResult.snapshots : [])
+    .filter(snapshot => (!seasonYear || snapshot.seasonYear === seasonYear) && (!source || snapshot.source === source))
+    .sort((a, b) => String(b.fetchedAt || '').localeCompare(String(a.fetchedAt || '')));
+  const details = [];
+  const concurrency = 4;
+  for (let i = 0; i < snapshots.length; i += concurrency) {
+    const batch = snapshots.slice(i, i + concurrency);
+    const batchDetails = await Promise.all(batch.map(async snapshot => {
+      const result = await requestSnapshotApiJson_('/rpi-snapshots/snapshot', { id: snapshot.id });
+      return result?.snapshot || null;
+    }));
+    details.push(...batchDetails.filter(Boolean));
+  }
+  teamLogSnapshotBundleCache_.set(cacheKey, details);
+  return details;
+}
+
+function buildAllTeamLogSeriesFromSnapshots_(snapshots, rows, options = {}) {
+  const rowMap = new Map();
+  (Array.isArray(rows) ? rows : []).forEach(row => {
+    const key = canonicalTeamName_(row?.school || '').toLowerCase();
+    if (key && !rowMap.has(key)) rowMap.set(key, row);
+  });
+  if (!rowMap.size) return [];
+  const seriesMap = new Map([...rowMap.entries()].map(([key, row]) => [key, { row, logs: [] }]));
+  const orderedSnapshots = (Array.isArray(snapshots) ? snapshots : [])
+    .filter(snapshot => snapshot?.fetchedAt)
+    .slice()
+    .sort((a, b) => Date.parse(a?.fetchedAt || 0) - Date.parse(b?.fetchedAt || 0));
+
+  orderedSnapshots.forEach(snapshot => {
+    const snapshotRows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+    snapshotRows.forEach(item => {
+      const key = canonicalTeamName_(item?.school || item?.team || '').toLowerCase();
+      if (!key || !seriesMap.has(key)) return;
+      const rank = Number(item?.rank);
+      const rpi = Number(item?.rpi);
+      const log = {
+        snapshotId: snapshot?.id || '',
+        fetchedAt: snapshot?.fetchedAt || '',
+        school: String(item?.school || item?.team || '').trim(),
+        rank: Number.isFinite(rank) ? rank : (item?.rank ?? ''),
+        record: String(item?.record || ''),
+        wp: String(item?.wp || ''),
+        owp: String(item?.owp || ''),
+        oowp: String(item?.oowp || ''),
+        rpi: Number.isFinite(rpi) ? rpi : item?.rpi,
+        rankChange: null,
+        rpiChange: null
+      };
+      seriesMap.get(key)?.logs.push(log);
+    });
+  });
+
+  return [...seriesMap.values()].map(item => {
+    const sortedLogs = item.logs
+      .slice()
+      .sort((a, b) => Date.parse(a?.fetchedAt || 0) - Date.parse(b?.fetchedAt || 0))
+      .map((log, index, arr) => {
+        const older = arr[index - 1] || null;
+        const olderRank = Number(older?.rank);
+        const newerRank = Number(log?.rank);
+        const olderRpi = Number(older?.rpi);
+        const newerRpi = Number(log?.rpi);
+        return {
+          ...log,
+          localDate: teamLogLocalDateKey_(log?.fetchedAt),
+          rankChange: older && Number.isFinite(olderRank) && Number.isFinite(newerRank)
+            ? olderRank - newerRank
+            : null,
+          rpiChange: older && Number.isFinite(olderRpi) && Number.isFinite(newerRpi)
+            ? Number((newerRpi - olderRpi).toFixed(6))
+            : null
+        };
+      });
+    return {
+      row: item.row,
+      logs: filterTeamLogEntriesForGraph_(sortedLogs, options)
+    };
+  }).filter(item => item.logs.length);
+}
+
+async function loadTeamLogSeriesForRow_(row, options = {}) {
+  const cacheKey = teamLogSeriesCacheKey_(row, options);
+  if (teamLogSeriesCache_.has(cacheKey)) return teamLogSeriesCache_.get(cacheKey);
+  const result = await fetchTeamRpiLog_(row, options);
+  const normalized = {
+    ...result,
+    sport: options.sport || row?.sport || sportEl?.value || '',
+    classification: options.classification || row?.classification || classEl?.value || '',
+    logs: normalizeTeamLogEntries_(result?.logs || [])
+  };
+  teamLogSeriesCache_.set(cacheKey, normalized);
+  return normalized;
+}
+
+async function loadTeamLogSelectorRowsForClass_(classification) {
+  const targetClass = classification || classEl?.value || '';
+  const cacheKey = teamLogSelectorCacheKey_(targetClass);
+  if (teamLogSelectorCache_.has(cacheKey)) {
+    teamLogSelectorRows_ = teamLogSelectorCache_.get(cacheKey) || [];
+    return teamLogSelectorRows_;
+  }
+  const sport = sportEl?.value || '';
+  const mergedRows = (await getMergedRowsForSelection_(targetClass, sport)).rows
+    .map(row => ({ ...row, classification: targetClass, sport }));
+  const lineData = buildEastWestLineRows_(mergedRows, targetClass);
+  const regionLookup = new Map();
+  lineData.east.concat(lineData.west).forEach(row => {
+    const key = canonicalTeamName_(row.school).toLowerCase();
+    if (!key) return;
+    regionLookup.set(key, {
+      lineRegion: row.lineRegion || '',
+      regionRank: row.regionRank || ''
+    });
+  });
+  const rows = mergedRows.map(row => {
+    const key = canonicalTeamName_(row.school).toLowerCase();
+    const info = regionLookup.get(key) || {};
+    return {
+      ...row,
+      lineRegion: row.lineRegion || info.lineRegion || '',
+      regionRank: row.regionRank || info.regionRank || ''
+    };
+  });
+  const normalizedRows = sortedUniqueTeamLogRows_(rows);
+  teamLogSelectorCache_.set(cacheKey, normalizedRows);
+  teamLogSelectorRows_ = normalizedRows;
+  return normalizedRows;
+}
+
+async function ensureTeamLogSelectorRows_(classification = teamLogSelectorClass_) {
+  const targetClass = classification || classEl?.value || '';
+  const requestToken = ++teamLogSelectorRequestToken_;
+  teamLogSelectorLoading_ = true;
+  renderTeamLog_();
+  try {
+    await loadTeamLogSelectorRowsForClass_(targetClass);
+  } catch (err) {
+    console.warn('Team log selector rows unavailable:', err);
+    if (requestToken !== teamLogSelectorRequestToken_) return;
+    teamLogSelectorRows_ = [];
+  } finally {
+    if (requestToken !== teamLogSelectorRequestToken_) return;
+    teamLogSelectorLoading_ = false;
+    renderTeamLog_();
+  }
+}
+
+function filteredTeamLogSelectorRows_() {
+  const needle = canonicalTeamName_(teamLogTeamSearch_ || '').toLowerCase();
+  const rows = (Array.isArray(teamLogSelectorRows_) ? teamLogSelectorRows_ : [])
+    .filter(row => {
+      if (teamLogSelectorRegion_ === 'both') return true;
+      return String(row?.lineRegion || '').toLowerCase() === teamLogSelectorRegion_;
+    });
+  if (!needle) return rows;
+  return rows
+    .filter(row => canonicalTeamName_(row.school).toLowerCase().includes(needle))
+    .slice(0, 24);
+}
+
+async function applyTeamLogSelectorClass_(value) {
+  teamLogSelectorClass_ = value || classEl?.value || '';
+  teamLogTeamSearch_ = '';
+  teamLogTeamMenuOpen_ = false;
+  teamLogSelectorRows_ = [];
+  await ensureTeamLogSelectorRows_(teamLogSelectorClass_);
+  const currentKey = canonicalTeamName_(teamLogCurrentRow_?.school || '').toLowerCase();
+  const hasCurrent = teamLogSelectorRows_.some(row => canonicalTeamName_(row.school).toLowerCase() === currentKey);
+  if (teamLogShowAllTeams_) {
+    if (!hasCurrent && teamLogSelectorRows_.length) {
+      teamLogSelectedTeamKey_ = canonicalTeamName_(teamLogSelectorRows_[0].school).toLowerCase();
+    } else if (hasCurrent) {
+      teamLogSelectedTeamKey_ = currentKey;
     }
+    teamLogGraphPanX_ = 0;
+    teamLogGraphPanY_ = 0;
+    await ensureTeamLogAllSeries_();
+  } else {
+    renderTeamLog_();
+  }
+}
+
+async function applyTeamLogSelectorRegion_(value) {
+  const next = ['both', 'east', 'west'].includes(String(value || '').toLowerCase())
+    ? String(value || '').toLowerCase()
+    : 'both';
+  teamLogSelectorRegion_ = next;
+  teamLogTeamSearch_ = '';
+  teamLogTeamMenuOpen_ = false;
+  if (teamLogShowAllTeams_) {
+    const visibleRows = filteredTeamLogSelectorRows_();
+    if (visibleRows.length && !visibleRows.some(row => canonicalTeamName_(row.school).toLowerCase() === teamLogSelectedTeamKey_)) {
+      teamLogSelectedTeamKey_ = canonicalTeamName_(visibleRows[0].school).toLowerCase();
+    }
+    teamLogGraphPanX_ = 0;
+    teamLogGraphPanY_ = 0;
+    await ensureTeamLogAllSeries_();
+    return;
+  }
+  renderTeamLog_();
+}
+
+function updateTeamLogTeamSearch_(value) {
+  teamLogTeamSearch_ = String(value || '');
+  teamLogTeamMenuOpen_ = true;
+  renderTeamLog_();
+}
+
+async function selectTeamLogTeamByName_(value) {
+  if (value === TEAM_LOG_ALL_TEAMS_VALUE_ || canonicalTeamName_(value).toLowerCase() === canonicalTeamName_('All Teams').toLowerCase()) {
+    teamLogShowAllTeams_ = true;
+    teamLogTeamSearch_ = '';
+    teamLogTeamMenuOpen_ = false;
+    if (!teamLogSelectedTeamKey_) {
+      teamLogSelectedTeamKey_ = canonicalTeamName_(teamLogCurrentRow_?.school || '').toLowerCase();
+    }
+    await ensureTeamLogAllSeries_();
+    return;
+  }
+  const target = canonicalTeamName_(value || '').toLowerCase();
+  if (!target) return;
+  const match = teamLogSelectorRows_.find(row => canonicalTeamName_(row.school).toLowerCase() === target)
+    || filteredTeamLogSelectorRows_()[0];
+  if (!match) return;
+  teamLogShowAllTeams_ = false;
+  teamLogTeamSearch_ = '';
+  teamLogTeamMenuOpen_ = false;
+  teamLogSelectedTeamKey_ = canonicalTeamName_(match.school).toLowerCase();
+  await openTeamLogCard_(match, {
+    classification: match.classification || teamLogSelectorClass_ || classEl?.value || '',
+    sport: match.sport || sportEl?.value || '',
+    preserveSelectorState: true
+  });
+}
 
     function teamLogEntryKey_(log) {
       return String(log?.fetchedAt || '');
@@ -1322,6 +1721,25 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       return `<span class="team-log-change ${n > 0 ? 'up' : 'down'}">${escapeHtml(fixed)}</span>`;
     }
 
+    function normalizeTeamLogSeriesColor_(value) {
+      const hex = String(value || '').trim();
+      return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)
+        ? hex
+        : 'rgba(255,255,255,0.22)';
+    }
+
+    function teamDetailsRowForName_(teamName) {
+      const key = canonicalTeamName_(teamName || '');
+      if (!key || !(teamDetailsMapResolved_ instanceof Map)) return null;
+      return teamDetailsMapResolved_.get(key) || null;
+    }
+
+    function getTeamGraphColor_(teamName, row = {}) {
+      const detailRow = teamDetailsRowForName_(teamName);
+      const candidate = detailRow?.dominantHex || row?.dominantHex || '';
+      return normalizeTeamLogSeriesColor_(candidate);
+    }
+
     function teamLogAllEntriesSorted_() {
       return normalizeTeamLogEntries_(teamLogCurrentResult_?.logs || [])
         .filter(log => Number.isFinite(Number(log?.rpi)) && log?.fetchedAt)
@@ -1337,27 +1755,72 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       return selectedDayLogs[selectedDayLogs.length - 1] || logs[logs.length - 1] || null;
     }
 
-    function filteredTeamLogGraphEntries_() {
-      const logs = teamLogAllEntriesSorted_();
-      if (!logs.length) return [];
-      const range = TEAM_LOG_GRAPH_RANGES_.find(item => item.key === teamLogRange_) || TEAM_LOG_GRAPH_RANGES_[0];
-      const anchor = teamLogAnchorEntry_(logs);
-      if (!anchor) return logs;
-      const anchorTime = Date.parse(anchor.fetchedAt);
-      if (!Number.isFinite(anchorTime)) return logs;
-      if (range.key === 'ALL') {
-        return logs.filter(log => Date.parse(log.fetchedAt) <= anchorTime);
-      }
-      if (range.key === '1D') {
-        return logs.filter(log => log.localDate === anchor.localDate && Date.parse(log.fetchedAt) <= anchorTime);
-      }
-      const cutoff = anchorTime - (range.days * 24 * 60 * 60 * 1000);
-      const filtered = logs.filter(log => {
-        const time = Date.parse(log.fetchedAt);
-        return Number.isFinite(time) && time >= cutoff && time <= anchorTime;
-      });
-      return filtered.length ? filtered : logs.filter(log => Date.parse(log.fetchedAt) <= anchorTime);
-    }
+function filteredTeamLogGraphEntries_() {
+  const logs = teamLogAllEntriesSorted_();
+  if (!logs.length) return [];
+  return filterTeamLogEntriesForGraph_(logs, {
+    rangeKey: teamLogRange_,
+    selectedDate: teamLogSelectedDate_
+  });
+}
+
+function filterTeamLogEntriesForGraph_(logs, options = {}) {
+  const normalizedLogs = normalizeTeamLogEntries_(logs || [])
+    .filter(log => Number.isFinite(Number(log?.rpi)) && log?.fetchedAt)
+    .slice()
+    .sort((a, b) => Date.parse(a.fetchedAt) - Date.parse(b.fetchedAt));
+  if (!normalizedLogs.length) return [];
+  const range = TEAM_LOG_GRAPH_RANGES_.find(item => item.key === (options.rangeKey || teamLogRange_)) || TEAM_LOG_GRAPH_RANGES_[0];
+  const selectedDate = options.selectedDate ?? teamLogSelectedDate_;
+  const anchor = (() => {
+    if (!selectedDate) return normalizedLogs[normalizedLogs.length - 1] || null;
+    const selectedDayLogs = normalizedLogs.filter(log => log.localDate === selectedDate);
+    return selectedDayLogs[selectedDayLogs.length - 1] || normalizedLogs[normalizedLogs.length - 1] || null;
+  })();
+  if (!anchor) return normalizedLogs;
+  const anchorTime = Date.parse(anchor.fetchedAt);
+  if (!Number.isFinite(anchorTime)) return normalizedLogs;
+  if (range.key === 'ALL') {
+    return normalizedLogs.filter(log => Date.parse(log.fetchedAt) <= anchorTime);
+  }
+  if (range.key === '1D') {
+    return normalizedLogs.filter(log => log.localDate === anchor.localDate && Date.parse(log.fetchedAt) <= anchorTime);
+  }
+  const cutoff = anchorTime - (range.days * 24 * 60 * 60 * 1000);
+  const filtered = normalizedLogs.filter(log => {
+    const time = Date.parse(log.fetchedAt);
+    return Number.isFinite(time) && time >= cutoff && time <= anchorTime;
+  });
+  return filtered.length ? filtered : normalizedLogs.filter(log => Date.parse(log.fetchedAt) <= anchorTime);
+}
+
+async function ensureTeamLogAllSeries_() {
+  const rows = filteredTeamLogSelectorRows_();
+  if (!rows.length) return [];
+  const requestToken = ++teamLogGraphAllRequestToken_;
+  teamLogGraphAllLoading_ = true;
+  renderTeamLog_();
+  try {
+    const snapshots = await fetchTeamLogSnapshotBundle_({
+      sport: teamLogCurrentResult_?.sport || sportEl?.value || '',
+      classification: teamLogSelectorClass_ || classEl?.value || '',
+      seasonYear: teamLogCurrentResult_?.seasonYear || selectedRpiYear_() || 'live',
+      source: teamLogCurrentResult_?.source || 'official'
+    });
+    if (requestToken !== teamLogGraphAllRequestToken_) return teamLogGraphAllSeries_;
+    const series = buildAllTeamLogSeriesFromSnapshots_(snapshots, rows, {
+      rangeKey: teamLogRange_,
+      selectedDate: teamLogSelectedDate_
+    });
+    if (requestToken !== teamLogGraphAllRequestToken_) return teamLogGraphAllSeries_;
+    teamLogGraphAllSeries_ = series;
+    return teamLogGraphAllSeries_;
+  } finally {
+    if (requestToken !== teamLogGraphAllRequestToken_) return;
+    teamLogGraphAllLoading_ = false;
+    renderTeamLog_();
+  }
+}
 
     function formatTeamLogGraphAxisLabel_(value) {
       const date = new Date(value);
@@ -1368,7 +1831,7 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       return date.toLocaleDateString([], { month: 'numeric', day: 'numeric' });
     }
 
-    function formatTeamLogGraphRangeLabel_(logs) {
+function formatTeamLogGraphRangeLabel_(logs) {
       if (!logs.length) return teamLogDisplayDate_(teamLogSelectedDate_);
       const first = new Date(logs[0].fetchedAt);
       const last = new Date(logs[logs.length - 1].fetchedAt);
@@ -1376,65 +1839,325 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       return `${first.toLocaleDateString([], { month: 'short', day: 'numeric' })} - ${last.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
     }
 
-    function renderTeamLogGraph_(logs) {
-      if (!logs.length) {
-        return `<div class="team-log-empty">No RPI snapshots found for this graph range.</div>`;
-      }
+function teamLogGraphZoomLabel_() {
+      return `${Math.round(teamLogGraphZoom_ * 100)}%`;
+    }
 
-      const width = 980;
-      const height = 420;
+    function clampTeamLogGraphPan_(value) {
+      return Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
+    }
+
+    function teamLogGraphAnchorKey_() {
+      return teamLogSelectedTeamKey_
+        || canonicalTeamName_(teamLogCurrentRow_?.school || '').toLowerCase()
+        || '';
+    }
+
+    function teamLogGraphAnchorPointForSingle_(logs, timeViewport) {
+      const points = (Array.isArray(logs) ? logs : [])
+        .map(log => ({
+          time: Date.parse(log?.fetchedAt),
+          rpi: Number(log?.rpi)
+        }))
+        .filter(point => Number.isFinite(point.time) && Number.isFinite(point.rpi));
+      if (!points.length) return null;
+      const visiblePoints = points.filter(point => point.time >= timeViewport.startTime && point.time <= timeViewport.endTime);
+      return visiblePoints[visiblePoints.length - 1] || points[points.length - 1] || null;
+    }
+
+    function teamLogGraphAnchorPointForAll_() {
+      const anchorKey = teamLogGraphAnchorKey_();
+      const series = (Array.isArray(teamLogGraphAllSeries_) ? teamLogGraphAllSeries_ : []);
+      const matchedSeries = series.find(item => canonicalTeamName_(item?.row?.school || '').toLowerCase() === anchorKey)
+        || series.find(item => canonicalTeamName_(item?.row?.school || '').toLowerCase() === canonicalTeamName_(teamLogCurrentRow_?.school || '').toLowerCase())
+        || series[0]
+        || null;
+      if (!matchedSeries) return null;
+      const logs = Array.isArray(matchedSeries.logs) ? matchedSeries.logs : [];
+      const lastLog = logs[logs.length - 1] || null;
+      if (!lastLog) return null;
+      const time = Date.parse(lastLog.fetchedAt);
+      const rpi = Number(lastLog.rpi);
+      if (!Number.isFinite(time) || !Number.isFinite(rpi)) return null;
+      return {
+        key: canonicalTeamName_(matchedSeries?.row?.school || '').toLowerCase(),
+        time,
+        rpi
+      };
+    }
+
+    function teamLogGraphViewport_(minTime, maxTime) {
+      const totalSpan = Math.max(maxTime - minTime, 1);
+      const zoom = Math.max(teamLogGraphZoom_, 1);
+      const visibleSpan = zoom <= 1 ? totalSpan : Math.max(totalSpan / zoom, 1);
+      const maxOffset = Math.max(totalSpan - visibleSpan, 0);
+      const panRatio = clampTeamLogGraphPan_(teamLogGraphPanX_);
+      // Keep graph zoom anchored to the newest data on the right by default.
+      const startTime = minTime + (maxOffset * (1 - panRatio));
+      return {
+        zoom,
+        totalSpan,
+        visibleSpan,
+        maxOffset,
+        startTime,
+        endTime: startTime + visibleSpan,
+        panRatio
+      };
+    }
+
+    function teamLogGraphValueViewport_(points, timeViewport, options = {}) {
+      const normalizedPoints = (Array.isArray(points) ? points : [])
+        .filter(point => Number.isFinite(Number(point?.time)) && Number.isFinite(Number(point?.rpi)));
+      const visiblePoints = normalizedPoints.filter(point => point.time >= timeViewport.startTime && point.time <= timeViewport.endTime);
+      const scalePoints = visiblePoints.length ? visiblePoints : normalizedPoints;
+      const rawMin = 0;
+      const rawMax = scalePoints.length ? Math.max(...scalePoints.map(point => Number(point.rpi))) : 0;
+      const paddedMax = rawMin === rawMax
+        ? Math.max(rawMax + 0.0005, 0.01)
+        : rawMax + ((rawMax - rawMin) * 0.12);
+      const totalRange = Math.max(paddedMax - rawMin, 0.0001);
+      const zoom = Math.max(timeViewport.zoom || teamLogGraphZoom_ || 1, 1);
+      // When zooming, tighten the visible value range toward the top of the chart
+      // so nearby RPI lines spread apart instead of staying compressed near the top.
+      const visibleRange = zoom <= 1 ? totalRange : Math.max(totalRange / zoom, 0.0001);
+      const anchorRpi = Number(options.anchorRpi);
+      const anchorOffsetRatio = 0.16;
+      const maxYOffset = Math.max(totalRange - visibleRange, 0);
+      const panRatio = clampTeamLogGraphPan_(teamLogGraphPanY_);
+      const anchoredDisplayMax = (zoom > 1 && Number.isFinite(anchorRpi))
+        ? Math.min(paddedMax, Math.max(anchorRpi + (visibleRange * anchorOffsetRatio), visibleRange))
+        : paddedMax;
+      const requestedDisplayMax = maxYOffset > 0
+        ? paddedMax - (maxYOffset * panRatio)
+        : paddedMax;
+      const displayMax = zoom > 1 ? requestedDisplayMax : anchoredDisplayMax;
+      const displayMin = Math.max(rawMin, displayMax - visibleRange);
+      return {
+        rawMin,
+        rawMax,
+        paddedMax,
+        totalRange,
+        maxYOffset,
+        panRatio,
+        anchoredDisplayMax,
+        displayMin,
+        displayMax,
+        valueRange: Math.max(displayMax - displayMin, 0.0001)
+      };
+    }
+
+    function currentTeamLogGraphTimeExtent_() {
+      if (teamLogShowAllTeams_) {
+        const points = (Array.isArray(teamLogGraphAllSeries_) ? teamLogGraphAllSeries_ : [])
+          .flatMap(item => (Array.isArray(item?.logs) ? item.logs : []).map(log => Date.parse(log.fetchedAt)))
+          .filter(Number.isFinite);
+        if (!points.length) return null;
+        return {
+          minTime: Math.min(...points),
+          maxTime: Math.max(...points)
+        };
+      }
+      const logs = filteredTeamLogGraphEntries_();
+      if (!logs.length) return null;
+      return {
+        minTime: Date.parse(logs[0].fetchedAt),
+        maxTime: Date.parse(logs[logs.length - 1].fetchedAt)
+      };
+    }
+
+    function currentTeamLogGraphPoints_() {
+      if (teamLogShowAllTeams_) {
+        return (Array.isArray(teamLogGraphAllSeries_) ? teamLogGraphAllSeries_ : [])
+          .flatMap(item => (Array.isArray(item?.logs) ? item.logs : []).map(log => ({
+            time: Date.parse(log?.fetchedAt),
+            rpi: Number(log?.rpi)
+          })))
+          .filter(point => Number.isFinite(point.time) && Number.isFinite(point.rpi));
+      }
+      return filteredTeamLogGraphEntries_()
+        .map(log => ({
+          time: Date.parse(log?.fetchedAt),
+          rpi: Number(log?.rpi)
+        }))
+        .filter(point => Number.isFinite(point.time) && Number.isFinite(point.rpi));
+    }
+
+    function applyTeamLogGraphGestureZoom_(zoomFactor, anchorXRatio = 0.88, anchorYRatio = 0.16) {
+      const currentExtent = currentTeamLogGraphTimeExtent_();
+      if (!currentExtent) return;
+      const currentViewport = teamLogGraphViewport_(currentExtent.minTime, currentExtent.maxTime);
+      const currentPoints = currentTeamLogGraphPoints_();
+      if (!currentPoints.length) return;
+      const currentAnchor = teamLogShowAllTeams_
+        ? teamLogGraphAnchorPointForAll_()
+        : teamLogGraphAnchorPointForSingle_(filteredTeamLogGraphEntries_(), currentViewport);
+      const currentValueViewport = teamLogGraphValueViewport_(currentPoints, currentViewport, {
+        anchorRpi: currentAnchor?.rpi
+      });
+      const currentVisibleTimeSpan = Math.max(currentViewport.visibleSpan, 1);
+      const anchorTime = currentViewport.startTime + (currentVisibleTimeSpan * Math.max(0, Math.min(1, anchorXRatio)));
+      const anchorRpi = currentValueViewport.displayMax - (currentValueViewport.valueRange * Math.max(0, Math.min(1, anchorYRatio)));
+
+      const nextZoom = Math.min(16, Math.max(1, Number((teamLogGraphZoom_ * zoomFactor).toFixed(4))));
+      teamLogGraphZoom_ = nextZoom;
+
+      const totalSpan = Math.max(currentExtent.maxTime - currentExtent.minTime, 1);
+      const nextVisibleSpan = nextZoom <= 1 ? totalSpan : Math.max(totalSpan / nextZoom, 1);
+      const maxOffset = Math.max(totalSpan - nextVisibleSpan, 0);
+      const desiredStartTime = anchorTime - (nextVisibleSpan * Math.max(0, Math.min(1, anchorXRatio)));
+      const nextStartTime = Math.max(
+        currentExtent.minTime,
+        Math.min(desiredStartTime, currentExtent.maxTime - nextVisibleSpan)
+      );
+      const nextPanX = maxOffset > 0
+        ? 1 - ((nextStartTime - currentExtent.minTime) / maxOffset)
+        : 0;
+      teamLogGraphPanX_ = clampTeamLogGraphPan_(nextPanX);
+
+      const nextViewport = teamLogGraphViewport_(currentExtent.minTime, currentExtent.maxTime);
+      const nextValueViewportBase = teamLogGraphValueViewport_(currentPoints, nextViewport, {
+        anchorRpi: currentAnchor?.rpi
+      });
+      const nextVisibleRange = nextValueViewportBase.valueRange;
+      const desiredDisplayMax = anchorRpi + (nextVisibleRange * Math.max(0, Math.min(1, anchorYRatio)));
+      const nextPanY = nextValueViewportBase.maxYOffset > 0
+        ? (nextValueViewportBase.paddedMax - desiredDisplayMax) / nextValueViewportBase.maxYOffset
+        : 0;
+      teamLogGraphPanY_ = clampTeamLogGraphPan_(nextPanY);
+
+      if (teamLogViewMode_ === 'graph') renderTeamLog_();
+    }
+
+    function applyTeamLogGraphZoom_(direction) {
+      const currentExtent = currentTeamLogGraphTimeExtent_();
+      const currentViewport = currentExtent
+        ? teamLogGraphViewport_(currentExtent.minTime, currentExtent.maxTime)
+        : null;
+      const currentAnchorPoint = teamLogShowAllTeams_
+        ? teamLogGraphAnchorPointForAll_()
+        : teamLogGraphAnchorPointForSingle_(filteredTeamLogGraphEntries_(), currentViewport || { startTime: 0, endTime: Infinity });
+      const delta = direction === 'in' ? 0.35 : -0.35;
+      teamLogGraphZoom_ = Math.min(16, Math.max(1, Math.round((teamLogGraphZoom_ + delta) * 100) / 100));
+      if (currentExtent && currentViewport) {
+        const totalSpan = Math.max(currentExtent.maxTime - currentExtent.minTime, 1);
+        const visibleSpan = teamLogGraphZoom_ <= 1 ? totalSpan : Math.max(totalSpan / teamLogGraphZoom_, 1);
+        const maxOffset = Math.max(totalSpan - visibleSpan, 0);
+        const anchorTime = Number.isFinite(Number(currentAnchorPoint?.time))
+          ? Number(currentAnchorPoint.time)
+          : currentViewport.endTime;
+        const anchorRatio = 0.88;
+        const desiredStartTime = anchorTime - (visibleSpan * anchorRatio);
+        const nextStartTime = Math.max(
+          currentExtent.minTime,
+          Math.min(desiredStartTime, currentExtent.maxTime - visibleSpan)
+        );
+        const nextPan = maxOffset > 0
+          ? 1 - ((nextStartTime - currentExtent.minTime) / maxOffset)
+          : 0;
+        teamLogGraphPanX_ = clampTeamLogGraphPan_(nextPan);
+        const anchorRpi = Number(currentAnchorPoint?.rpi);
+        const points = currentTeamLogGraphPoints_();
+        const nextViewport = teamLogGraphViewport_(currentExtent.minTime, currentExtent.maxTime);
+        const nextValueViewport = teamLogGraphValueViewport_(points, nextViewport, { anchorRpi });
+        const desiredDisplayMax = nextValueViewport.anchoredDisplayMax;
+        const nextPanY = nextValueViewport.maxYOffset > 0
+          ? (nextValueViewport.paddedMax - desiredDisplayMax) / nextValueViewport.maxYOffset
+          : 0;
+        teamLogGraphPanY_ = clampTeamLogGraphPan_(nextPanY);
+      } else {
+        teamLogGraphPanX_ = clampTeamLogGraphPan_(teamLogGraphPanX_);
+        teamLogGraphPanY_ = clampTeamLogGraphPan_(teamLogGraphPanY_);
+      }
+      if (teamLogViewMode_ === 'graph') renderTeamLog_();
+    }
+
+    function applyTeamLogGraphPanDelta_(pixelDeltaX, pixelDeltaY, frameWidth, frameHeight) {
+      const width = Math.max(Number(frameWidth) || 0, 1);
+      const height = Math.max(Number(frameHeight) || 0, 1);
+      if (teamLogGraphZoom_ <= 1) return;
+      teamLogGraphPanX_ = clampTeamLogGraphPan_(teamLogGraphPanX_ + (pixelDeltaX / width));
+      teamLogGraphPanY_ = clampTeamLogGraphPan_(teamLogGraphPanY_ - (pixelDeltaY / height));
+      if (teamLogViewMode_ === 'graph') renderTeamLog_();
+    }
+
+function renderTeamLogGraph_(logs) {
+  const width = 980;
+  const height = 420;
       const padTop = 28;
       const padRight = 44;
       const padBottom = 48;
       const padLeft = 42;
       const plotWidth = width - padLeft - padRight;
       const plotHeight = height - padTop - padBottom;
-      const firstTime = Date.parse(logs[0].fetchedAt);
-      const lastTime = Date.parse(logs[logs.length - 1].fetchedAt);
-      const timeSpan = Math.max(lastTime - firstTime, 1);
-      const rpis = logs.map(log => Number(log.rpi)).filter(Number.isFinite);
-      const rawMin = Math.min(...rpis);
-      const rawMax = Math.max(...rpis);
-      const paddedMin = rawMin === rawMax ? rawMin - 0.0005 : rawMin - ((rawMax - rawMin) * 0.12);
-      const paddedMax = rawMin === rawMax ? rawMax + 0.0005 : rawMax + ((rawMax - rawMin) * 0.12);
-      const valueRange = Math.max(paddedMax - paddedMin, 0.0001);
+  const hasLogs = logs.length > 0;
+  const firstTime = hasLogs ? Date.parse(logs[0].fetchedAt) : 0;
+  const lastTime = hasLogs ? Date.parse(logs[logs.length - 1].fetchedAt) : 0;
+  const viewport = teamLogGraphViewport_(firstTime, lastTime);
       const pointData = logs.map((log, index) => {
         const time = Date.parse(log.fetchedAt);
-        const x = padLeft + (((time - firstTime) / timeSpan) * plotWidth);
-        const y = padTop + ((paddedMax - Number(log.rpi)) / valueRange) * plotHeight;
-        return { ...log, index, x, y };
+        return { ...log, index, time, rpi: Number(log.rpi) };
       });
-      const path = pointData.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ');
+      const anchorPoint = teamLogGraphAnchorPointForSingle_(logs, viewport);
+      const valueViewport = teamLogGraphValueViewport_(pointData, viewport, {
+        anchorRpi: anchorPoint?.rpi
+      });
+      const { displayMin, displayMax, valueRange } = valueViewport;
+      const plottedPoints = pointData.map(point => {
+        const x = padLeft + (((point.time - viewport.startTime) / Math.max(viewport.visibleSpan, 1)) * plotWidth);
+        const y = padTop + ((displayMax - point.rpi) / valueRange) * plotHeight;
+        return { ...point, x, y };
+      });
+      const path = plottedPoints.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ');
       const areaPath = `${path} L${(padLeft + plotWidth).toFixed(2)} ${(padTop + plotHeight).toFixed(2)} L${padLeft.toFixed(2)} ${(padTop + plotHeight).toFixed(2)} Z`;
-      const firstPoint = pointData[0];
-      const lastPoint = pointData[pointData.length - 1];
-      const overallDelta = Number(lastPoint.rpi) - Number(firstPoint.rpi);
+      const firstPoint = plottedPoints[0] || null;
+      const lastPoint = plottedPoints[plottedPoints.length - 1] || null;
+      const overallDelta = hasLogs ? (Number(lastPoint?.rpi) - Number(firstPoint?.rpi)) : 0;
       const trendClass = overallDelta > 0 ? 'up' : (overallDelta < 0 ? 'down' : 'flat');
       const gridLines = Array.from({ length: 4 }, (_, index) => {
         const ratio = index / 3;
         const y = padTop + (ratio * plotHeight);
-        const value = paddedMax - (ratio * valueRange);
+        const value = displayMax - (ratio * valueRange);
         return `
           <g class="team-log-graph-grid-row">
             <line x1="${padLeft}" y1="${y.toFixed(2)}" x2="${(padLeft + plotWidth).toFixed(2)}" y2="${y.toFixed(2)}" />
             <text x="10" y="${(y + 4).toFixed(2)}">${escapeHtml(value.toFixed(6))}</text>
           </g>`;
       }).join('');
-      const rangeButtons = TEAM_LOG_GRAPH_RANGES_.map(range => `
+  const rangeButtons = TEAM_LOG_GRAPH_RANGES_.map(range => `
         <button type="button" class="team-log-range-btn${range.key === teamLogRange_ ? ' is-active' : ''}" data-team-log-range="${range.key}">
           ${escapeHtml(range.label)}
         </button>
       `).join('');
-      const points = pointData.map((point, index) => `
+  const classOptions = teamLogClassOptions_().map(item => `
+        <option value="${escapeHtml(item.value)}"${item.value === teamLogSelectorClass_ ? ' selected' : ''}>${escapeHtml(item.label)}</option>
+      `).join('');
+  const regionOptions = [
+    { value: 'both', label: 'Both' },
+    { value: 'east', label: 'East' },
+    { value: 'west', label: 'West' }
+  ].map(item => `
+        <option value="${escapeHtml(item.value)}"${item.value === teamLogSelectorRegion_ ? ' selected' : ''}>${escapeHtml(item.label)}</option>
+      `).join('');
+  const teamOptions = [
+    `<button type="button" class="team-log-team-option${teamLogShowAllTeams_ ? ' is-selected' : ''}" data-team-log-team="${TEAM_LOG_ALL_TEAMS_VALUE_}">
+      <span class="team-log-team-option-name">All Teams</span>
+      <span class="team-log-team-option-meta">${escapeHtml(teamLogSelectorClass_ || classEl?.value || '')}</span>
+    </button>`,
+    ...filteredTeamLogSelectorRows_().map(option => `
+        <button type="button" class="team-log-team-option${canonicalTeamName_(option.school).toLowerCase() === teamLogSelectedTeamKey_ && !teamLogShowAllTeams_ ? ' is-selected' : ''}" data-team-log-team="${escapeHtml(option.school || '')}">
+          <span class="team-log-team-option-name">${escapeHtml(option.school || '')}</span>
+          <span class="team-log-team-option-meta">${escapeHtml(option.classification || '')}</span>
+        </button>
+      `)
+  ].join('');
+  const showTeamMenu = teamLogTeamMenuOpen_;
+  const points = plottedPoints.map((point, index) => `
         <circle class="team-log-graph-point${index === pointData.length - 1 ? ' is-last' : ''}" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="${index === pointData.length - 1 ? 5.5 : 3.5}" />
       `).join('');
-      const startLabel = formatTeamLogGraphAxisLabel_(firstPoint.fetchedAt);
-      const endLabel = formatTeamLogGraphAxisLabel_(lastPoint.fetchedAt);
-      const changeText = `${overallDelta >= 0 ? '+' : '-'}${Math.abs(overallDelta).toFixed(6)}`.replace(/^([+-])0\./, '$1.');
-
-      return `
-        <div class="team-log-graph-shell">
-          <div class="team-log-range-bar">${rangeButtons}</div>
+  const startLabel = hasLogs ? formatTeamLogGraphAxisLabel_(firstPoint.fetchedAt) : '';
+  const endLabel = hasLogs ? formatTeamLogGraphAxisLabel_(lastPoint.fetchedAt) : '';
+  const changeText = hasLogs ? `${overallDelta >= 0 ? '+' : '-'}${Math.abs(overallDelta).toFixed(6)}`.replace(/^([+-])0\./, '$1.') : '+.000000';
+  const graphCardHtml = hasLogs ? `
           <div class="team-log-graph-card ${trendClass}">
             <div class="team-log-graph-meta">
               <div>
@@ -1446,34 +2169,171 @@ function setEastWestMapSportPickerOpen_(isOpen) {
                 <small>${escapeHtml(String(logs.length))} point${logs.length === 1 ? '' : 's'}</small>
               </div>
             </div>
-            <div class="team-log-graph-frame">
+            <div class="team-log-graph-frame${teamLogGraphZoom_ > 1 ? ' is-pannable' : ''}" data-team-log-pan-area="1">
               <svg class="team-log-graph-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="RPI trend graph">
                 ${gridLines}
                 <path class="team-log-graph-area" d="${areaPath}" />
                 <path class="team-log-graph-line" d="${path}" />
                 ${points}
               </svg>
-              <div class="team-log-graph-axis team-log-graph-axis-start">${escapeHtml(startLabel)}</div>
-              <div class="team-log-graph-axis team-log-graph-axis-end">${escapeHtml(endLabel)}</div>
+              <div class="team-log-graph-axis team-log-graph-axis-start">${escapeHtml(formatTeamLogGraphAxisLabel_(new Date(viewport.startTime).toISOString()))}</div>
+              <div class="team-log-graph-axis team-log-graph-axis-end">${escapeHtml(formatTeamLogGraphAxisLabel_(new Date(viewport.endTime).toISOString()))}</div>
+            </div>
+          </div>`
+    : `<div class="team-log-empty">No RPI snapshots found for this graph range.</div>`;
+
+  return `
+        <div class="team-log-graph-shell">
+          <div class="team-log-graph-controls">
+            <div class="team-log-range-bar">${rangeButtons}</div>
+            <div class="team-log-team-selectors">
+              <label class="team-log-graph-select">
+                <span class="team-log-graph-select-label">Class</span>
+                <select class="team-log-class-select" data-team-log-class>
+                  ${classOptions}
+                </select>
+              </label>
+              <label class="team-log-graph-select">
+                <span class="team-log-graph-select-label">Region</span>
+                <select class="team-log-class-select" data-team-log-region>
+                  ${regionOptions}
+                </select>
+              </label>
+              <label class="team-log-graph-select team-log-graph-select-team">
+                <span class="team-log-graph-select-label">Team</span>
+                <span class="team-log-team-search-wrap">
+                  <input
+                    type="text"
+                    class="team-log-team-search"
+                    data-team-log-team-search
+                  value="${escapeHtml(teamLogTeamMenuOpen_ ? teamLogTeamSearch_ : teamLogSelectedTeamLabel_())}"
+                    placeholder="${escapeHtml(teamLogSelectorLoading_ ? 'Loading teams...' : 'Search team')}"
+                    autocomplete="off"
+                    ${teamLogSelectorLoading_ ? 'disabled' : ''}
+                  />
+                  <button type="button" class="team-log-team-toggle" data-team-log-team-toggle aria-label="Toggle team list"${teamLogSelectorLoading_ ? ' disabled' : ''}>
+                    <span aria-hidden="true">&#9662;</span>
+                  </button>
+                </span>
+                <div class="team-log-team-menu${showTeamMenu ? ' is-open' : ''}">
+                  ${teamOptions || `<div class="team-log-team-empty">${escapeHtml(teamLogSelectorLoading_ ? 'Loading teams...' : 'No matching teams')}</div>`}
+                </div>
+              </label>
             </div>
           </div>
+          ${teamLogShowAllTeams_ ? renderTeamLogAllTeamsGraph_() : graphCardHtml}
         </div>`;
-    }
+}
+
+function renderTeamLogAllTeamsGraph_() {
+  if (teamLogGraphAllLoading_) {
+    return `<div class="team-log-empty">Loading team trend lines...</div>`;
+  }
+  const series = Array.isArray(teamLogGraphAllSeries_) ? teamLogGraphAllSeries_ : [];
+  if (!series.length) {
+    return `<div class="team-log-empty">No RPI snapshots found for the selected teams and range.</div>`;
+  }
+  const width = 980;
+  const height = 420;
+  const padTop = 28;
+  const padRight = 110;
+  const padBottom = 48;
+  const padLeft = 42;
+  const plotWidth = width - padLeft - padRight;
+  const plotHeight = height - padTop - padBottom;
+  const points = series.flatMap(item => item.logs.map(log => ({ time: Date.parse(log.fetchedAt), rpi: Number(log.rpi) }))).filter(point => Number.isFinite(point.time) && Number.isFinite(point.rpi));
+  if (!points.length) {
+    return `<div class="team-log-empty">No plottable RPI points found for the selected teams.</div>`;
+  }
+  const minTime = Math.min(...points.map(point => point.time));
+  const maxTime = Math.max(...points.map(point => point.time));
+  const viewport = teamLogGraphViewport_(minTime, maxTime);
+  const anchorPoint = teamLogGraphAnchorPointForAll_();
+  const valueViewport = teamLogGraphValueViewport_(points, viewport, {
+    anchorRpi: anchorPoint?.rpi
+  });
+  const { displayMin, displayMax, valueRange } = valueViewport;
+  const selectedKey = teamLogSelectedTeamKey_ || canonicalTeamName_(teamLogCurrentRow_?.school || '').toLowerCase();
+  const gridLines = Array.from({ length: 4 }, (_, index) => {
+    const ratio = index / 3;
+    const y = padTop + (ratio * plotHeight);
+    const value = displayMax - (ratio * valueRange);
+    return `
+      <g class="team-log-graph-grid-row">
+        <line x1="${padLeft}" y1="${y.toFixed(2)}" x2="${(padLeft + plotWidth).toFixed(2)}" y2="${y.toFixed(2)}" />
+        <text x="10" y="${(y + 4).toFixed(2)}">${escapeHtml(value.toFixed(6))}</text>
+      </g>`;
+  }).join('');
+  const linePaths = series.map(item => {
+    const pts = item.logs.map((log, index) => {
+      const time = Date.parse(log.fetchedAt);
+      const x = padLeft + (((time - viewport.startTime) / Math.max(viewport.visibleSpan, 1)) * plotWidth);
+      const y = padTop + ((displayMax - Number(log.rpi)) / valueRange) * plotHeight;
+      return { ...log, index, x, y };
+    });
+    const path = pts.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ');
+    const key = canonicalTeamName_(item.row?.school || '').toLowerCase();
+    const selected = key === selectedKey;
+    const lastPoint = pts[pts.length - 1];
+    const logoUrl = normalizeDriveImageUrl_(item.row?.mapLogoUrl || item.row?.logoUrl || '');
+    const teamColor = getTeamGraphColor_(item.row?.school, item.row);
+    const clipId = `team-log-clip-${escapeHtml(key.replace(/[^a-z0-9]+/gi, '-'))}`;
+    const logoSize = selected ? 26 : 22;
+    const half = logoSize / 2;
+    const markerHtml = logoUrl && lastPoint ? `
+      <defs>
+        <clipPath id="${clipId}">
+          <rect x="${(lastPoint.x - half).toFixed(2)}" y="${(lastPoint.y - half).toFixed(2)}" width="${logoSize}" height="${logoSize}" rx="7" ry="7"></rect>
+        </clipPath>
+      </defs>
+      <rect class="team-log-graph-logo-bg${selected ? ' is-selected' : ''}" x="${(lastPoint.x - half - 2).toFixed(2)}" y="${(lastPoint.y - half - 2).toFixed(2)}" width="${logoSize + 4}" height="${logoSize + 4}" rx="8" ry="8"></rect>
+      <image href="${escapeHtml(logoUrl)}" xlink:href="${escapeHtml(logoUrl)}" x="${(lastPoint.x - half).toFixed(2)}" y="${(lastPoint.y - half).toFixed(2)}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet" clip-path="url(#${clipId})"></image>`
+      : '';
+    return `
+      <g class="team-log-graph-series${selected ? ' is-selected' : ''}" style="--team-log-series-color:${escapeHtml(teamColor)};">
+        <path class="team-log-graph-multi-line" d="${path}" stroke="${escapeHtml(teamColor)}"></path>
+        ${markerHtml}
+      </g>`;
+  }).join('');
+  const firstTimeLabel = formatTeamLogGraphAxisLabel_(new Date(viewport.startTime).toISOString());
+  const lastTimeLabel = formatTeamLogGraphAxisLabel_(new Date(viewport.endTime).toISOString());
+  return `
+    <div class="team-log-graph-card team-log-graph-card-all">
+      <div class="team-log-graph-meta">
+        <div>
+          <div class="team-log-graph-kicker">RPI TREND</div>
+          <div class="team-log-graph-subtitle">All teams in ${escapeHtml(teamLogSelectorClass_ || classEl?.value || '')}</div>
+        </div>
+        <div class="team-log-graph-change flat">
+          <span>${escapeHtml(String(series.length))}</span>
+          <small>teams plotted</small>
+        </div>
+      </div>
+      <div class="team-log-graph-frame${teamLogGraphZoom_ > 1 ? ' is-pannable' : ''}" data-team-log-pan-area="1">
+        <svg class="team-log-graph-svg team-log-graph-svg-all" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="All teams RPI trend graph">
+          ${gridLines}
+          ${linePaths}
+        </svg>
+        <div class="team-log-graph-axis team-log-graph-axis-start">${escapeHtml(firstTimeLabel)}</div>
+        <div class="team-log-graph-axis team-log-graph-axis-end">${escapeHtml(lastTimeLabel)}</div>
+      </div>
+    </div>`;
+}
+
+function teamLogGraphBodyHtml_(logs) {
+  return teamLogShowAllTeams_ ? renderTeamLogAllTeamsGraph_() : renderTeamLogGraph_(logs);
+}
 
     function renderTeamLogLoading_(row) {
       if (!teamLogContent) return;
       syncTeamLogDateControls_();
       teamLogContent.innerHTML = `
-        <div class="team-schedule-head">
-          <div class="team-schedule-team">
-            ${teamScheduleLogoHtml_(row)}
-            <div>
-              <h2 id="teamLogTitle" class="team-schedule-title">${escapeHtml(row.school || 'Team RPI Log')}</h2>
-              <div class="team-schedule-subtitle">Loading RPI snapshot log</div>
-            </div>
-          </div>
-          ${teamScheduleStatsHtml_(row)}
-        </div>
+        ${teamPanelHeadHtml_({
+          row,
+          titleId: 'teamLogTitle',
+          title: row.school || 'Team RPI Log',
+          subtitleHtml: escapeHtml('Loading RPI snapshot log')
+        })}
         <div class="team-schedule-loading">
           <div>
             <div class="team-schedule-spinner" aria-hidden="true"></div>
@@ -1487,114 +2347,35 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       if (!teamLogContent) return;
       syncTeamLogDateControls_();
       teamLogContent.innerHTML = `
-        <div class="team-schedule-head">
-          <div class="team-schedule-team">
-            ${teamScheduleLogoHtml_(row)}
-            <div>
-              <h2 id="teamLogTitle" class="team-schedule-title">${escapeHtml(row.school || 'Team RPI Log')}</h2>
-              <div class="team-schedule-subtitle">RPI log unavailable</div>
-            </div>
-          </div>
-          ${teamScheduleStatsHtml_(row)}
-        </div>
+        ${teamPanelHeadHtml_({
+          row,
+          titleId: 'teamLogTitle',
+          title: row.school || 'Team RPI Log',
+          subtitleHtml: escapeHtml('RPI log unavailable')
+        })}
         <div class="team-log-empty">
           Could not load this team RPI log.<br>${escapeHtml(err?.message || String(err || ''))}
         </div>`;
       armImageFallbacks_(teamLogContent);
     }
 
-    function renderTeamLog_() {
-      const row = teamLogCurrentRow_ || {};
-      const result = teamLogCurrentResult_ || {};
-      if (!teamLogContent) return;
-      const allLogs = normalizeTeamLogEntries_(teamLogCurrentResult_?.logs || []);
-      const logs = filteredTeamLogEntries_();
-      const seasonYear = String(result?.seasonYear || selectedRpiYear_() || 'live').trim();
-      const toolbarLabel = seasonYear === 'live' ? 'Live RPI snapshot history' : `${seasonYear} RPI snapshot history`;
-      const toolbarDate = teamLogDisplayDate_(teamLogSelectedDate_);
-      syncTeamLogDateControls_();
-      const rowsHtml = logs.map(log => `
-        <tr>
-          <td class="team-log-timestamp-cell">${teamLogTimestampHtml_(log.fetchedAt)}</td>
-          <td>${formatTeamLogRankChange_(log.rankChange)}</td>
-          <td><span class="team-log-rank-pill">#${escapeHtml(log.rank ?? '-')}</span></td>
-          <td><span class="team-log-rpi-pill">${escapeHtml(log.record || '-')}</span></td>
-          <td><span class="team-log-rpi-pill">${escapeHtml(log.wp || '-')}</span></td>
-          <td><span class="team-log-rpi-pill">${escapeHtml(log.owp || '-')}</span></td>
-          <td><span class="team-log-rpi-pill">${escapeHtml(log.oowp || '-')}</span></td>
-          <td><span class="team-log-rpi-pill">${escapeHtml(typeof log.rpi === 'number' ? log.rpi.toFixed(6) : (log.rpi || '-'))}</span></td>
-          <td>${formatTeamLogRpiChange_(log.rpiChange)}</td>
-        </tr>
-      `).join('');
-
-      teamLogContent.innerHTML = `
-        <div class="team-schedule-head">
-          <div class="team-schedule-team">
-            ${teamScheduleLogoHtml_(row)}
-            <div class="team-log-title-wrap">
-              <div class="team-log-title-row">
-                <h2 id="teamLogTitle" class="team-schedule-title">${escapeHtml(row.school || 'Team RPI Log')}</h2>
-                <div class="team-log-inline-actions">
-                  <button type="button" class="team-log-inline-btn team-log-inline-calendar-btn" aria-label="Choose team log date" title="Choose team log date">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                      <path d="M7 2v3M17 2v3M3.5 9.5h17M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18V7A1.5 1.5 0 0 1 5 5.5Z" />
-                      <path d="M8 13h3M8 16h3M13 13h3M13 16h3" />
-                    </svg>
-                  </button>
-                  <button type="button" class="team-log-inline-btn team-log-inline-view-btn${teamLogViewMode_ === 'graph' ? ' is-graph-view' : ''}" aria-label="${escapeHtml(teamLogViewMode_ === 'graph' ? 'Show team RPI log table' : 'Show team RPI graph')}" title="${escapeHtml(teamLogViewMode_ === 'graph' ? 'Show team RPI log table' : 'Show team RPI graph')}">
-                    ${teamLogViewIconSvg_(teamLogViewMode_)}
-                  </button>
-                </div>
-              </div>
-              <div class="team-schedule-subtitle"><span>${escapeHtml(toolbarLabel)}</span><span>${escapeHtml(result?.sport || sportEl?.value || '')} ${escapeHtml(result?.classification || classEl?.value || '')}</span></div>
-            </div>
-          </div>
-          ${teamScheduleStatsHtml_(row)}
-        </div>
-        <div class="team-log-body">
-          <div class="team-log-toolbar">
-            <span>${escapeHtml(String(logs.length))} snapshot${logs.length === 1 ? '' : 's'} found</span>
-            <span>${escapeHtml(toolbarDate)}</span>
-          </div>
-          ${rowsHtml ? `
-            <div class="team-log-table-wrap">
-              <table class="team-log-table">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>▲/▼</th>
-                    <th>Rank</th>
-                    <th>Record</th>
-                    <th>WP</th>
-                    <th>OWP</th>
-                    <th>OOWP</th>
-                    <th>RPI</th>
-                    <th>+/-</th>
-                  </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-              </table>
-            </div>
-          ` : `<div class="team-log-empty">${escapeHtml(allLogs.length ? 'No RPI snapshots found for the selected day.' : 'No RPI snapshots found for this team yet.')}</div>`}
-        </div>`;
-      armImageFallbacks_(teamLogContent);
-    }
-
-    function renderTeamLog_() {
+        function renderTeamLog_() {
       const row = teamLogCurrentRow_ || {};
       const result = teamLogCurrentResult_ || {};
       if (!teamLogContent) return;
       const allLogs = normalizeTeamLogEntries_(teamLogCurrentResult_?.logs || []);
       const logs = filteredTeamLogEntries_();
       const graphLogs = filteredTeamLogGraphEntries_();
+      const rangeMeta = TEAM_LOG_GRAPH_RANGES_.find(item => item.key === teamLogRange_) || TEAM_LOG_GRAPH_RANGES_[TEAM_LOG_GRAPH_RANGES_.length - 1];
       const seasonYear = String(result?.seasonYear || selectedRpiYear_() || 'live').trim();
       const toolbarLabel = seasonYear === 'live' ? 'Live RPI snapshot history' : `${seasonYear} RPI snapshot history`;
       const toolbarDate = teamLogViewMode_ === 'graph'
-        ? `${teamLogDisplayDate_(teamLogSelectedDate_)} • ${teamLogRange_}`
+        ? `${teamLogDisplayDate_(teamLogSelectedDate_)} | ${rangeMeta.label}`
         : teamLogDisplayDate_(teamLogSelectedDate_);
       syncTeamLogDateControls_();
       const toolbarDateDisplay = String(toolbarDate).replace(/[^ -~]/g, '|').replace(/\|\|+/g, '|');
       const toolbarDateHtml = teamLogToolbarDateHtml_(toolbarDateDisplay);
+      const toolbarActionsHtml = teamLogToolbarActionsHtml_();
       const useMobileLogList = teamLogViewMode_ === 'table' && isMobileViewport_();
       const rowsHtml = logs.map(log => {
         const rankChange = Number(log.rankChange);
@@ -1617,34 +2398,19 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       }).join('');
 
       teamLogContent.innerHTML = `
-        <div class="team-schedule-head">
-          <div class="team-schedule-team">
-            ${teamScheduleLogoHtml_(row)}
-            <div class="team-log-title-wrap">
-              <div class="team-log-title-row">
-                <div class="team-log-heading-copy">
-                  <h2 id="teamLogTitle" class="team-schedule-title">${escapeHtml(row.school || 'Team RPI Log')}</h2>
-                  <div class="team-schedule-subtitle"><span>${escapeHtml(toolbarLabel)}</span><span>${escapeHtml(result?.sport || sportEl?.value || '')} ${escapeHtml(result?.classification || classEl?.value || '')}</span></div>
-                </div>
-                <div class="team-log-inline-actions">
-                  <button type="button" class="team-log-inline-btn team-log-inline-calendar-btn" aria-label="Choose team log date" title="Choose team log date">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                      <path d="M7 2v3M17 2v3M3.5 9.5h17M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18V7A1.5 1.5 0 0 1 5 5.5Z" />
-                      <path d="M8 13h3M8 16h3M13 13h3M13 16h3" />
-                    </svg>
-                  </button>
-                  <button type="button" class="team-log-inline-btn team-log-inline-view-btn${teamLogViewMode_ === 'graph' ? ' is-graph-view' : ''}" aria-label="${escapeHtml(teamLogViewMode_ === 'graph' ? 'Show team RPI log table' : 'Show team RPI graph')}" title="${escapeHtml(teamLogViewMode_ === 'graph' ? 'Show team RPI log table' : 'Show team RPI graph')}">
-                    ${teamLogViewIconSvg_(teamLogViewMode_)}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          ${teamScheduleStatsHtml_(row)}
-        </div>
+        ${teamPanelHeadHtml_({
+          row,
+          titleId: 'teamLogTitle',
+          title: row.school || 'Team RPI Log',
+          subtitleHtml: `<span>${escapeHtml(toolbarLabel)}</span><span>${escapeHtml(result?.sport || sportEl?.value || '')} ${escapeHtml(result?.classification || classEl?.value || '')}</span>`,
+          actionsHtml: teamLogInlineActionButtonsHtml_(),
+          wrapClass: 'team-log-title-wrap',
+          copyClass: 'team-log-heading-copy'
+        })}
         <div class="team-log-body">
           <div class="team-log-toolbar">
             ${toolbarDateHtml}
+            ${toolbarActionsHtml}
           </div>
           ${teamLogViewMode_ === 'graph'
             ? renderTeamLogGraph_(graphLogs)
@@ -1685,55 +2451,110 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       armImageFallbacks_(teamLogContent);
     }
 
-    async function openTeamLogCard_(row) {
-      if (!row?.school || !teamLogOverlay || !teamLogContent) return;
-      closeTeamScheduleCard_();
-      teamLogCurrentRow_ = row;
-      teamLogCurrentResult_ = null;
-      teamLogSelectedDate_ = '';
-      teamLogExpandedEntryKey_ = '';
-      teamLogViewMode_ = 'table';
-      teamLogRange_ = '1D';
-      syncTeamLogDateControls_();
-      const token = ++teamLogRequestToken_;
-      teamLogOverlay.classList.add('open');
-      teamLogOverlay.setAttribute('aria-hidden', 'false');
-      renderTeamLogLoading_(row);
+async function openTeamLogCard_(row, options = {}) {
+  if (!row?.school || !teamLogOverlay || !teamLogContent) return;
+  closeTeamScheduleCard_();
+  const nextClassification = options.classification || row?.classification || classEl?.value || '';
+  const nextSport = options.sport || row?.sport || sportEl?.value || '';
+  teamLogCurrentRow_ = { ...row, classification: nextClassification, sport: nextSport };
+  teamLogCurrentResult_ = null;
+  teamLogSelectedDate_ = '';
+  teamLogExpandedEntryKey_ = '';
+  teamLogViewMode_ = 'graph';
+  teamLogRange_ = 'ALL';
+  teamLogGraphZoom_ = 1;
+  teamLogGraphPanX_ = 0;
+  teamLogGraphPanY_ = 0;
+  if (!options.preserveSelectorState) {
+    teamLogSelectorClass_ = nextClassification || classEl?.value || '';
+    teamLogTeamSearch_ = '';
+    teamLogSelectorRows_ = [];
+    teamLogSelectorLoading_ = false;
+    teamLogTeamMenuOpen_ = false;
+    teamLogShowAllTeams_ = false;
+  } else {
+    teamLogSelectorClass_ = teamLogSelectorClass_ || nextClassification || classEl?.value || '';
+    teamLogTeamSearch_ = '';
+    teamLogTeamMenuOpen_ = false;
+    if (!options.keepAllTeams) teamLogShowAllTeams_ = false;
+  }
+  teamLogSelectedTeamKey_ = canonicalTeamName_(row?.school || '').toLowerCase();
+  syncTeamLogDateControls_();
+  const token = ++teamLogRequestToken_;
+  teamLogOverlay.classList.add('open');
+  teamLogOverlay.setAttribute('aria-hidden', 'false');
+  renderTeamLogLoading_(teamLogCurrentRow_);
 
-      try {
-        const result = await fetchTeamRpiLog_(row);
-        if (token !== teamLogRequestToken_) return;
-        teamLogCurrentResult_ = { ...result, logs: normalizeTeamLogEntries_(result?.logs || []) };
-        teamLogSelectedDate_ = teamLogAvailableDates_()[0] || '';
-        renderTeamLog_();
-      } catch (err) {
-        if (token !== teamLogRequestToken_) return;
-        console.warn('Team RPI log unavailable:', err);
-        renderTeamLogError_(row, err);
-      }
+  try {
+    const result = await fetchTeamRpiLog_(teamLogCurrentRow_, {
+      classification: nextClassification,
+      sport: nextSport
+    });
+    if (token !== teamLogRequestToken_) return;
+    teamLogCurrentResult_ = {
+      ...result,
+      classification: nextClassification,
+      sport: nextSport,
+      logs: normalizeTeamLogEntries_(result?.logs || [])
+    };
+    teamLogSelectedDate_ = teamLogAvailableDates_()[0] || '';
+    renderTeamLog_();
+    if (!options.preserveSelectorState || !teamLogSelectorRows_.length) {
+      ensureTeamLogSelectorRows_(teamLogSelectorClass_);
     }
+    if (teamLogShowAllTeams_) {
+      ensureTeamLogAllSeries_();
+    }
+  } catch (err) {
+    if (token !== teamLogRequestToken_) return;
+    console.warn('Team RPI log unavailable:', err);
+    renderTeamLogError_(teamLogCurrentRow_, err);
+  }
+}
 
-    function applyTeamLogDateSelection_(value) {
-      if (!teamLogCurrentResult_) return;
-      const dates = teamLogAvailableDates_();
-      teamLogSelectedDate_ = dates.includes(value) ? value : (dates[0] || '');
-      teamLogExpandedEntryKey_ = '';
-      renderTeamLog_();
-    }
+function applyTeamLogDateSelection_(value) {
+  if (!teamLogCurrentResult_) return;
+  const dates = teamLogAvailableDates_();
+  teamLogSelectedDate_ = dates.includes(value) ? value : (dates[0] || '');
+  teamLogExpandedEntryKey_ = '';
+  teamLogGraphZoom_ = 1;
+  teamLogGraphPanX_ = 0;
+  teamLogGraphPanY_ = 0;
+  if (teamLogViewMode_ === 'graph' && teamLogShowAllTeams_) {
+    ensureTeamLogAllSeries_();
+    return;
+  }
+  renderTeamLog_();
+}
 
-    function toggleTeamLogView_() {
-      if (!normalizeTeamLogEntries_(teamLogCurrentResult_?.logs || []).length) return;
-      teamLogViewMode_ = teamLogViewMode_ === 'graph' ? 'table' : 'graph';
-      if (teamLogViewMode_ === 'graph') teamLogExpandedEntryKey_ = '';
-      renderTeamLog_();
-    }
+function toggleTeamLogView_() {
+  if (!normalizeTeamLogEntries_(teamLogCurrentResult_?.logs || []).length) return;
+  teamLogViewMode_ = teamLogViewMode_ === 'graph' ? 'table' : 'graph';
+  if (teamLogViewMode_ === 'graph') teamLogExpandedEntryKey_ = '';
+  if (teamLogViewMode_ === 'graph' && teamLogShowAllTeams_) {
+    ensureTeamLogAllSeries_();
+    return;
+  }
+  renderTeamLog_();
+}
 
-    function applyTeamLogRangeSelection_(value) {
-      const next = TEAM_LOG_GRAPH_RANGES_.find(item => item.key === value);
-      if (!next) return;
-      teamLogRange_ = next.key;
-      if (teamLogViewMode_ === 'graph') renderTeamLog_();
-    }
+function applyTeamLogRangeSelection_(value) {
+  const next = TEAM_LOG_GRAPH_RANGES_.find(item => item.key === value);
+  if (!next) return;
+  teamLogRange_ = next.key;
+  teamLogGraphZoom_ = 1;
+  teamLogGraphPanX_ = 0;
+  teamLogGraphPanY_ = 0;
+  if (teamLogViewMode_ === 'graph' && teamLogShowAllTeams_) {
+    ensureTeamLogAllSeries_();
+    return;
+  }
+  if (teamLogViewMode_ === 'graph') renderTeamLog_();
+}
+
+// ============================================================================
+// 6. Team identity, logo, color, and canonical-name lookup helpers
+// ============================================================================
 
     function escapeRegex_(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
@@ -1837,6 +2658,10 @@ function setEastWestMapSportPickerOpen_(isOpen) {
         return team && !optedOut.has(team);
       });
     }
+
+    // ============================================================================
+    // 7. Data loading, parsing, and live/fallback RPI source helpers
+    // ============================================================================
 
     // TeamDetails loading plus live/fallback RPI data sources.
     async function fetchTeamDetailsMap_() {
@@ -2684,6 +3509,10 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       const value = Math.floor(Number(playoffTeamLimit?.value || 0));
       return Number.isFinite(value) && value > 0 ? value : 0;
     }
+    // ============================================================================
+    // 8. Standings, East/West split, bracket math, and board header helpers
+    // ============================================================================
+
     // Standings, East/West split, and playoff bracket calculations.
     function playoffEligibleCap_(classification) { return playoffTeamLimitOverride_() || (is8AClassification_(classification) ? 24 : 48); }
     function nextBracketSize_(teamCount) {
@@ -2776,6 +3605,10 @@ function setEastWestMapSportPickerOpen_(isOpen) {
           </div>
         </div>`;
     }
+
+    // ============================================================================
+    // 9. East/West map geometry, marker placement, and interaction helpers
+    // ============================================================================
 
     // East/West map geometry, marker placement, and map interactions.
     function mapLongitude_(value) {
@@ -4437,6 +5270,10 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       });
     }
 
+    // ============================================================================
+    // 10. Table and board rendering
+    // ============================================================================
+
     function renderRows(rows) {
       const hasDetailedStats = rpiResultHasDetailedStats_(rows);
       const showChanges = rowsHaveLiveChanges_(rows);
@@ -4753,8 +5590,12 @@ function setEastWestMapSportPickerOpen_(isOpen) {
 
     function getTeamDetailsMapCached_() {
       if (!teamDetailsMapPromise_) {
-        teamDetailsMapPromise_ = fetchTeamDetailsMap_().catch(err => {
+        teamDetailsMapPromise_ = fetchTeamDetailsMap_().then(map => {
+          teamDetailsMapResolved_ = map;
+          return map;
+        }).catch(err => {
           teamDetailsMapPromise_ = null;
+          teamDetailsMapResolved_ = null;
           throw err;
         });
       }
@@ -4873,9 +5714,10 @@ function setEastWestMapSportPickerOpen_(isOpen) {
     ];
     const MAX_EXPORT_RENDER_CONCURRENCY_ = 3;
     let exportPreviewClassesTouched_ = false;
-    let exportPreviewSportTouched_ = false;
-    let teamDetailsMapPromise_ = null;
-    let eastWestLineMapState_ = null;
+let exportPreviewSportTouched_ = false;
+let teamDetailsMapPromise_ = null;
+let teamDetailsMapResolved_ = null;
+let eastWestLineMapState_ = null;
     let ncBoundaryPromise_ = null;
     let ncCountyBoundariesPromise_ = null;
     const EAST_WEST_MAP_MIN_SCALE_ = 1;
@@ -5382,6 +6224,10 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       setExportPreviewStatus_('Choose classes and view type, then click Build Exports.');
     }
 
+    // ============================================================================
+    // 11. Export preview generation and PNG export helpers
+    // ============================================================================
+
     // Export preview generation and PNG export helpers.
     async function buildExportPreview_() {
       const originalMode =
@@ -5583,6 +6429,10 @@ function setEastWestMapSportPickerOpen_(isOpen) {
         setBoardActionsDisabled_(false, [buildExportPreviewBtn]);
       }
     }
+
+    // ============================================================================
+    // 12. Primary board loading and view refresh entrypoints
+    // ============================================================================
 
     async function loadRankings() {
       setBoardActionsDisabled_(true);

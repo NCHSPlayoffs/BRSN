@@ -1,7 +1,29 @@
+/* ==========================================================================
+   Layout Variables
+   ========================================================================== */
+
+:root {
+  --space-page-pad-desktop: var(--space-9);
+  --space-board-pad-desktop: var(--space-card-pad);
+  --space-board-gap-desktop: var(--space-section-gap);
+  --space-control-pad-x: var(--space-5);
+  --space-control-pad-y: 0;
+  --space-toolbar-pad-x: var(--space-card-pad-lg);
+  --space-toolbar-pad-y: var(--export-toolbar-pad-y);
+  --table-pill-width-default: var(--table-pill-width);
+  --table-logo-gap-default: var(--table-logo-gap);
+  --size-board-logo-wide: var(--size-logo-wide);
+  --size-board-logo-wide-h: var(--size-logo-wide-h);
+}
+
+/* ==========================================================================
+   Shared Components
+   ========================================================================== */
+
 .hero,
     .table-card {
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      border: var(--border-line-soft);
+      border-radius: var(--radius-card);
       background: var(--card-bg);
     }
 
@@ -38,11 +60,11 @@
       display: grid;
       grid-template-columns: 34px minmax(0, auto);
       align-items: center;
-      gap: 12px;
+      gap: var(--space-control-gap);
       min-width: min(360px, 90vw);
-      padding: 14px 16px;
+      padding: var(--space-6) var(--space-7);
       border: 1px solid rgba(255,255,255,0.16);
-      border-radius: 8px;
+      border-radius: var(--radius-card);
       background:
         linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03)),
         rgba(7,10,18,0.84);
@@ -85,9 +107,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      padding: 18px 22px 16px;
-      border-bottom: 1px solid var(--line);
+      gap: var(--space-7);
+      padding: var(--space-card-pad) var(--space-card-pad-lg) var(--space-card-pad-sm);
+      border-bottom: var(--border-line-soft);
       background: var(--hero-top-bg);
     }
 
@@ -114,7 +136,7 @@
     .hero-brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--space-control-gap);
       min-width: 0;
     }
 
@@ -619,9 +641,13 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
     }
 
+/* ==========================================================================
+   Buttons / Selectors / Controls
+   ========================================================================== */
+
     label {
       display: block;
-      margin-bottom: 6px;
+      margin-bottom: var(--space-2);
       font-size: 13px;
       font-weight: 800;
       letter-spacing: 0.14em;
@@ -632,8 +658,8 @@
     select,
     button {
       width: 100%;
-      height: 46px;
-      padding: 0 12px;
+      height: var(--size-control-height);
+      padding: var(--space-control-pad-y) var(--space-control-pad-x);
       border-radius: 4px;
       font-size: 18px;
       font-weight: 700;
@@ -661,11 +687,7 @@
   justify-content: center;
 }
 
-.sport-picker {
-  position: relative;
-  width: 100%;
-}
-
+.sport-picker,
 .class-picker {
   position: relative;
   width: 100%;
@@ -678,24 +700,28 @@
   pointer-events: none !important;
 }
 
-.sport-picker-btn {
+.sport-picker-btn,
+.class-picker-btn {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) 16px;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-4);
   width: 100%;
-  height: 46px;
-  padding: 0 12px;
-  border: 1px solid var(--line-strong);
+  height: var(--size-control-height);
+  padding: var(--space-control-pad-y) var(--space-control-pad-x);
+  border: var(--border-line-strong);
   border-radius: 4px;
-  background: var(--control-bg);
-  color: var(--text);
   text-align: left;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
+}
+
+.sport-picker-btn {
+  background: var(--control-bg);
+  color: var(--text);
 }
 
 .sport-picker-btn:hover {
@@ -718,24 +744,6 @@
   background: linear-gradient(180deg, #ffdfdf 0%, #bababa 100%);
   color: #120405;
   box-shadow: 0 8px 22px rgba(0,0,0,0.22);
-}
-
-.class-picker-btn {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 16px;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  height: 46px;
-  padding: 0 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  text-align: left;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  cursor: pointer;
 }
 
 .class-picker-btn::before {
@@ -771,7 +779,8 @@
   opacity: 0.85;
 }
 
-.sport-picker-menu {
+.sport-picker-menu,
+.class-picker-menu {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -790,23 +799,6 @@
 
 .sport-picker-menu[hidden] {
   display: none;
-}
-
-.class-picker-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 200;
-  display: grid;
-  gap: 2px;
-  padding: 6px;
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
-    var(--control-bg);
-  box-shadow: 0 16px 34px rgba(0,0,0,0.32);
 }
 
 .class-picker-menu[hidden] {
@@ -998,6 +990,10 @@
       align-items: center;
     }
 
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
     .status {
       font-size: 13px;
       font-weight: 700;
@@ -1012,20 +1008,24 @@
       color: #edf3ff;
     }
 
-    .table-card { margin-top: 18px; }
+    .table-card { margin-top: var(--space-section-gap); }
+
+/* ==========================================================================
+   East / West Line Styles
+   ========================================================================== */
 
     .east-west-line-board {
-      padding: 18px;
+      padding: var(--space-board-pad-desktop);
       background:
         linear-gradient(90deg, rgba(31,120,255,0.08) 0%, rgba(255,255,255,0.02) 48%, rgba(255,47,58,0.08) 100%),
         rgba(255,255,255,0.01);
     }
 
     .east-west-line-header {
-      padding: 18px 18px 14px;
+      padding: var(--space-board-pad-desktop) var(--space-board-pad-desktop) var(--space-6);
       border: 1px solid rgba(255,255,255,0.08);
       border-bottom: none;
-      border-radius: 8px 8px 0 0;
+      border-radius: var(--radius-card) var(--radius-card) 0 0;
       background: var(--playoff-header-bg);
       text-align: center;
     }
@@ -1034,7 +1034,7 @@
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      gap: 16px;
+      gap: var(--space-card-pad-sm);
     }
 
     .east-west-line-title {
@@ -1084,10 +1084,15 @@
       color: var(--muted);
     }
 
+/* ==========================================================================
+   Table Column Sizing Controls
+   ========================================================================== */
+
     /* Adjustable table columns
        Give each visible column a matching <col class="col-*"> and [data-col="*"].
        That keeps header alignment tied to the same named column as the body cell,
        which is much safer than nth-child once mobile-only cells get hidden on desktop. */
+    /* Shared adjustable table alignment helpers */
     .adjustable-column-table :is(th, td)[data-col].is-centered {
       text-align: center;
     }
@@ -1095,6 +1100,31 @@
     .adjustable-column-table :is(th, td)[data-col="school"],
     .adjustable-column-table :is(th, td)[data-col="team"] {
       text-align: left;
+    }
+
+    /* Desktop standings table tuning
+       Singular / all-teams board tables:
+       - --desk-table-cell-pad-x / --desk-table-cell-pad-y
+       - --desk-table-rank-width
+       - --desk-table-team-min-width / --desk-table-team-gap
+       - --desk-table-logo-height / --desk-table-logo-placeholder-width
+       - --desk-table-stat-min-height / --desk-table-stat-pad-x
+       - --desk-table-rpi-pad-x
+       - --desk-table-change-min-width / --desk-table-change-min-height */
+    .table-scroll > table {
+      --desk-table-cell-pad-x: 4px;
+      --desk-table-cell-pad-y: 12px;
+      --desk-table-rank-width: 68px;
+      --desk-table-team-min-width: 390px;
+      --desk-table-team-gap: var(--table-logo-gap-default);
+      --desk-table-logo-height: 50px;
+      --desk-table-logo-placeholder-width: 144px;
+      --desk-table-stat-min-height: 34px;
+      --desk-table-stat-pad-x: 10px;
+      --desk-table-rpi-pad-x: 12px;
+      --desk-table-change-min-width: 56px;
+      --desk-table-change-min-height: 26px;
+      --desk-table-pill-radius: var(--radius-pill);
     }
 
     /* East/West line column tuning
@@ -1105,11 +1135,13 @@
        - --ew-stat-pill-width changes the pills inside those columns together
        Individual columns:
        - --ew-rank-col-width
-       - --ew-longitude-col-width
+        - --ew-longitude-col-width
        - --ew-rpi-col-width
        - --ew-record-col-width
        - --ew-region-col-width
-       - --ew-team-gap changes the logo-to-text gap in the team column */
+       - --ew-team-gap changes the logo-to-text gap in the team column
+       - --ew-logo-width / --ew-logo-height
+       - --ew-region-pill-width */
 .east-west-line-table {
   --ew-col-pad-x: 9px;
   --ew-col-pad-y: 16px;
@@ -1120,8 +1152,11 @@
   --ew-record-col-width: 300px;
   --ew-region-col-width: 300px;
   --ew-stat-pill-width: 150px;
-  --ew-team-gap: 8px;
+  --ew-team-gap: var(--table-logo-gap-default);
   --ew-team-min-width: 390px;
+  --ew-logo-width: 52px;
+  --ew-logo-height: 34px;
+  --ew-region-pill-width: 72px;
 
       table-layout: fixed;
       border: 1px solid rgba(255,255,255,0.08);
@@ -1179,6 +1214,31 @@
       padding-left: 8px;
       padding-right: 8px;
       box-sizing: border-box;
+    }
+
+    /* Playoff bracket sizing (desktop)
+       - --bracket-column-gap
+       - --bracket-slot-height / --bracket-slot-pad-x / --bracket-slot-pad-y
+       - --bracket-game-box-height
+       - --bracket-seed-size
+       - --bracket-team-gap
+       - --bracket-team-logo-width / --bracket-team-logo-height
+       - --bracket-team-placeholder-width / --bracket-team-placeholder-height
+       - --bracket-copy-offset */
+    .playoff-board,
+    .bracket-region {
+      --bracket-column-gap: 18px;
+      --bracket-slot-height: 220px;
+      --bracket-slot-pad-y: 20px;
+      --bracket-slot-pad-x: 5px;
+      --bracket-game-box-height: 56px;
+      --bracket-seed-size: 30px;
+      --bracket-team-gap: 12px;
+      --bracket-team-logo-width: 80px;
+      --bracket-team-logo-height: 45px;
+      --bracket-team-placeholder-width: 54px;
+      --bracket-team-placeholder-height: 44px;
+      --bracket-copy-offset: 24px;
     }
 
     .east-west-line-section-row td {
@@ -1245,7 +1305,7 @@
 
     .east-west-line-school {
       display: grid;
-      grid-template-columns: 52px minmax(0, 1fr);
+      grid-template-columns: var(--ew-logo-width) minmax(0, 1fr);
       gap: 10px;
       align-items: center;
       min-width: 0;
@@ -1253,8 +1313,8 @@
 
     .east-west-line-logo,
     .east-west-line-logo-placeholder {
-      width: 52px;
-      height: 34px;
+      width: var(--ew-logo-width);
+      height: var(--ew-logo-height);
       border-radius: 5px;
     }
 
@@ -1279,7 +1339,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 72px;
+      min-width: var(--ew-region-pill-width);
       height: 26px;
       padding: 0 10px;
       border-radius: 6px;
@@ -1384,6 +1444,10 @@
       border-bottom: none;
     }
 
+/* ==========================================================================
+   East / West Map Styles
+   ========================================================================== */
+
     .east-west-map-overlay {
       position: fixed;
       inset: 0;
@@ -1403,8 +1467,8 @@
       position: relative;
       display: grid;
       grid-template-rows: auto auto minmax(0, 1fr);
-      width: min(1500px, 96vw);
-      height: min(900px, 92vh);
+      width: min(2000px, 96vw);
+      height: min(1300px, 92vh);
       min-height: 0;
       padding: 35px;
       border: 1px solid var(--line-strong);
@@ -2341,23 +2405,27 @@
 
     
 
+/* ==========================================================================
+   Region Standings Styles
+   ========================================================================== */
+
     .region-split {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      padding: 18px;
+      gap: var(--space-board-gap-desktop);
+      padding: var(--space-board-pad-desktop);
     }
 
     .region-panel {
       min-width: 0;
       border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 8px;
+      border-radius: var(--radius-card);
       overflow: hidden;
       background: rgba(255,255,255,0.02);
     }
 
     .region-title {
-      padding: 14px 16px;
+      padding: var(--space-6) var(--space-7);
       font-size: 34px;
       font-weight: 900;
       letter-spacing: 0.04em;
@@ -2380,7 +2448,9 @@
        - --region-rank-col-width
        - --region-record-col-width
        - --region-rpi-col-width
-       - --region-school-gap changes the logo-to-text gap in the school column */
+       - --region-school-gap changes the logo-to-text gap in the school column
+       - --region-row-height / --region-school-height
+       - --region-logo-height */
     .region-rankings-table {
       --region-col-pad-x: 6px;
       --region-col-pad-y: 5px;
@@ -2390,6 +2460,9 @@
       --region-rpi-col-width: var(--region-data-col-width);
       --region-data-pill-width: 122px;
       --region-school-gap: 8px;
+      --region-row-height: 76px;
+      --region-school-height: 67px;
+      --region-logo-height: 50px;
       table-layout: fixed;
       width: 100%;
     }
@@ -2435,11 +2508,11 @@
     }
 
     .region-rankings-table tbody tr {
-      height: 76px;
+      height: var(--region-row-height);
     }
 
     .region-rankings-table tbody td {
-      height: 76px;
+      height: var(--region-row-height);
       padding-top: 5px;
       padding-bottom: 5px;
       overflow: hidden;
@@ -2447,19 +2520,19 @@
 
     .region-rankings-table .school {
       min-width: 0;
-      height: 67px;
+      height: var(--region-school-height);
       overflow: hidden;
     }
 
     .region-rankings-table .logo,
     .region-rankings-table .logo-placeholder {
      
-      height: 50px;
+      height: var(--region-logo-height);
     }
 
     .region-rankings-table .team-meta {
       gap: 2px;
-      max-height: 67px;
+      max-height: var(--region-school-height);
       overflow: hidden;
     }
 
@@ -2478,10 +2551,14 @@
       text-overflow: ellipsis;
     }
 
-    .playoff-board { padding: 18px; }
+/* ==========================================================================
+   Playoff Board Styles
+   ========================================================================== */
+
+    .playoff-board { padding: var(--space-board-pad-desktop); }
 
     .region-standings-board {
-      padding: 18px;
+      padding: var(--space-board-pad-desktop);
     }
 
     .region-standings-board .region-split {
@@ -2494,10 +2571,10 @@
     }
 
     .playoff-header {
-      margin-bottom: 18px;
-      padding: 16px 18px;
+      margin-bottom: var(--space-section-gap);
+      padding: var(--space-card-pad-sm) var(--space-board-pad-desktop);
       border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 8px;
+      border-radius: var(--radius-card);
       background:
         linear-gradient(90deg, rgba(255,47,58,0.34) 0%, rgba(255,47,58,0.12) 30%, rgba(31,120,255,0.12) 70%, rgba(31,120,255,0.34) 100%),
         linear-gradient(180deg, #121d31 0%, #0e1829 100%);
@@ -2540,7 +2617,7 @@
     .playoff-regions {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 18px;
+      gap: var(--bracket-column-gap);
     }
 
     .bracket-region {
@@ -2604,8 +2681,8 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-      height: 220px;
-      padding: 20px 5px;
+      height: var(--bracket-slot-height);
+      padding: var(--bracket-slot-pad-y) var(--bracket-slot-pad-x);
     }
 
     .game-stack {
@@ -2619,7 +2696,7 @@
     }
 
     .game-box {
-      height: 56px;
+      height: var(--bracket-game-box-height);
       padding: 6px 12px;
       background: transparent;
       display: flex;
@@ -2685,32 +2762,32 @@
 
     .team-card {
       display: grid;
-      grid-template-columns: 30px 54px minmax(0, 1fr);
-      gap: 12px;
+      grid-template-columns: var(--bracket-seed-size) var(--bracket-team-placeholder-width) minmax(0, 1fr);
+      gap: var(--bracket-team-gap);
       align-items: center;
       width: 100%;
       min-width: 0;
     }
 
-    .team-seed {
+.team-seed {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: var(--bracket-seed-size);
+  height: var(--bracket-seed-size);
   font-size: 19px;
   font-weight: 900;
   text-align: center;
   color: #ffffff;
   border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
+  border-radius: var(--radius-button);
   background: rgb(35, 35, 35);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.81);
 }
 
     .team-logo {
-      width: 80px;
-      height: 45px;
+      width: var(--bracket-team-logo-width);
+      height: var(--bracket-team-logo-height);
       object-fit: contain;
       object-position: center;
       display: block;
@@ -2719,8 +2796,8 @@
     }
 
     .team-logo-placeholder {
-      width: 54px;
-      height: 44px;
+      width: var(--bracket-team-placeholder-width);
+      height: var(--bracket-team-placeholder-height);
       border-radius: 4px;
       background: rgba(255,255,255,0.02);
     }
@@ -2731,7 +2808,7 @@
       flex-direction: column;
       justify-content: center;
       gap: 2px;
-      margin-left: 24px;
+      margin-left: var(--bracket-copy-offset);
     }
 
     .team-copy-stats {
@@ -2773,7 +2850,7 @@
 
     th,
     td {
-      padding: 12px 4px;
+      padding: var(--desk-table-cell-pad-y) var(--desk-table-cell-pad-x);
       border-bottom: 1px solid rgba(255,255,255,0.07);
       text-align: left;
       vertical-align: middle;
@@ -2794,7 +2871,7 @@
     body.playoff-mode tbody tr:hover { background: inherit; }
 
     .rank {
-      width: 68px;
+      width: var(--desk-table-rank-width);
       text-align: center;
       font-size: 25px;
       font-weight: 900;
@@ -2805,13 +2882,13 @@
     .school {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr);
-      gap: 8px;
+      gap: var(--desk-table-team-gap);
       align-items: center;
-      min-width: 390px;
+      min-width: var(--desk-table-team-min-width);
     }
 
     .logo {
-      height: 50px;
+      height: var(--desk-table-logo-height);
       object-fit: contain;
       object-position: center;
       display: block;
@@ -2822,8 +2899,8 @@
     }
 
     .logo-placeholder {
-      width: 144px;
-      height: 50px;
+      width: var(--desk-table-logo-placeholder-width);
+      height: var(--desk-table-logo-height);
       border: 1px dashed rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.02);
       border-radius: 6px;
@@ -2856,9 +2933,9 @@
     .stat {
       display: inline-flex;
       align-items: center;
-      min-height: 34px;
-      padding: 0 10px;
-      border-radius: 6px;
+      min-height: var(--desk-table-stat-min-height);
+      padding: 0 var(--desk-table-stat-pad-x);
+      border-radius: var(--desk-table-pill-radius);
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.08);
       font-size: 17px;
@@ -2871,9 +2948,9 @@
     .rpi {
       display: inline-flex;
       align-items: center;
-      min-height: 34px;
-      padding: 0 12px;
-      border-radius: 6px;
+      min-height: var(--desk-table-stat-min-height);
+      padding: 0 var(--desk-table-rpi-pad-x);
+      border-radius: var(--desk-table-pill-radius);
       background: rgba(255,255,255,0.09);
       border: 1px solid rgba(255,255,255,0.10);
       font-size: 18px;
@@ -2899,10 +2976,10 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 56px;
-      min-height: 26px;
+      min-width: var(--desk-table-change-min-width);
+      min-height: var(--desk-table-change-min-height);
       padding: 4px 8px;
-      border-radius: 6px;
+      border-radius: var(--desk-table-pill-radius);
       font-size: 20px;
       font-weight: 600;
       letter-spacing: 0.03em;
@@ -2944,6 +3021,40 @@
       text-shadow: 0 0 16px rgba(255,255,255,0.16);
     }
 
+/* ==========================================================================
+   Graph / Team Log / Schedule Card Styles
+   ========================================================================== */
+
+    .team-schedule-overlay,
+    .team-log-overlay,
+    .team-schedule-card,
+    .team-log-card,
+    .team-schedule-head,
+    .team-schedule-stats,
+    .team-schedule-body,
+    .team-log-body,
+    .team-log-inline-btn,
+    .team-log-date-step-btn,
+    .team-log-zoom-btn {
+      --team-panel-head-gap: 16px;
+      --team-panel-head-pad-y: 20px;
+      --team-panel-head-pad-x: 22px;
+      --team-panel-head-pad-right: 64px;
+      --team-panel-stats-gap: 10px;
+      --team-panel-stat-min-height: 50px;
+      --team-panel-stat-pad-y: 8px;
+      --team-panel-stat-pad-x: 10px;
+      --team-panel-body-pad-top: 14px;
+      --team-panel-body-pad-x: 18px;
+      --team-panel-body-pad-bottom: 18px;
+      --team-panel-icon-btn-size: 36px;
+      --team-panel-icon-btn-radius: 8px;
+      --team-panel-icon-size: 17px;
+      --team-panel-icon-stroke: 1.8;
+      --team-panel-date-btn-size: 26px;
+      --team-panel-logo-size: 62px;
+    }
+
     .team-schedule-overlay,
     .team-log-overlay {
       position: fixed;
@@ -2963,41 +3074,34 @@
       display: grid;
     }
 
-    .team-schedule-card {
-      position: relative;
-      width: min(920px, calc(100vw - 32px));
-      max-height: calc(100vh - 48px);
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
-      overflow: hidden;
-      border: 1px solid var(--line-strong);
-      border-radius: 8px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
-        rgba(7,10,18,0.72);
-      box-shadow:
-        0 26px 80px rgba(0,0,0,0.58),
-        inset 0 1px 0 rgba(255,255,255,0.10);
-      backdrop-filter: blur(14px) saturate(1.08);
-    }
+    .team-schedule-card,
     .team-log-card {
       position: relative;
-      width: min(1440px, calc(100vw - 32px));
       max-height: calc(100vh - 48px);
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
       overflow: hidden;
-      border: 1px solid var(--line-strong);
-      border-radius: 8px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255, 255, 255, 0.13)), rgba(7, 10, 18, 0.67);
+      border: var(--border-line-strong);
+      border-radius: var(--radius-card);
       box-shadow:
         0 26px 80px rgba(0,0,0,0.58),
         inset 0 1px 0 rgba(255,255,255,0.10);
       backdrop-filter: blur(14px) saturate(1.08);
     }
 
-    .team-schedule-close,
+    .team-schedule-card {
+      width: min(920px, calc(100vw - 32px));
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
+        rgba(7,10,18,0.72);
+    }
+
+    .team-log-card {
+      width: min(1440px, calc(100vw - 32px));
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255, 255, 255, 0.13)), rgba(7, 10, 18, 0.67);
+    }
+
     #teamLogCalendarBtn,
     #teamLogViewBtn {
       display: none;
@@ -3034,11 +3138,11 @@
     }
 
     .team-log-inline-btn {
-      width: 36px;
-      height: 36px;
+      width: var(--team-panel-icon-btn-size);
+      height: var(--team-panel-icon-btn-size);
       padding: 0;
       border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 8px;
+      border-radius: var(--team-panel-icon-btn-radius);
       background:
         linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04)),
         rgba(0,0,0,0.34);
@@ -3053,10 +3157,10 @@
     }
 
     .team-log-inline-btn svg {
-      width: 17px;
-      height: 17px;
+      width: var(--team-panel-icon-size);
+      height: var(--team-panel-icon-size);
       stroke: #ffffff;
-      stroke-width: 1.8;
+      stroke-width: var(--team-panel-icon-stroke);
       fill: none;
       stroke-linecap: round;
       stroke-linejoin: round;
@@ -3087,9 +3191,9 @@
     .team-schedule-head {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
-      gap: 16px;
+      gap: var(--team-panel-head-gap);
       align-items: center;
-      padding: 20px 64px 18px 22px;
+      padding: var(--team-panel-head-pad-y) var(--team-panel-head-pad-right) 18px var(--team-panel-head-pad-x);
       border-bottom: 1px solid rgba(255,255,255,0.13);
       background:
         linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.025)),
@@ -3110,8 +3214,7 @@
     }
 
     .team-schedule-logo {
-     
-      height: 62px;
+      height: var(--team-panel-logo-size);
       object-fit: contain;
       border-radius: 8px;
       border: 1px solid rgba(255,255,255,0.16);
@@ -3143,20 +3246,20 @@
     }
 
     .team-schedule-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(78px, 1fr));
-  gap: 10px;
-  grid-column: 1 / -1;
-  width: 100%;
-  min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(78px, 1fr));
+      gap: var(--team-panel-stats-gap);
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
     }
 
     .team-schedule-stat {
-      min-height: 50px;
+      min-height: var(--team-panel-stat-min-height);
       display: grid;
       align-content: center;
       gap: 3px;
-      padding: 8px 10px;
+      padding: var(--team-panel-stat-pad-y) var(--team-panel-stat-pad-x);
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 8px;
       background:
@@ -3208,7 +3311,7 @@
       min-height: 0;
       max-height: calc(100vh - 210px);
       overflow: auto;
-      padding: 14px 18px 18px;
+      padding: var(--team-panel-body-pad-top) var(--team-panel-body-pad-x) var(--team-panel-body-pad-bottom);
       scrollbar-color: rgba(255,255,255,0.28) rgba(255,255,255,0.06);
     }
 
@@ -3373,14 +3476,14 @@
       min-height: 0;
       max-height: calc(100vh - 210px);
       overflow: auto;
-      padding: 14px 18px 18px;
+      padding: var(--team-panel-body-pad-top) var(--team-panel-body-pad-x) var(--team-panel-body-pad-bottom);
       scrollbar-color: rgba(255,255,255,0.28) rgba(255,255,255,0.06);
     }
 
     .team-log-toolbar {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 12px;
       margin-bottom: 12px;
       color: var(--muted);
@@ -3398,6 +3501,7 @@
          These only affect the Team Logs card, not the main standings tables. */
       --team-log-row-pad-y: 11px;
       --team-log-row-pad-x: 12px;
+      --team-log-table-min-width: 900px;
       --team-log-col-timestamp: 146px;
       --team-log-col-change: 72px;
       --team-log-col-rank: 84px;
@@ -3413,7 +3517,7 @@
 
     .team-log-table {
       width: 100%;
-      min-width: 900px;
+      min-width: var(--team-log-table-min-width);
       border-collapse: collapse;
     }
 
@@ -3423,6 +3527,7 @@
     .team-log-col-record { width: var(--team-log-col-record); }
     .team-log-col-stat { width: var(--team-log-col-stat); }
     .team-log-col-rpi { width: var(--team-log-col-rpi); }
+    /* Team Log table sizing and alignment */
     .team-log-col-rpi-delta { width: var(--team-log-col-rpi-delta); }
 
     .team-log-table th,
@@ -3452,6 +3557,7 @@
       font-size: 15px;
       font-weight: 800;
       letter-spacing: 0.03em;
+      background: transparent;
     }
 
     .team-log-table th[data-col="timestamp"],
@@ -3493,12 +3599,16 @@
       text-align: center;
     }
 
-    .team-log-row.is-rank-up td {
-      background: linear-gradient(90deg, rgba(34,197,94,0.15), rgba(34,197,94,0.06));
+    .team-log-table tbody tr {
+      transition: background 0.18s ease;
     }
 
-    .team-log-row.is-rank-down td {
-      background: linear-gradient(90deg, rgba(255,47,58,0.15), rgba(255,47,58,0.06));
+    .team-log-row.is-rank-up {
+      background: linear-gradient(90deg, rgba(34,197,94,0.18), rgba(34,197,94,0.08) 52%, rgba(34,197,94,0.03));
+    }
+
+    .team-log-row.is-rank-down {
+      background: linear-gradient(90deg, rgba(255,47,58,0.18), rgba(255,47,58,0.08) 52%, rgba(255,47,58,0.03));
     }
 
     .team-log-table tbody tr:last-child td {
@@ -3512,7 +3622,7 @@
       justify-content: center;
       min-height: 30px;
       padding: 0 10px;
-      border-radius: 6px;
+      border-radius: var(--radius-pill);
       border: 1px solid rgba(255,255,255,0.10);
       background: rgba(255,255,255,0.08);
     }
@@ -3537,18 +3647,27 @@
       color: #ff9aa2;
     }
 
-    .team-log-graph-shell {
-      display: grid;
-      gap: 12px;
-    }
+/* Team Log graph controls */
+.team-log-graph-shell {
+  display: grid;
+  gap: var(--space-control-gap);
+}
 
-    .team-log-range-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
+.team-log-graph-controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-toolbar-gap);
+}
 
-    .team-log-range-btn {
+.team-log-range-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  flex: 1 1 auto;
+}
+
+.team-log-range-btn {
       width: auto;
       flex: 0 0 auto;
       min-width: 58px;
@@ -3581,7 +3700,154 @@
         inset 0 1px 0 rgba(255,255,255,0.14),
         0 10px 24px rgba(0,0,0,0.22),
         0 0 18px rgba(255,255,255,0.08);
-    }
+}
+
+.team-log-team-selectors {
+  display: grid;
+  grid-template-columns: 110px 110px minmax(240px, 300px);
+  gap: 10px;
+  align-items: start;
+  flex: 0 0 auto;
+}
+
+.team-log-graph-select {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+
+.team-log-graph-select-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.team-log-class-select,
+.team-log-team-search {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03)),
+    rgba(12,16,26,0.48);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+}
+
+.team-log-class-select {
+  cursor: pointer;
+}
+
+.team-log-team-search-wrap {
+  position: relative;
+  display: block;
+}
+
+.team-log-team-search {
+  padding-right: 42px;
+}
+
+.team-log-team-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 7px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.team-log-team-toggle:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.team-log-team-search::placeholder {
+  color: rgba(220,228,242,0.52);
+}
+
+.team-log-team-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: none;
+  max-height: 260px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)),
+    rgba(8,11,18,0.96);
+  box-shadow: 0 18px 34px rgba(0,0,0,0.34);
+  z-index: 5;
+}
+
+.team-log-team-menu.is-open {
+  display: grid;
+  gap: 4px;
+}
+
+.team-log-team-option,
+.team-log-team-empty {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.team-log-team-option {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.team-log-team-option:hover {
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+}
+
+.team-log-team-option.is-selected {
+  border-color: rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.08);
+}
+
+.team-log-team-option-name {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.team-log-team-option-meta,
+.team-log-team-empty {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
     .team-log-graph-card {
       display: grid;
@@ -3642,6 +3908,42 @@
       text-transform: uppercase;
     }
 
+    .team-log-inline-actions {
+      display: none;
+    }
+
+    .team-log-toolbar-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .team-log-toolbar-zoom {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 8px;
+    }
+
+    .team-log-zoom-btn {
+      width: calc(var(--team-panel-icon-btn-size) - 4px);
+      height: calc(var(--team-panel-icon-btn-size) - 4px);
+      font-family: var(--font-number);
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .team-log-zoom-label {
+      min-width: 46px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
     .team-log-toolbar-date-nav {
       display: inline-flex;
       align-items: center;
@@ -3649,8 +3951,8 @@
     }
 
     .team-log-date-step-btn {
-      width: 26px;
-      height: 26px;
+      width: var(--team-panel-date-btn-size);
+      height: var(--team-panel-date-btn-size);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -3682,7 +3984,7 @@
       text-align: center;
     }
 
-    .team-log-graph-frame {
+.team-log-graph-frame {
       position: relative;
       min-height: 360px;
       padding: 10px 10px 26px;
@@ -3694,6 +3996,15 @@
         rgba(4,8,14,0.64);
       overflow: hidden;
     }
+
+.team-log-graph-frame.is-pannable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.team-log-graph-frame.is-pannable.is-dragging {
+  cursor: grabbing;
+}
 
     .team-log-graph-svg {
       width: 100%;
@@ -3729,6 +4040,36 @@
       filter: drop-shadow(0 0 12px rgba(255,255,255,0.18));
     }
 
+    .team-log-graph-card.up .team-log-graph-area {
+      fill: rgba(90, 227, 144, 0.14);
+    }
+
+    .team-log-graph-card.down .team-log-graph-area {
+      fill: rgba(255, 96, 120, 0.14);
+    }
+
+    .team-log-graph-card.up .team-log-graph-line {
+      stroke: #78f3ab;
+      filter: drop-shadow(0 0 14px rgba(120,243,171,0.22));
+    }
+
+    .team-log-graph-card.down .team-log-graph-line {
+      stroke: #ff8f9c;
+      filter: drop-shadow(0 0 14px rgba(255,143,156,0.22));
+    }
+
+    .team-log-graph-card.up .team-log-graph-point.is-last {
+      fill: #78f3ab;
+      stroke: rgba(120,243,171,0.24);
+      filter: drop-shadow(0 0 10px rgba(120,243,171,0.22));
+    }
+
+    .team-log-graph-card.down .team-log-graph-point.is-last {
+      fill: #ff8f9c;
+      stroke: rgba(255,143,156,0.24);
+      filter: drop-shadow(0 0 10px rgba(255,143,156,0.22));
+    }
+
     .team-log-graph-point {
       fill: rgba(255,255,255,0.82);
       stroke: rgba(7,10,18,0.84);
@@ -3739,6 +4080,35 @@
       fill: #ffffff;
       stroke: rgba(255,255,255,0.24);
       filter: drop-shadow(0 0 10px rgba(255,255,255,0.22));
+    }
+
+    .team-log-graph-card-all .team-log-graph-area {
+      display: none;
+    }
+
+    .team-log-graph-multi-line {
+      fill: none;
+      stroke: var(--team-log-series-color, rgba(255,255,255,0.22));
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .team-log-graph-series.is-selected .team-log-graph-multi-line {
+      stroke-width: 2.8;
+      filter: drop-shadow(0 0 10px rgba(255,255,255,0.14));
+    }
+
+    .team-log-graph-logo-bg {
+      fill: rgba(12,16,26,0.82);
+      stroke: rgba(255,255,255,0.16);
+      stroke-width: 1.5;
+    }
+
+    .team-log-graph-logo-bg.is-selected {
+      stroke: rgba(255,255,255,0.92);
+      stroke-width: 2.4;
+      filter: drop-shadow(0 0 12px rgba(255,255,255,0.18));
     }
 
     .team-log-graph-axis {
@@ -3758,6 +4128,7 @@
       padding-right: 64px;
     }
 
+    .team-schedule-close,
     .team-log-close {
       position: absolute;
       top: 10px;
@@ -3781,6 +4152,7 @@
       cursor: pointer;
     }
 
+    .team-schedule-close:hover,
     .team-log-close:hover {
       border-color: rgba(255,90,102,0.38);
       box-shadow:
@@ -3889,22 +4261,27 @@
 
 /* REGION PANEL BORDER COLORS */
 .region-panel.west {
-  border: 1px solid rgba(255, 47, 58, 0.85);
+  border: var(--border-west-accent);
 }
 
 .region-panel.east {
-  border: 1px solid rgba(31, 120, 255, 0.85);
+  border: var(--border-east-accent);
 }
 
 
-/* EXPORT PREVIEW PANEL */
+/* ==========================================================================
+   Export / Preview Styles
+   ========================================================================== */
+
+/* EXPORT PREVIEW PANEL
+   Keep selectors stable: PNG/export logic relies on these classes and hidden states. */
 .export-preview-overlay {
   position: fixed;
   inset: 0;
   display: none;
   place-items: stretch;
-  padding: 16px;
-  background: rgba(2, 6, 12, 0.76);
+  padding: var(--space-card-pad-sm);
+  background: var(--export-overlay-bg);
   backdrop-filter: blur(8px);
   z-index: 9999;
 }
@@ -3921,12 +4298,12 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border: var(--border-line-strong);
+  border-radius: var(--radius-card);
   background:
     linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 135px),
     var(--modal-bg);
-  box-shadow: 0 28px 80px rgba(0,0,0,0.55);
+  box-shadow: var(--export-panel-shadow);
 }
 
 .export-preview-close {
@@ -3959,9 +4336,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 20px 66px 16px 22px;
-  border-bottom: 1px solid var(--line);
+  gap: var(--space-card-pad-sm);
+  padding: var(--space-9) 66px var(--space-card-pad-sm) var(--space-toolbar-pad-x);
+  border-bottom: var(--border-line-soft);
   background: rgba(255,255,255,0.035);
 }
 
@@ -4004,10 +4381,10 @@
 .export-preview-toolbar {
   display: grid;
   grid-template-columns: minmax(210px, 260px) minmax(170px, 220px) minmax(210px, 260px) minmax(240px, 1fr) 150px 96px;
-  gap: 12px;
+  gap: var(--space-control-gap);
   align-items: end;
-  padding: 14px 22px;
-  border-bottom: 1px solid var(--line);
+  padding: var(--export-toolbar-pad-y) var(--export-toolbar-pad-x);
+  border-bottom: var(--border-line-soft);
   background: rgba(0,0,0,0.18);
 }
 
@@ -4266,7 +4643,7 @@
     body.rankings-mode.has-rpi-changes .rpi,
     body.rankings-mode.has-rpi-changes .rpi-change {
       justify-content: center;
-      width: 118px;
+      width: 155px;
       min-width: 118px;
       min-height: 34px;
       box-sizing: border-box;
@@ -4414,12 +4791,11 @@ th,
   stroke: var(--west);
 }
 
-/* MOBILE RESPONSIVE OVERHAUL */
+/* ==========================================================================
+   Desktop-Only Overrides
+   ========================================================================== */
 
-
-
-
-/* THEME POLISH PASS: visual-only overrides, no layout sizing changes. */
+/* Theme polish pass: visual-only overrides, no layout sizing changes. */
 body {
   background:
     radial-gradient(circle at 14% -8%, var(--glow) 0, transparent 34%),
