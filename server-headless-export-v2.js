@@ -92,13 +92,73 @@ function safePath(urlPath) {
   return full;
 }
 
-function normalizeTeamKey(name) {
+const TEAM_NAME_NORMALIZE = {
+  phraseReplacements: [
+    { from: /\bsaint\b/ig, to: 'St' },
+    { from: /\bmount\b/ig, to: 'Mt' },
+    { from: /\bfort\b/ig, to: 'Ft' },
+    { from: /\bnorthwest\b/ig, to: 'NW' },
+    { from: /\bnortheast\b/ig, to: 'NE' },
+    { from: /\bsouthwest\b/ig, to: 'SW' },
+    { from: /\bsoutheast\b/ig, to: 'SE' },
+    { from: /\bpreparatory\b/ig, to: 'Prep' },
+    { from: /&/g, to: ' and ' },
+    { from: /-/g, to: ' ' }
+  ],
+  removePhrases: [
+    'high school', 'highschool', 'junior senior', 'middle and high school', 'middle and highschool',
+    'middle and', 'andhigh school', 'and Sustainability', 'Collegiate and Technical Academy', 'of Technology and Arts'
+  ],
+  removeTokens: ['junior', 'senior', 'stem', 'magnet', 'andhighschool'],
+  removeTrailingSchool: true,
+  removeLeadingThe: true,
+  acronymOverrides: {
+    'north carolina school of science and mathematics durham': 'NCSSM Durham',
+    'north carolina school of science and mathematics morganton': 'NCSSM Morganton'
+  }
+};
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function acronymKey(name) {
   return String(name || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\b(the|school|high|academy|charter|secondary)\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function applyAcronymOverrides(name, cfg = TEAM_NAME_NORMALIZE) {
+  const map = cfg?.acronymOverrides || null;
+  if (!map) return name;
+  const key = acronymKey(name);
+  return map[key] || name;
+}
+
+function normalizeTeamKey(name, cfg = TEAM_NAME_NORMALIZE) {
+  let s = String(name || '');
+  s = applyAcronymOverrides(s, cfg);
+  s = s
+    .replace(/\u00A0/g, ' ')
+    .replace(/[â€™â€˜]/g, "'")
+    .replace(/[â€“â€”]/g, '-')
+    .replace(/\u00E2\u20AC\u2122|\u00E2\u20AC\u02DC/g, "'")
+    .replace(/\u00E2\u20AC\u201C|\u00E2\u20AC\u201D/g, '-');
+  for (const rule of (cfg.phraseReplacements || [])) s = s.replace(rule.from, rule.to);
+  if (cfg.removeLeadingThe) s = s.replace(/^\s*the\b\s+/i, '');
+  s = s.replace(/[^A-Za-z0-9 ]+/g, ' ');
+  for (const phrase of (cfg.removePhrases || [])) {
+    const re = new RegExp(`\\b${escapeRegex(phrase).replace(/\s+/g, '\\s+')}\\b`, 'ig');
+    s = s.replace(re, ' ');
+  }
+  for (const token of (cfg.removeTokens || [])) {
+    const re = new RegExp(`\\b${escapeRegex(token)}\\b`, 'ig');
+    s = s.replace(re, ' ');
+  }
+  if (cfg.removeTrailingSchool) s = s.replace(/\bschool\b\s*$/i, '');
+  return s.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
 function normalizeSnapshotRows(rows) {
@@ -108,7 +168,7 @@ function normalizeSnapshotRows(rows) {
       const rank = Number(row.rank || index + 1);
       const rpi = Number.parseFloat(String(row.rpi || '').replace(/[^\d.-]/g, ''));
       return {
-        teamKey: normalizeTeamKey(row.teamKey || school),
+        teamKey: normalizeTeamKey(school || row.teamKey || ''),
         school,
         rank: Number.isFinite(rank) ? rank : index + 1,
         rpi: Number.isFinite(rpi) ? rpi : null,
@@ -192,7 +252,13 @@ function readSnapshotStore() {
   try {
     const raw = fs.readFileSync(SNAPSHOT_FILE, 'utf8');
     const parsed = JSON.parse(raw);
-    return { snapshots: Array.isArray(parsed.snapshots) ? parsed.snapshots : [] };
+    const snapshots = Array.isArray(parsed.snapshots) ? parsed.snapshots : [];
+    return {
+      snapshots: snapshots.map(snapshot => ({
+        ...snapshot,
+        rows: normalizeSnapshotRows(snapshot.rows || [])
+      }))
+    };
   } catch (err) {
     if (err.code !== 'ENOENT') console.warn('Snapshot store read failed:', err.message);
     return { snapshots: [] };

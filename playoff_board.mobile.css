@@ -2046,8 +2046,10 @@
   }
 
   .team-log-graph-meta {
-    display: grid;
-    gap: 8px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   .team-log-graph-kicker {
@@ -2061,28 +2063,36 @@
   .team-log-graph-subtitle {
     margin-top: 4px;
     color: var(--text);
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 900;
     letter-spacing: 0.02em;
   }
 
   .team-log-graph-change {
     display: grid;
-    gap: 2px;
+    justify-items: end;
+    align-content: start;
+    gap: 1px;
+    flex: 0 0 auto;
     color: #ffffff;
     font-family: var(--font-number);
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 900;
+    line-height: 0.96;
+    letter-spacing: 0.01em;
+    text-shadow: 0 0 16px rgba(0,0,0,0.22);
   }
 
-  .team-log-graph-change.up { color: #89f0ad; }
+  .team-log-graph-change.up { color: #7cf3a2; }
   .team-log-graph-change.down { color: #ff9aa2; }
   .team-log-graph-change.flat { color: #ffffff; }
 
   .team-log-graph-change small {
     color: var(--muted);
-    font-size: 9px;
-    letter-spacing: 0.06em;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.09em;
+    line-height: 1;
     text-transform: uppercase;
   }
 
@@ -2123,7 +2133,7 @@
   .team-log-graph-grid-row text {
     fill: rgba(220,228,242,0.78);
     font-family: var(--font-body);
-    font-size: 12px;
+    font-size: 20px;
     font-weight: 900;
     text-anchor: start;
   }
