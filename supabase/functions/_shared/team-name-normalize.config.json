@@ -1,0 +1,41 @@
+{
+  "phraseReplacements": [
+    { "pattern": "\\bsaint\\b", "flags": "ig", "to": "St" },
+    { "pattern": "\\bmount\\b", "flags": "ig", "to": "Mt" },
+    { "pattern": "\\bfort\\b", "flags": "ig", "to": "Ft" },
+    { "pattern": "\\bnorthwest\\b", "flags": "ig", "to": "NW" },
+    { "pattern": "\\bnortheast\\b", "flags": "ig", "to": "NE" },
+    { "pattern": "\\bsouthwest\\b", "flags": "ig", "to": "SW" },
+    { "pattern": "\\bsoutheast\\b", "flags": "ig", "to": "SE" },
+    { "pattern": "\\bpreparatory\\b", "flags": "ig", "to": "Prep" },
+    { "pattern": "&", "flags": "g", "to": " and " },
+    { "pattern": "-", "flags": "g", "to": " " }
+  ],
+  "removePhrases": [
+    "high school",
+    "highschool",
+    "junior senior",
+    "middle and high school",
+    "middle and highschool",
+    "middle and",
+    "andhigh school",
+    "and Sustainability",
+    "Collegiate and Technical Academy",
+    "of Technology and Arts",
+    "Classical Academy"
+  ],
+  "removeTokens": [
+    "junior",
+    "senior",
+    "stem",
+    "magnet",
+    "andhighschool"
+  ],
+  "removeTrailingSchool": true,
+  "removeLeadingThe": true,
+  "acronymOverrides": {
+    "north carolina school of science and mathematics durham": "NCSSM Durham",
+    "north carolina school of science and mathematics morganton": "NCSSM Morganton",
+    "american leadership academy johnston": "American Leadership - Johnston"
+  }
+}

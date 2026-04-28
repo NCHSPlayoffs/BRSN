@@ -92,31 +92,25 @@ function safePath(urlPath) {
   return full;
 }
 
-const TEAM_NAME_NORMALIZE = {
-  phraseReplacements: [
-    { from: /\bsaint\b/ig, to: 'St' },
-    { from: /\bmount\b/ig, to: 'Mt' },
-    { from: /\bfort\b/ig, to: 'Ft' },
-    { from: /\bnorthwest\b/ig, to: 'NW' },
-    { from: /\bnortheast\b/ig, to: 'NE' },
-    { from: /\bsouthwest\b/ig, to: 'SW' },
-    { from: /\bsoutheast\b/ig, to: 'SE' },
-    { from: /\bpreparatory\b/ig, to: 'Prep' },
-    { from: /&/g, to: ' and ' },
-    { from: /-/g, to: ' ' }
-  ],
-  removePhrases: [
-    'high school', 'highschool', 'junior senior', 'middle and high school', 'middle and highschool',
-    'middle and', 'andhigh school', 'and Sustainability', 'Collegiate and Technical Academy', 'of Technology and Arts'
-  ],
-  removeTokens: ['junior', 'senior', 'stem', 'magnet', 'andhighschool'],
-  removeTrailingSchool: true,
-  removeLeadingThe: true,
-  acronymOverrides: {
-    'north carolina school of science and mathematics durham': 'NCSSM Durham',
-    'north carolina school of science and mathematics morganton': 'NCSSM Morganton'
-  }
-};
+function compileTeamNameNormalizeConfig(raw = {}) {
+  return {
+    phraseReplacements: (Array.isArray(raw.phraseReplacements) ? raw.phraseReplacements : [])
+      .map(rule => ({
+        from: new RegExp(String(rule.pattern || ''), String(rule.flags || 'g')),
+        to: String(rule.to || '')
+      }))
+      .filter(rule => rule.from.source),
+    removePhrases: Array.isArray(raw.removePhrases) ? raw.removePhrases : [],
+    removeTokens: Array.isArray(raw.removeTokens) ? raw.removeTokens : [],
+    removeTrailingSchool: raw.removeTrailingSchool !== false,
+    removeLeadingThe: raw.removeLeadingThe !== false,
+    acronymOverrides: raw.acronymOverrides || {}
+  };
+}
+
+const TEAM_NAME_NORMALIZE = compileTeamNameNormalizeConfig(
+  JSON.parse(fs.readFileSync(path.join(ROOT, 'supabase', 'functions', '_shared', 'team-name-normalize.config.json'), 'utf8'))
+);
 
 function escapeRegex(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

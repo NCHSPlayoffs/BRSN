@@ -33,10 +33,10 @@
       --space-8: 18px;
       --space-9: 20px;
       --space-10: 22px;
-      --space-card-pad: 18px;
-      --space-card-pad-sm: 16px;
+      --space-card-pad: 4px;
+      --space-card-pad-sm: 4px;
       --space-card-pad-lg: 22px;
-      --space-section-gap: 18px;
+      --space-section-gap: 4px;
       --space-control-gap: 12px;
       --space-toolbar-gap: 14px;
       --space-cell-pad-x: 8px;
@@ -311,7 +311,7 @@
       --control-bg: #11214b;
       --control-panel-bg: #0b1530;
       --button-bg: linear-gradient(180deg, #7fa6ff 0%, #315fc4 100%);
-      --button-text: #060b18;
+      --button-text: #fff;
       --modal-bg: var(--card-bg);
       --progress-bg: linear-gradient(180deg, #060b18 0%, #0a1430 100%);
       --accent: #91b8ff;
@@ -347,7 +347,7 @@
       --control-bg: #113021;
       --control-panel-bg: #0c1d15;
       --button-bg: linear-gradient(180deg, #8ce1b7 0%, #319365 100%);
-      --button-text: #07130e;
+      --button-text: #fff;
       --modal-bg: var(--card-bg);
       --progress-bg: linear-gradient(180deg, #07130e 0%, #0b1c15 100%);
       --accent: #92edbe;
@@ -383,7 +383,7 @@
       --control-bg: #31184d;
       --control-panel-bg: #1a102b;
       --button-bg: linear-gradient(180deg, #c695f3 0%, #7243b6 100%);
-      --button-text: #12081e;
+      --button-text: #fff;
       --modal-bg: var(--card-bg);
       --progress-bg: linear-gradient(180deg, #12081e 0%, #1a0f29 100%);
       --accent: #d4a9ff;

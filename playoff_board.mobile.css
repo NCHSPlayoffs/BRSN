@@ -1195,6 +1195,17 @@
     letter-spacing: 0.05em;
   }
 
+  .excluded-teams-note {
+    margin: 10px 8px 2px;
+    color: rgba(255,255,255,0.96);
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1.35;
+    letter-spacing: 0.03em;
+    text-align: center;
+    text-shadow: 0 0 10px rgba(255,255,255,0.20);
+  }
+
 /* ==========================================================================
    Mobile Graph / Team Log / Schedule Overrides
    ========================================================================== */

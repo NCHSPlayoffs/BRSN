@@ -1097,10 +1097,15 @@
       text-align: center;
     }
 
-    .adjustable-column-table :is(th, td)[data-col="school"],
-    .adjustable-column-table :is(th, td)[data-col="team"] {
-      text-align: left;
-    }
+.adjustable-column-table td[data-col="school"],
+.adjustable-column-table td[data-col="team"] {
+  text-align: left;
+}
+
+.adjustable-column-table th[data-col="school"],
+.adjustable-column-table th[data-col="team"] {
+  text-align: center;
+}
 
     /* Desktop standings table tuning
        Singular / all-teams board tables:
@@ -1227,13 +1232,13 @@
        - --bracket-copy-offset */
     .playoff-board,
     .bracket-region {
-      --bracket-column-gap: 18px;
-      --bracket-slot-height: 220px;
-      --bracket-slot-pad-y: 20px;
+      --bracket-column-gap: 10px;
+      --bracket-slot-height: 225px;
+      --bracket-slot-pad-y: 11px;
       --bracket-slot-pad-x: 5px;
       --bracket-game-box-height: 56px;
-      --bracket-seed-size: 30px;
-      --bracket-team-gap: 12px;
+      --bracket-seed-size: 40px;
+      --bracket-team-gap: 8px;
       --bracket-team-logo-width: 80px;
       --bracket-team-logo-height: 45px;
       --bracket-team-placeholder-width: 54px;
@@ -1417,7 +1422,7 @@
       margin: 10px;
       padding: 10px 12px;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 16px;
       font-weight: 900;
       line-height: 1.25;
       letter-spacing: 0.04em;
@@ -1437,6 +1442,17 @@
       background: rgba(255,47,58,0.22);
       color: #ffe0e3;
       box-shadow: inset 4px 0 0 rgba(255,47,58,0.95);
+    }
+
+    .excluded-teams-note {
+      margin: 12px 10px 2px;
+      color: rgba(255,255,255,0.96);
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1.35;
+      letter-spacing: 0.03em;
+      text-align: center;
+      text-shadow: 0 0 12px rgba(255,255,255,0.22);
     }
 
     .region-rankings-table tfoot td {
@@ -1470,7 +1486,7 @@
       width: min(2000px, 96vw);
       height: min(1300px, 92vh);
       min-height: 0;
-      padding: 35px;
+      padding: 4px;
       border: 1px solid var(--line-strong);
       border-radius: 8px;
       background:
@@ -2452,14 +2468,14 @@
        - --region-row-height / --region-school-height
        - --region-logo-height */
     .region-rankings-table {
-      --region-col-pad-x: 6px;
-      --region-col-pad-y: 5px;
-      --region-rank-col-width: 72px;
-      --region-data-col-width: 200px;
+      --region-col-pad-x: 0px;
+      --region-col-pad-y: 8px;
+      --region-rank-col-width: 62px;
+      --region-data-col-width: 185px;
       --region-record-col-width: var(--region-data-col-width);
       --region-rpi-col-width: var(--region-data-col-width);
       --region-data-pill-width: 122px;
-      --region-school-gap: 8px;
+      --region-school-gap: 4px;
       --region-row-height: 76px;
       --region-school-height: 67px;
       --region-logo-height: 50px;
@@ -2496,7 +2512,7 @@
     .region-rankings-table [data-col="record"] .stat,
     .region-rankings-table [data-col="rpi"] .rpi {
       width: min(var(--region-data-pill-width), 100%);
-      min-width: 0;
+      min-width: 75%;
       max-width: 100%;
       display: flex;
       margin-left: auto;
@@ -2607,7 +2623,7 @@
       width: 100%;
       margin-top: 4px;
       text-align: center;
-      font-size: 12px;
+      font-size: 20px;
       font-weight: 800;
       letter-spacing: 0.14em;
       text-transform: uppercase;
@@ -2697,7 +2713,7 @@
 
     .game-box {
       height: var(--bracket-game-box-height);
-      padding: 6px 12px;
+      padding: 6px 3px;
       background: transparent;
       display: flex;
       align-items: center;
@@ -2721,8 +2737,8 @@
       top: 0;
       left: 10%;
       width: 80%;
-      height: 1px;
-      background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.08), rgba(255,255,255,0));
+      height: 2px;
+      background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.18), rgba(255,255,255,0));
       pointer-events: none;
     }
 
@@ -2734,6 +2750,7 @@
     .game-box.text-box {
       justify-content: center;
       text-align: center;
+      gap: 7px;
       font-size: 13px;
       font-weight: 900;
       letter-spacing: 0.06em;
@@ -2742,7 +2759,28 @@
     }
 
     .game-box.text-box .winner-seed-pill {
-      display: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--bracket-seed-size);
+      height: var(--bracket-seed-size);
+      font-size: 22px;
+      font-weight: 900;
+      text-align: center;
+      color: #ffffff;
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-button);
+      background:
+        var(--surface-sheen),
+        var(--pill-glass);
+      box-shadow: inset 0 1px 0 var(--glass-highlight);
+      vertical-align: middle;
+    }
+
+    .game-box.text-box .winner-vs,
+    .game-box.text-box .winner-label {
+      display: inline-flex;
+      align-items: center;
     }
 
     .game-box.bye-box { color: #cfd8ea; }
@@ -2752,10 +2790,14 @@
 
     .connector-line {
       position: absolute;
-      top: calc(50% - -32px);
+      top: calc(50% - -36px);
       height: 3px;
       background: rgba(255,255,255,0.42);
     }
+    /* Hide divider line for Round 2 only */
+.round2-slot .game-stack .game-box + .game-box::before {
+  display: none;
+}
 
     .connector-line.west { left: -5px; right: -450px; }
     .connector-line.east { left: -450px; right: -5px; }
@@ -2824,7 +2866,7 @@
     }
 
        .team-copy-name {
-      font-size: 18px;
+      font-size: 22px;
       font-weight: 900;
       line-height: 1.05;
       color: #f7faff;
@@ -2835,7 +2877,7 @@
     }
 
     .team-copy-record {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -2914,7 +2956,7 @@
     }
 
     .team-name {
-      font-size: 22px;
+      font-size: 24px;
       line-height: 1;
       font-weight: 900;
       letter-spacing: 0.02em;
@@ -2922,7 +2964,7 @@
     }
 
     .team-sub {
-      font-size: 13px;
+      font-size: 15px;
       line-height: 1;
       font-weight: 800;
       letter-spacing: 0.12em;
@@ -2938,7 +2980,7 @@
       border-radius: var(--desk-table-pill-radius);
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.08);
-      font-size: 17px;
+      font-size: 24px;
       font-weight: 800;
       letter-spacing: 0.04em;
       color: #edf4ff;
@@ -2953,7 +2995,7 @@
       border-radius: var(--desk-table-pill-radius);
       background: rgba(255,255,255,0.09);
       border: 1px solid rgba(255,255,255,0.10);
-      font-size: 18px;
+      font-size: 21px;
       font-weight: 800;
       letter-spacing: 0.04em;
       color: #ffffff;
@@ -4221,14 +4263,16 @@
     
   
 /* EAST REGION RTL TEAM LAYOUT */
+/* EAST REGION RTL TEAM LAYOUT */
 .bracket-region.east .team-card {
   direction: rtl;
-  grid-template-columns: 30px 54px minmax(0, 1fr);
+  grid-template-columns: var(--bracket-seed-size) var(--bracket-team-logo-width) minmax(0, 1fr);
 }
+
 .bracket-region.east .team-copy {
   text-align: right;
   margin-left: 0;
-  margin-right: 24px;
+  margin-right: 0;
 }
 
 
@@ -4757,6 +4801,7 @@ th,
 .rank,
 .east-west-line-rank,
 .team-seed,
+.winner-seed-pill,
 .team-copy-record,
 .nc-map-marker .nc-map-marker-rank,
 .east-west-map-card-value,
@@ -4996,6 +5041,14 @@ thead,
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
 
+.region-rankings-table thead,
+.region-rankings-table thead th {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025)),
+    #2b2f36 !important;
+  color: #d9e2f2;
+}
+
 th,
 td {
   border-bottom-color: rgba(255,255,255,0.085);
@@ -5017,6 +5070,7 @@ td {
 .rank-change,
 .rpi-change,
 .team-seed,
+.game-box.text-box .winner-seed-pill,
 .team-schedule-result,
 .east-west-map-card-close,
 .east-west-map-corner-control,
@@ -5434,6 +5488,7 @@ body:not(.playoff-mode) tbody tr:hover {
 .rank-change,
 .rpi-change,
 .team-seed,
+.game-box.text-box .winner-seed-pill,
 .team-schedule-result {
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
@@ -5897,4 +5952,14 @@ body.performance-mode .export-preview-title,
 body.performance-mode .team-schedule-title,
 body.performance-mode .east-west-map-card-title {
   text-shadow: none !important;
+}
+
+/* Round 2 TOP team fine tuning - desktop */
+body.playoff-mode .playoff-board .bracket-region {
+  --round2-top-team-x: 0px;
+  --round2-top-team-y: 13px;
+}
+
+body.playoff-mode .playoff-board .bracket-region .round2-slot .game-stack > .slot-round-label + .game-box {
+  transform: translate(var(--round2-top-team-x), var(--round2-top-team-y)) !important;
 }

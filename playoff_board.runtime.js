@@ -956,7 +956,7 @@ teamLogContent?.addEventListener('wheel', (e) => {
         await nextPaint_();
         const lineData = buildEastWestLineRows_(rows, classification);
         setMainHeaderBlank();
-        renderEastWestLine_(lineData, classification, sport);
+        renderEastWestLine_(lineData, classification, sport, rpiResult?.excludedTeams || []);
         armImageFallbacks_(tbody);
         setUpdatedFromRpi_(rpiResult);
         await idleFrame_();
@@ -1011,7 +1011,7 @@ teamLogContent?.addEventListener('wheel', (e) => {
         const { sport, classification, rows, rpiResult } = await getMergedRowsForCurrentSelection_();
         setBoardLoading_(true, 'Rendering region standings...', 'Splitting East and West regions');
         await nextPaint_();
-        const regionData = buildRegionRows_(rows, classification);
+        const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
         setMainHeaderBlank();
         renderRegionRows(regionData, classification, sport);
         armImageFallbacks_(tbody);
@@ -1041,7 +1041,7 @@ teamLogContent?.addEventListener('wheel', (e) => {
         const { sport, classification, rows, rpiResult } = await getMergedRowsForCurrentSelection_();
         setBoardLoading_(true, 'Rendering playoff picture...', 'Building projected first two rounds');
         await nextPaint_();
-        const regionData = buildRegionRows_(rows, classification);
+        const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
         setMainHeaderBlank();
         renderPlayoffPicture(regionData, classification, sport);
         armImageFallbacks_(tbody);

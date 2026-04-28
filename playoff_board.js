@@ -14,9 +14,72 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const OFFICIAL_RPI_FALLBACK_GID = '1999286146';
     const API_BASE_URL_ = String(window.RPI_APP_CONFIG?.apiBaseUrl || '').replace(/\/+$/g, '');
 
+    function compileTeamNameNormalizeConfig_(raw = {}) {
+      return {
+        phraseReplacements: (Array.isArray(raw.phraseReplacements) ? raw.phraseReplacements : [])
+          .map(rule => ({
+            from: new RegExp(String(rule.pattern || ''), String(rule.flags || 'g')),
+            to: String(rule.to || '')
+          }))
+          .filter(rule => rule.from.source),
+        removePhrases: Array.isArray(raw.removePhrases) ? raw.removePhrases : [],
+        removeTokens: Array.isArray(raw.removeTokens) ? raw.removeTokens : [],
+        removeTrailingSchool: raw.removeTrailingSchool !== false,
+        removeLeadingThe: raw.removeLeadingThe !== false,
+        acronymOverrides: raw.acronymOverrides || {}
+      };
+    }
+
+    function loadTeamNameNormalizeConfig_() {
+      try {
+        const req = new XMLHttpRequest();
+        req.open('GET', './supabase/functions/_shared/team-name-normalize.config.json', false);
+        req.send(null);
+        if (req.status >= 200 && req.status < 300) {
+          return compileTeamNameNormalizeConfig_(JSON.parse(req.responseText));
+        }
+      } catch (err) {
+        console.warn('Team name normalize config unavailable; using built-in fallback.', err);
+      }
+      return compileTeamNameNormalizeConfig_({
+        phraseReplacements: [
+          { pattern: '\\bsaint\\b', flags: 'ig', to: 'St' },
+          { pattern: '\\bmount\\b', flags: 'ig', to: 'Mt' },
+          { pattern: '\\bfort\\b', flags: 'ig', to: 'Ft' },
+          { pattern: '\\bnorthwest\\b', flags: 'ig', to: 'NW' },
+          { pattern: '\\bnortheast\\b', flags: 'ig', to: 'NE' },
+          { pattern: '\\bsouthwest\\b', flags: 'ig', to: 'SW' },
+          { pattern: '\\bsoutheast\\b', flags: 'ig', to: 'SE' },
+          { pattern: '\\bpreparatory\\b', flags: 'ig', to: 'Prep' },
+          { pattern: '&', flags: 'g', to: ' and ' },
+          { pattern: '-', flags: 'g', to: ' ' }
+        ],
+        removePhrases: [
+          'high school', 'highschool', 'junior senior', 'middle and high school', 'middle and highschool',
+          'middle and', 'andhigh school', 'and Sustainability', 'Collegiate and Technical Academy', 'of Technology and Arts', 'Classical Academy'
+        ],
+        removeTokens: ['junior', 'senior', 'stem', 'magnet', 'andhighschool'],
+        removeTrailingSchool: true,
+        removeLeadingThe: true,
+        acronymOverrides: {
+          'north carolina school of science and mathematics durham': 'NCSSM Durham',
+          'north carolina school of science and mathematics morganton': 'NCSSM Morganton',
+          'american leadership academy johnston': 'American Leadership - Johnston'
+        }
+      });
+    }
+
     const APP = {
+        //TEAM OPT OUT CONFIG
       OptOut: {
-        all: [], football: [], baseball: [], softball: [], volleyball: [], boys: [], girls: [], girls_soccer: [], boys_soccer: []
+        all: [],
+        football: [],
+        baseball: ["Phoenix Academy", "KIPP Pride","Rocky Mt Prep", "Raleigh Charter"],
+        softball: ["Bishop McGuinness","Millennium Charter Academy","Wilson Prep Academy","Rocky Mt Prep","KIPP Pride","WSPA","Weldon","NCLA" ],
+        volleyball: [],
+        boys: [], girls: [],
+        girls_soccer: ["CPLA","Howard"],
+        boys_soccer: []
       },
       FetchRpi: {
         sportUrls: {
@@ -31,31 +94,7 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
         basketballAnchorGirls: '<h3>Girls Basketball RPI standings</h3>',
         basketballAnchorBoys: '<h3>Boys Basketball RPI standings</h3>'
       },
-      TeamNameNormalize: {
-        phraseReplacements: [
-          { from: /\bsaint\b/ig, to: 'St' },
-          { from: /\bmount\b/ig, to: 'Mt' },
-          { from: /\bfort\b/ig, to: 'Ft' },
-          { from: /\bnorthwest\b/ig, to: 'NW' },
-          { from: /\bnortheast\b/ig, to: 'NE' },
-          { from: /\bsouthwest\b/ig, to: 'SW' },
-          { from: /\bsoutheast\b/ig, to: 'SE' },
-          { from: /\bpreparatory\b/ig, to: 'Prep' },
-          { from: /&/g, to: ' and ' },
-          { from: /-/g, to: ' ' }
-        ],
-        removePhrases: [
-          'high school', 'highschool', 'junior senior', 'middle and high school', 'middle and highschool',
-          'middle and', 'andhigh school', 'and Sustainability', 'Collegiate and Technical Academy', 'of Technology and Arts'
-        ],
-        removeTokens: ['junior', 'senior', 'stem', 'magnet', 'andhighschool'],
-        removeTrailingSchool: true,
-        removeLeadingThe: true,
-        acronymOverrides: {
-          'north carolina school of science and mathematics durham': 'NCSSM Durham',
-          'north carolina school of science and mathematics morganton': 'NCSSM Morganton'
-        }
-      }
+      TeamNameNormalize: loadTeamNameNormalizeConfig_()
     };
 
     const NC_MAP_DEFAULT_LATITUDE_ = 35.34651886289863;
@@ -2643,20 +2682,73 @@ function applyTeamLogRangeSelection_(value) {
       return { kind: 'single_table', url: map[sportKey] };
     }
 
-    function getOptOutTeamsForSport_(sportKey) {
+    function getOptOutEntriesForSport_(sportKey) {
       const cfg = APP.OptOut || {};
       const allTeams = Array.isArray(cfg.all) ? cfg.all : [];
       const sportTeams = Array.isArray(cfg[sportKey]) ? cfg[sportKey] : [];
-      return new Set(allTeams.concat(sportTeams).map(name => canonicalTeamName_(name)).filter(Boolean));
+      const seen = new Set();
+      return allTeams.concat(sportTeams)
+        .map(label => String(label || '').trim())
+        .filter(label => {
+          if (!label) return false;
+          const key = label.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
     }
 
-    function filterOptedOutTeams_(rows, sportKey) {
-      const optedOut = getOptOutTeamsForSport_(sportKey);
-      if (!optedOut.size) return rows;
-      return rows.filter(row => {
-        const team = canonicalTeamName_(row?.team);
-        return team && !optedOut.has(team);
+    function teamDetailOptOutKeys_(teamObj) {
+      const keys = new Set();
+      if (!teamObj) return keys;
+      if (teamObj.name) keys.add(canonicalTeamName_(teamObj.name));
+      splitAliasList_(teamObj.aliases).forEach(v => keys.add(canonicalTeamName_(v)));
+      return new Set([...keys].filter(Boolean));
+    }
+
+    function findTeamDetailForOptOutKey_(rowKey, tdMap = null) {
+      if (!rowKey || !tdMap) return null;
+      const seen = new Set();
+      for (const teamObj of tdMap.values()) {
+        if (!teamObj || seen.has(teamObj)) continue;
+        seen.add(teamObj);
+        if (teamDetailOptOutKeys_(teamObj).has(rowKey)) return teamObj;
+      }
+      return null;
+    }
+
+    function filterOptedOutTeams_(rows, sportKey, tdMap = null) {
+      const optOutLabels = getOptOutEntriesForSport_(sportKey);
+      if (!optOutLabels.length) return { rows, excludedTeams: [] };
+
+      const optOutEntries = optOutLabels.map(label => ({
+        label,
+        key: canonicalTeamName_(label)
+      })).filter(entry => entry.key);
+
+      if (!optOutEntries.length) return { rows, excludedTeams: [] };
+
+      const excludedTeams = [];
+      const filteredRows = (Array.isArray(rows) ? rows : []).filter(row => {
+        const school = String(row?.school || row?.team || '').trim();
+        const rowKey = canonicalTeamName_(school);
+        if (!rowKey) return true;
+        const teamObj = findTeamDetailForOptOutKey_(rowKey, tdMap);
+        const rowKeys = teamDetailOptOutKeys_(teamObj);
+        rowKeys.add(rowKey);
+
+        const matchedEntry = optOutEntries.find(entry => rowKeys.has(entry.key)) || null;
+        if (!matchedEntry) return true;
+
+        excludedTeams.push({
+          label: matchedEntry.label,
+          school,
+          record: String(row?.record || '').trim()
+        });
+        return false;
       });
+
+      return { rows: filteredRows, excludedTeams };
     }
 
     // ============================================================================
@@ -3234,13 +3326,12 @@ function applyTeamLogRangeSelection_(value) {
       const rows = table.rowsByClass[classification] || [];
       if (!rows.length) throw new Error(`No fallback ${sportLabel} ${classification} rows found for ${targetYear}`);
 
-      const filteredRows = filterOptedOutTeams_(rows, sportKey);
       return {
-        rows: filteredRows,
+        rows,
         lastUpdated: `${sportLabel} Final RPI ${targetYear}`,
         source: 'fallback',
         year: targetYear,
-        hasDetailedStats: rpiResultHasDetailedStats_(filteredRows)
+        hasDetailedStats: rpiResultHasDetailedStats_(rows)
       };
     }
 
@@ -3358,7 +3449,7 @@ function applyTeamLogRangeSelection_(value) {
 
       const lastUpdated = extractLastUpdatedAnywhere_(html);
       const rows = parseRowsFromTableHtml_(html.slice(start, end + 8));
-      return { rows: filterOptedOutTeams_(rows, sportKey), lastUpdated };
+      return { rows, lastUpdated };
     }
 
     async function fetchBasketballWeb_(url, classification, sportKey) {
@@ -3386,7 +3477,7 @@ function applyTeamLogRangeSelection_(value) {
 
       const lastUpdated = extractLastUpdatedAnywhere_(html);
       const rows = parseRowsFromTableHtml_(html.slice(start, end + 8));
-      return { rows: filterOptedOutTeams_(rows, sportKey), lastUpdated };
+      return { rows, lastUpdated };
     }
 
     async function fetchOfficialRpiRows_(classification, sportLabel) {
@@ -3586,6 +3677,19 @@ function applyTeamLogRangeSelection_(value) {
       const oddClass = side === 'east' ? 'odd-extra-east' : 'odd-extra-west';
       const note = 'Region will be determined by a coin flip at the end of the season for highlighted team';
       return `<div class="odd-extra-note ${escapeHtml(oddClass)}">${escapeHtml(note)}</div>`;
+    }
+
+    function excludedTeamsNoteHtml_(excludedTeams = []) {
+      const items = (Array.isArray(excludedTeams) ? excludedTeams : [])
+        .map(item => {
+          const label = String(item?.label || '').trim();
+          if (!label) return '';
+          const record = String(item?.record || '').trim();
+          return `${escapeHtml(label)}${record ? ` (${escapeHtml(record)})` : ''}`;
+        })
+        .filter(Boolean);
+      if (!items.length) return '';
+      return `<div class="excluded-teams-note">Excluded Teams: ${items.join(', ')}</div>`;
     }
 
     function playoffHeaderHtml_(classification, sportLabel, viewTitle, subtitle = '') {
@@ -4039,17 +4143,18 @@ function applyTeamLogRangeSelection_(value) {
       const { lineData, classification, sportLabel } = eastWestLineMapState_;
       const sourceRows = lineData.east.concat(lineData.west);
       const nextLineData = buildEastWestLineRows_(sourceRows, classification);
-      eastWestLineMapState_ = { lineData: nextLineData, classification, sportLabel, year: selectedRpiYear_() };
+      const excludedTeams = eastWestLineMapState_.excludedTeams || [];
+      eastWestLineMapState_ = { lineData: nextLineData, classification, sportLabel, year: selectedRpiYear_(), excludedTeams };
 
       if (document.body.classList.contains('east-west-mode')) {
         renderEastWestLine_(nextLineData, classification, sportLabel);
         armImageFallbacks_(tbody);
       } else if (document.body.classList.contains('regions-mode')) {
-        const regionData = buildRegionRows_(sourceRows, classification);
+        const regionData = buildRegionRows_(sourceRows, classification, eastWestExtraSide_(), eastWestLineMapState_.excludedTeams || []);
         renderRegionRows(regionData, classification, sportLabel);
         armImageFallbacks_(tbody);
       } else if (document.body.classList.contains('playoff-mode')) {
-        const regionData = buildRegionRows_(sourceRows, classification);
+        const regionData = buildRegionRows_(sourceRows, classification, eastWestExtraSide_(), eastWestLineMapState_.excludedTeams || []);
         renderPlayoffPicture(regionData, classification, sportLabel);
         armImageFallbacks_(tbody);
       }
@@ -4059,6 +4164,7 @@ function applyTeamLogRangeSelection_(value) {
 
     function buildEastWestMapExportHtml_() {
       const cloneDoc = document.documentElement.cloneNode(true);
+      injectExportSnapshotBase_(cloneDoc);
       cloneDoc.querySelectorAll('script').forEach(el => el.remove());
       const body = cloneDoc.querySelector('body');
       if (body) body.className = document.body.className;
@@ -5055,7 +5161,7 @@ function applyTeamLogRangeSelection_(value) {
       };
     }
 
-    function buildRegionRows_(rows, classification, extraSide = eastWestExtraSide_()) {
+    function buildRegionRows_(rows, classification, extraSide = eastWestExtraSide_(), excludedTeams = []) {
       const lineData = buildEastWestLineRows_(rows, classification, extraSide);
 
       const east = lineData.east
@@ -5068,13 +5174,13 @@ function applyTeamLogRangeSelection_(value) {
         .sort((a, b) => numericRpi_(b.rpi) - numericRpi_(a.rpi))
         .map((r, i) => ({ ...r, regionRank: i + 1 }));
 
-      return { west, east, total: lineData.total, cap: lineData.cap, extraSide: lineData.extraSide };
+      return { west, east, total: lineData.total, cap: lineData.cap, extraSide: lineData.extraSide, excludedTeams };
     }
 
     function regionInfoLookupForRows_(rows, classification) {
       const lookup = new Map();
       try {
-        const regionData = buildRegionRows_(rows, classification);
+        const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), []);
         regionData.east.concat(regionData.west).forEach(row => {
           if (row.school && row.regionRank) {
             lookup.set(canonicalTeamName_(row.school), {
@@ -5089,9 +5195,9 @@ function applyTeamLogRangeSelection_(value) {
       return lookup;
     }
 
-    function setEastWestMapStateFromRows_(rows, classification, sportLabel) {
+    function setEastWestMapStateFromRows_(rows, classification, sportLabel, excludedTeams = []) {
       const lineData = buildEastWestLineRows_(rows, classification);
-      eastWestLineMapState_ = { lineData, classification, sportLabel, year: selectedRpiYear_() };
+      eastWestLineMapState_ = { lineData, classification, sportLabel, year: selectedRpiYear_(), excludedTeams };
       return lineData;
     }
 
@@ -5341,7 +5447,7 @@ function applyTeamLogRangeSelection_(value) {
     }
 
     function renderRegionRows(regionData, classification, sportLabel) {
-      setEastWestMapStateFromRows_(regionData.west.concat(regionData.east), classification, sportLabel);
+      setEastWestMapStateFromRows_(regionData.west.concat(regionData.east), classification, sportLabel, regionData.excludedTeams || []);
       // Keep these column names in sync with the adjustable-column comments in playoff_board.desktop.css.
       const regionColumnGroup = `
         <colgroup>
@@ -5415,13 +5521,14 @@ function applyTeamLogRangeSelection_(value) {
                   </div>
                 </div>
               </div>
+              ${excludedTeamsNoteHtml_(regionData.excludedTeams)}
             </div>
           </td>
         </tr>`;
     }
 
-    function renderEastWestLine_(lineData, classification, sportLabel) {
-      eastWestLineMapState_ = { lineData, classification, sportLabel, year: selectedRpiYear_() };
+    function renderEastWestLine_(lineData, classification, sportLabel, excludedTeams = []) {
+      eastWestLineMapState_ = { lineData, classification, sportLabel, year: selectedRpiYear_(), excludedTeams };
       const extraText = lineData.isOdd
         ? `Odd field: extra team assigned to ${lineData.extraSide === 'east' ? 'East' : 'West'}`
         : 'Even field';
@@ -5569,7 +5676,7 @@ function applyTeamLogRangeSelection_(value) {
     }
 
     function renderPlayoffPicture(regionData, classification, sportLabel) {
-      setEastWestMapStateFromRows_(regionData.west.concat(regionData.east), classification, sportLabel);
+      setEastWestMapStateFromRows_(regionData.west.concat(regionData.east), classification, sportLabel, regionData.excludedTeams || []);
       const westBracket = buildRegionPlayoff_(regionData.west, classification, regionData.total);
       const eastBracket = buildRegionPlayoff_(regionData.east, classification, regionData.total);
 
@@ -5583,6 +5690,7 @@ function applyTeamLogRangeSelection_(value) {
                 ${renderPlayoffRegion_('west', westBracket)}
                 ${renderPlayoffRegion_('east', eastBracket)}
               </div>
+              ${excludedTeamsNoteHtml_(regionData.excludedTeams)}
             </div>
           </td>
         </tr>`;
@@ -5608,9 +5716,18 @@ function applyTeamLogRangeSelection_(value) {
         fetchRpiRows_(classification, sport)
       ]);
       if (rpiResult?.source === 'fallback' && rpiResult.year) ensureSeasonYearOption_(rpiResult.year);
-      const rows = mergeRows_(rpiResult.rows, tdMap, sport, rpiResult);
-      const rowsWithChanges = await addLiveRpiChangeData_(rows, sport, classification, rpiResult);
-      return { sport, classification, rows: rowsWithChanges, rpiResult };
+      const mergedRows = mergeRows_(rpiResult.rows, tdMap, sport, rpiResult);
+      const { rows: filteredRows, excludedTeams } = filterOptedOutTeams_(mergedRows, sportKeyFromLabel_(sport), tdMap);
+      const rowsWithChanges = await addLiveRpiChangeData_(filteredRows, sport, classification, rpiResult);
+      return {
+        sport,
+        classification,
+        rows: rowsWithChanges,
+        rpiResult: {
+          ...rpiResult,
+          excludedTeams
+        }
+      };
     }
 
     async function getMergedRowsForCurrentSelection_() {
@@ -5997,6 +6114,24 @@ let eastWestLineMapState_ = null;
       exportPreviewGrid.classList.remove('all-classes');
     }
 
+    function exportSnapshotBaseHref_() {
+      if (window.location.protocol === 'file:') return 'http://localhost:8000/';
+      try {
+        return new URL('./', window.location.href).href;
+      } catch (_) {
+        return 'http://localhost:8000/';
+      }
+    }
+
+    function injectExportSnapshotBase_(cloneDoc) {
+      const head = cloneDoc.querySelector('head');
+      if (!head) return;
+      head.querySelectorAll('base').forEach(el => el.remove());
+      const base = cloneDoc.ownerDocument.createElement('base');
+      base.href = exportSnapshotBaseHref_();
+      head.insertBefore(base, head.firstChild);
+    }
+
     function closeExportPreview_() {
       exportPreviewOverlay.classList.remove('open');
       exportPreviewOverlay.setAttribute('aria-hidden', 'true');
@@ -6082,6 +6217,7 @@ let eastWestLineMapState_ = null;
     }
     function buildServerExportHtml_() {
       const cloneDoc = document.documentElement.cloneNode(true);
+      injectExportSnapshotBase_(cloneDoc);
 
       cloneDoc.querySelectorAll('script').forEach(el => el.remove());
 
@@ -6329,7 +6465,7 @@ let eastWestLineMapState_ = null;
             .forEach(item => setExportCardProgress_(item.key, 'Loading data...', 'loading'));
 
           const { sport, classification, rows, rpiResult } = await classDataPromises.get(classValue);
-          const regionData = buildRegionRows_(rows, classification);
+          const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
 
           const regionKey = `${classShort}::region`;
           const playoffKey = `${classShort}::playoff`;
@@ -6372,7 +6508,7 @@ let eastWestLineMapState_ = null;
 
         if (originalMode === 'regions') {
           const { sport, classification, rows, rpiResult } = await getMergedRowsForCurrentSelection_();
-          const regionData = buildRegionRows_(rows, classification);
+          const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
           setViewMode_('regions');
           setMainHeaderBlank();
           renderRegionRows(regionData, classification, sport);
@@ -6380,7 +6516,7 @@ let eastWestLineMapState_ = null;
           setUpdatedFromRpi_(rpiResult, oldUpdated);
         } else if (originalMode === 'playoff') {
           const { sport, classification, rows, rpiResult } = await getMergedRowsForCurrentSelection_();
-          const regionData = buildRegionRows_(rows, classification);
+          const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
           setViewMode_('playoff');
           setMainHeaderBlank();
           renderPlayoffPicture(regionData, classification, sport);
@@ -6391,7 +6527,7 @@ let eastWestLineMapState_ = null;
         const lineData = buildEastWestLineRows_(rows, classification);
         setViewMode_('east-west');
         setMainHeaderBlank();
-        renderEastWestLine_(lineData, classification, sport);
+        renderEastWestLine_(lineData, classification, sport, rpiResult?.excludedTeams || []);
         armImageFallbacks_(tbody);
         setUpdatedFromRpi_(rpiResult, oldUpdated);
         } else {
