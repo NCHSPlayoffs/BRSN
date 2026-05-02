@@ -129,9 +129,13 @@ try {
     teamLogOverlay?.addEventListener('click', (e) => {
       if (e.target === teamLogOverlay) closeTeamLogCard_();
     });
-teamLogCalendarBtn?.addEventListener('click', () => openDatePicker_(teamLogDateInput));
+teamLogCalendarBtn?.addEventListener('click', () => {
+  teamLogCalendarOpen_ = !teamLogCalendarOpen_;
+  if (teamLogCalendarOpen_) prepareTeamLogCalendarDraft_();
+  renderTeamLog_();
+});
 teamLogViewBtn?.addEventListener('click', toggleTeamLogView_);
-teamLogDateInput?.addEventListener('change', () => applyTeamLogDateSelection_(teamLogDateInput.value));
+teamLogDateInput?.addEventListener('change', () => applyTeamLogDateSelection_(teamLogDateInput.value, teamLogDateInput.value));
 let teamLogGraphDrag_ = null;
 let teamLogGraphActivePointers_ = new Map();
 let teamLogGraphPinchStart_ = null;
@@ -177,14 +181,46 @@ teamLogContent?.addEventListener('change', (e) => {
   const regionSelect = e.target.closest('[data-team-log-region]');
   if (regionSelect) {
     applyTeamLogSelectorRegion_(regionSelect.value);
+    return;
+  }
+  const dateStart = e.target.closest('[data-team-log-date-start]');
+  if (dateStart) {
+    teamLogDraftStartDate_ = dateStart.value || '';
+    return;
+  }
+  const dateEnd = e.target.closest('[data-team-log-date-end]');
+  if (dateEnd) {
+    teamLogDraftEndDate_ = dateEnd.value || '';
   }
 });
 teamLogContent?.addEventListener('click', (e) => {
   const withinTeamSelector = e.target.closest('.team-log-graph-select-team');
   if (e.target.closest('.team-log-inline-calendar-btn')) {
-    openDatePicker_(teamLogDateInput);
+    teamLogCalendarOpen_ = !teamLogCalendarOpen_;
+    if (teamLogCalendarOpen_) prepareTeamLogCalendarDraft_();
+    renderTeamLog_();
     return;
   }
+      const dateApplyBtn = e.target.closest('[data-team-log-date-apply]');
+      if (dateApplyBtn) {
+        const startInput = teamLogContent.querySelector('[data-team-log-date-start]');
+        const endInput = teamLogContent.querySelector('[data-team-log-date-end]');
+        applyTeamLogDateSelection_(startInput?.value || teamLogDraftStartDate_, endInput?.value || teamLogDraftEndDate_ || startInput?.value || teamLogDraftStartDate_);
+        return;
+      }
+      const dateResetBtn = e.target.closest('[data-team-log-date-reset]');
+      if (dateResetBtn) {
+        setDefaultTeamLogDateRange_();
+        teamLogExpandedEntryKey_ = '';
+        teamLogCalendarOpen_ = false;
+        resetTeamLogGraphViewport_();
+        if (teamLogViewMode_ === 'graph' && teamLogShowAllTeams_) {
+          ensureTeamLogAllSeries_();
+        } else {
+          renderTeamLog_();
+        }
+        return;
+      }
       if (e.target.closest('.team-log-inline-view-btn')) {
         toggleTeamLogView_();
         return;

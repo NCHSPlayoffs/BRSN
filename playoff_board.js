@@ -219,8 +219,12 @@ const sportPickerBtnText = document.getElementById('sportPickerBtnText');
     let teamLogCurrentRow_ = null;
     let teamLogCurrentResult_ = null;
     let teamLogSelectedDate_ = '';
+let teamLogSelectedEndDate_ = '';
+let teamLogCalendarOpen_ = false;
+let teamLogDraftStartDate_ = '';
+let teamLogDraftEndDate_ = '';
 let teamLogExpandedEntryKey_ = '';
-let teamLogViewMode_ = 'graph';
+let teamLogViewMode_ = 'table';
 let teamLogRange_ = 'ALL';
 let teamLogGraphZoom_ = 1;
 let teamLogGraphPanX_ = 0;
@@ -242,6 +246,7 @@ let compareSnapshotLabel_ = '';
 let historySnapshotId_ = '';
 let historySnapshotLabel_ = '';
 const TEAM_LOG_ALL_TEAMS_VALUE_ = '__all_teams__';
+const TEAM_LOG_DEFAULT_DAY_COUNT_ = 3;
 const teamLogSelectorCache_ = new Map();
 const teamLogSeriesCache_ = new Map();
 const teamLogSnapshotBundleCache_ = new Map();
@@ -1219,6 +1224,13 @@ async function fetchTeamRpiLog_(row, options = {}) {
       return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     }
 
+    function teamLogDisplayDateRange_() {
+      const { start, end } = teamLogSelectedDateBounds_();
+      if (!start && !end) return 'Latest snapshots';
+      if (!end || start === end) return teamLogDisplayDate_(start || end);
+      return `${teamLogDisplayDate_(start)} - ${teamLogDisplayDate_(end)}`;
+    }
+
     function normalizeTeamLogEntries_(logs) {
       return (Array.isArray(logs) ? logs : []).map(log => ({
         ...log,
@@ -1228,7 +1240,71 @@ async function fetchTeamRpiLog_(row, options = {}) {
 
     function teamLogAvailableDates_() {
       const logs = normalizeTeamLogEntries_(teamLogCurrentResult_?.logs || []);
-      return [...new Set(logs.map(log => log.localDate).filter(Boolean))];
+      return [...new Set(logs.map(log => log.localDate).filter(Boolean))]
+        .sort((a, b) => String(b).localeCompare(String(a)));
+    }
+
+    function normalizeTeamLogDateRange_(startValue, endValue = '') {
+      const dates = teamLogAvailableDates_();
+      const validDates = new Set(dates);
+      let start = validDates.has(startValue) ? startValue : '';
+      let end = validDates.has(endValue) ? endValue : '';
+      if (start && !end) end = start;
+      if (!start && end) start = end;
+      if (!start && dates.length) {
+        const defaultWindow = dates.slice(0, TEAM_LOG_DEFAULT_DAY_COUNT_);
+        start = defaultWindow[defaultWindow.length - 1] || dates[0];
+        end = defaultWindow[0] || start;
+      }
+      if (start && end && start > end) [start, end] = [end, start];
+      return { start, end };
+    }
+
+    function setDefaultTeamLogDateRange_() {
+      const { start, end } = normalizeTeamLogDateRange_('', '');
+      teamLogSelectedDate_ = start;
+      teamLogSelectedEndDate_ = end;
+      teamLogDraftStartDate_ = start;
+      teamLogDraftEndDate_ = end;
+    }
+
+    function teamLogSelectedDateBounds_() {
+      const bounds = normalizeTeamLogDateRange_(teamLogSelectedDate_, teamLogSelectedEndDate_);
+      teamLogSelectedDate_ = bounds.start;
+      teamLogSelectedEndDate_ = bounds.end;
+      return bounds;
+    }
+
+    function teamLogSelectedGraphAnchorDate_() {
+      const { start, end } = teamLogSelectedDateBounds_();
+      return end || start || '';
+    }
+
+    function resetTeamLogGraphViewport_() {
+      teamLogGraphZoom_ = 1;
+      teamLogGraphPanX_ = 0;
+      teamLogGraphPanY_ = 0;
+    }
+
+    function prepareTeamLogCalendarDraft_() {
+      const { start, end } = teamLogSelectedDateBounds_();
+      teamLogDraftStartDate_ = start;
+      teamLogDraftEndDate_ = end;
+    }
+
+    function teamLogSelectedWindow_() {
+      const dates = teamLogAvailableDates_();
+      const { start, end } = teamLogSelectedDateBounds_();
+      const selectedDates = dates.filter(date => (!start || date >= start) && (!end || date <= end));
+      const newest = selectedDates[0] || end || start || '';
+      const oldest = selectedDates[selectedDates.length - 1] || start || end || '';
+      return {
+        dates,
+        selectedDates,
+        newestIdx: dates.indexOf(newest),
+        oldestIdx: dates.indexOf(oldest),
+        count: Math.max(selectedDates.length, start || end ? 1 : TEAM_LOG_DEFAULT_DAY_COUNT_)
+      };
     }
 
     function isMobileViewport_() {
@@ -1238,28 +1314,32 @@ async function fetchTeamRpiLog_(row, options = {}) {
     }
 
     function teamLogDateNavState_() {
-      const dates = teamLogAvailableDates_();
-      const idx = dates.indexOf(teamLogSelectedDate_);
+      const { dates, newestIdx, oldestIdx, count } = teamLogSelectedWindow_();
       return {
         dates,
-        idx,
-        hasNewer: idx > 0,
-        hasOlder: idx >= 0 && idx < dates.length - 1
+        newestIdx,
+        oldestIdx,
+        count,
+        hasNewer: newestIdx > 0,
+        hasOlder: oldestIdx >= 0 && oldestIdx < dates.length - 1
       };
     }
 
     function stepTeamLogDate_(direction) {
-      const { dates, idx, hasNewer, hasOlder } = teamLogDateNavState_();
+      const { dates, newestIdx, count, hasNewer, hasOlder } = teamLogDateNavState_();
       if (!dates.length) return;
-      if (direction === 'older' && hasOlder) {
-        teamLogSelectedDate_ = dates[idx + 1];
-        teamLogExpandedEntryKey_ = '';
-        renderTeamLog_();
-      } else if (direction === 'newer' && hasNewer) {
-        teamLogSelectedDate_ = dates[idx - 1];
-        teamLogExpandedEntryKey_ = '';
-        renderTeamLog_();
-      }
+      const nextNewestIdx = direction === 'older' && hasOlder
+        ? newestIdx + 1
+        : (direction === 'newer' && hasNewer ? newestIdx - 1 : -1);
+      if (nextNewestIdx < 0) return;
+      const nextDates = dates.slice(nextNewestIdx, nextNewestIdx + Math.max(count, 1));
+      if (!nextDates.length) return;
+      teamLogSelectedDate_ = nextDates[nextDates.length - 1];
+      teamLogSelectedEndDate_ = nextDates[0];
+      prepareTeamLogCalendarDraft_();
+      teamLogExpandedEntryKey_ = '';
+      teamLogCalendarOpen_ = false;
+      renderTeamLog_();
     }
 
 function teamLogToolbarDateHtml_(label) {
@@ -1274,7 +1354,7 @@ function teamLogToolbarDateHtml_(label) {
 
 function teamLogCalendarButtonHtml_() {
   return `
-    <button type="button" class="team-log-inline-btn team-panel-icon-btn team-log-inline-calendar-btn" aria-label="Choose team log date" title="Choose team log date">
+    <button type="button" class="team-log-inline-btn team-panel-icon-btn team-log-inline-calendar-btn${teamLogCalendarOpen_ ? ' is-active' : ''}" aria-label="Choose team log date range" title="Choose team log date range" aria-expanded="${teamLogCalendarOpen_ ? 'true' : 'false'}">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M7 2v3M17 2v3M3.5 9.5h17M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18V7A1.5 1.5 0 0 1 5 5.5Z" />
         <path d="M8 13h3M8 16h3M13 13h3M13 16h3" />
@@ -1299,7 +1379,7 @@ function teamLogInlineActionButtonsHtml_() {
 
 function teamLogToolbarActionsHtml_() {
   return `
-    <span class="team-log-toolbar-actions">
+    <span class="team-log-toolbar-actions${teamLogViewMode_ === 'graph' ? ' is-graph' : ' is-table'}">
       ${teamLogCalendarButtonHtml_()}
       ${teamLogViewButtonHtml_()}
       <span class="team-log-toolbar-zoom" aria-label="Graph zoom controls">
@@ -1308,6 +1388,34 @@ function teamLogToolbarActionsHtml_() {
         <button type="button" class="team-log-inline-btn team-panel-icon-btn team-log-zoom-btn" data-team-log-zoom="in" aria-label="Zoom in graph" title="Zoom in graph"${teamLogViewMode_ === 'graph' ? '' : ' disabled'}>+</button>
       </span>
     </span>`;
+}
+
+function teamLogDateRangePanelHtml_() {
+  if (!teamLogCalendarOpen_) return '';
+  const dates = teamLogAvailableDates_();
+  const hasDates = dates.length > 0;
+  const minDate = hasDates ? dates[dates.length - 1] : '';
+  const maxDate = hasDates ? dates[0] : '';
+  const { start, end } = teamLogSelectedDateBounds_();
+  const draftStart = teamLogDraftStartDate_ || start || '';
+  const draftEnd = teamLogDraftEndDate_ || end || draftStart || '';
+  return `
+    <div class="team-log-date-range-panel" role="group" aria-label="Choose team log date range">
+      <div class="team-log-date-range-grid">
+        <label class="team-log-date-field is-start">
+          <span>Start date</span>
+          <input type="date" data-team-log-date-start value="${escapeHtml(draftStart)}" min="${escapeHtml(minDate)}" max="${escapeHtml(maxDate)}"${hasDates ? '' : ' disabled'}>
+        </label>
+        <label class="team-log-date-field is-end">
+          <span>End date</span>
+          <input type="date" data-team-log-date-end value="${escapeHtml(draftEnd)}" min="${escapeHtml(minDate)}" max="${escapeHtml(maxDate)}"${hasDates ? '' : ' disabled'}>
+        </label>
+      </div>
+      <div class="team-log-date-range-actions">
+        <button type="button" class="team-log-date-apply-btn" data-team-log-date-apply${hasDates ? '' : ' disabled'}>Apply</button>
+        <button type="button" class="team-log-date-reset-btn" data-team-log-date-reset${hasDates ? '' : ' disabled'}>Last 3 Days</button>
+      </div>
+    </div>`;
 }
 
 function teamLogClassOptions_() {
@@ -1676,16 +1784,17 @@ async function selectTeamLogTeamByName_(value) {
     function syncTeamLogDateControls_() {
       const dates = teamLogAvailableDates_();
       const hasDates = dates.length > 0;
+      const { start, end } = teamLogSelectedDateBounds_();
       if (teamLogDateInput) {
         teamLogDateInput.disabled = !hasDates;
         teamLogDateInput.min = hasDates ? dates[dates.length - 1] : '';
         teamLogDateInput.max = hasDates ? dates[0] : '';
-        teamLogDateInput.value = hasDates && teamLogSelectedDate_ ? teamLogSelectedDate_ : '';
+        teamLogDateInput.value = hasDates && (end || start) ? (end || start) : '';
       }
       if (teamLogCalendarBtn) {
         teamLogCalendarBtn.disabled = !hasDates;
         teamLogCalendarBtn.title = hasDates
-          ? `Choose log date (${teamLogDisplayDate_(teamLogSelectedDate_)})`
+          ? `Choose log date range (${teamLogDisplayDateRange_()})`
           : 'No log dates available';
       }
       syncTeamLogViewControls_();
@@ -1719,11 +1828,11 @@ async function selectTeamLogTeamByName_(value) {
 
     function filteredTeamLogEntries_() {
       const logs = normalizeTeamLogEntries_(teamLogCurrentResult_?.logs || []);
-      const dates = [...new Set(logs.map(log => log.localDate).filter(Boolean))];
-      if (dates.length && !dates.includes(teamLogSelectedDate_)) {
-        teamLogSelectedDate_ = dates[0];
-      }
-      return logs.filter(log => !teamLogSelectedDate_ || log.localDate === teamLogSelectedDate_);
+      const { start, end } = teamLogSelectedDateBounds_();
+      return logs.filter(log => {
+        if (!start && !end) return true;
+        return log.localDate && log.localDate >= start && log.localDate <= end;
+      });
     }
 
     function formatTeamLogTimestamp_(value) {
@@ -1788,8 +1897,9 @@ async function selectTeamLogTeamByName_(value) {
 
     function teamLogAnchorEntry_(logs) {
       if (!logs.length) return null;
-      const selectedDayLogs = teamLogSelectedDate_
-        ? logs.filter(log => log.localDate === teamLogSelectedDate_)
+      const selectedDate = teamLogSelectedGraphAnchorDate_();
+      const selectedDayLogs = selectedDate
+        ? logs.filter(log => log.localDate === selectedDate)
         : [];
       return selectedDayLogs[selectedDayLogs.length - 1] || logs[logs.length - 1] || null;
     }
@@ -1799,7 +1909,7 @@ function filteredTeamLogGraphEntries_() {
   if (!logs.length) return [];
   return filterTeamLogEntriesForGraph_(logs, {
     rangeKey: teamLogRange_,
-    selectedDate: teamLogSelectedDate_
+    selectedDate: teamLogSelectedGraphAnchorDate_()
   });
 }
 
@@ -1849,7 +1959,7 @@ async function ensureTeamLogAllSeries_() {
     if (requestToken !== teamLogGraphAllRequestToken_) return teamLogGraphAllSeries_;
     const series = buildAllTeamLogSeriesFromSnapshots_(snapshots, rows, {
       rangeKey: teamLogRange_,
-      selectedDate: teamLogSelectedDate_
+      selectedDate: teamLogSelectedGraphAnchorDate_()
     });
     if (requestToken !== teamLogGraphAllRequestToken_) return teamLogGraphAllSeries_;
     teamLogGraphAllSeries_ = series;
@@ -2408,9 +2518,10 @@ function teamLogGraphBodyHtml_(logs) {
       const rangeMeta = TEAM_LOG_GRAPH_RANGES_.find(item => item.key === teamLogRange_) || TEAM_LOG_GRAPH_RANGES_[TEAM_LOG_GRAPH_RANGES_.length - 1];
       const seasonYear = String(result?.seasonYear || selectedRpiYear_() || 'live').trim();
       const toolbarLabel = seasonYear === 'live' ? 'Live RPI snapshot history' : `${seasonYear} RPI snapshot history`;
+      const selectedDateLabel = teamLogDisplayDateRange_();
       const toolbarDate = teamLogViewMode_ === 'graph'
-        ? `${teamLogDisplayDate_(teamLogSelectedDate_)} | ${rangeMeta.label}`
-        : teamLogDisplayDate_(teamLogSelectedDate_);
+        ? `${selectedDateLabel} | ${rangeMeta.label}`
+        : selectedDateLabel;
       syncTeamLogDateControls_();
       const toolbarDateDisplay = String(toolbarDate).replace(/[^ -~]/g, '|').replace(/\|\|+/g, '|');
       const toolbarDateHtml = teamLogToolbarDateHtml_(toolbarDateDisplay);
@@ -2451,6 +2562,7 @@ function teamLogGraphBodyHtml_(logs) {
             ${toolbarDateHtml}
             ${toolbarActionsHtml}
           </div>
+          ${teamLogDateRangePanelHtml_()}
           ${teamLogViewMode_ === 'graph'
             ? renderTeamLogGraph_(graphLogs)
             : (useMobileLogList
@@ -2485,7 +2597,7 @@ function teamLogGraphBodyHtml_(logs) {
                 <tbody>${rowsHtml}</tbody>
               </table>
             </div>
-          ` : `<div class="team-log-empty">${escapeHtml(allLogs.length ? 'No RPI snapshots found for the selected day.' : 'No RPI snapshots found for this team yet.')}</div>`))}
+          ` : `<div class="team-log-empty">${escapeHtml(allLogs.length ? 'No RPI snapshots found for the selected date range.' : 'No RPI snapshots found for this team yet.')}</div>`))}
         </div>`;
       armImageFallbacks_(teamLogContent);
     }
@@ -2498,12 +2610,14 @@ async function openTeamLogCard_(row, options = {}) {
   teamLogCurrentRow_ = { ...row, classification: nextClassification, sport: nextSport };
   teamLogCurrentResult_ = null;
   teamLogSelectedDate_ = '';
+  teamLogSelectedEndDate_ = '';
+  teamLogCalendarOpen_ = false;
+  teamLogDraftStartDate_ = '';
+  teamLogDraftEndDate_ = '';
   teamLogExpandedEntryKey_ = '';
-  teamLogViewMode_ = 'graph';
+  teamLogViewMode_ = 'table';
   teamLogRange_ = 'ALL';
-  teamLogGraphZoom_ = 1;
-  teamLogGraphPanX_ = 0;
-  teamLogGraphPanY_ = 0;
+  resetTeamLogGraphViewport_();
   if (!options.preserveSelectorState) {
     teamLogSelectorClass_ = nextClassification || classEl?.value || '';
     teamLogTeamSearch_ = '';
@@ -2536,7 +2650,7 @@ async function openTeamLogCard_(row, options = {}) {
       sport: nextSport,
       logs: normalizeTeamLogEntries_(result?.logs || [])
     };
-    teamLogSelectedDate_ = teamLogAvailableDates_()[0] || '';
+    setDefaultTeamLogDateRange_();
     renderTeamLog_();
     if (!options.preserveSelectorState || !teamLogSelectorRows_.length) {
       ensureTeamLogSelectorRows_(teamLogSelectorClass_);
@@ -2551,14 +2665,16 @@ async function openTeamLogCard_(row, options = {}) {
   }
 }
 
-function applyTeamLogDateSelection_(value) {
+function applyTeamLogDateSelection_(startValue, endValue = '') {
   if (!teamLogCurrentResult_) return;
-  const dates = teamLogAvailableDates_();
-  teamLogSelectedDate_ = dates.includes(value) ? value : (dates[0] || '');
+  const { start, end } = normalizeTeamLogDateRange_(startValue, endValue || startValue);
+  teamLogSelectedDate_ = start;
+  teamLogSelectedEndDate_ = end;
+  teamLogDraftStartDate_ = start;
+  teamLogDraftEndDate_ = end;
   teamLogExpandedEntryKey_ = '';
-  teamLogGraphZoom_ = 1;
-  teamLogGraphPanX_ = 0;
-  teamLogGraphPanY_ = 0;
+  teamLogCalendarOpen_ = false;
+  resetTeamLogGraphViewport_();
   if (teamLogViewMode_ === 'graph' && teamLogShowAllTeams_) {
     ensureTeamLogAllSeries_();
     return;
@@ -2569,6 +2685,7 @@ function applyTeamLogDateSelection_(value) {
 function toggleTeamLogView_() {
   if (!normalizeTeamLogEntries_(teamLogCurrentResult_?.logs || []).length) return;
   teamLogViewMode_ = teamLogViewMode_ === 'graph' ? 'table' : 'graph';
+  teamLogCalendarOpen_ = false;
   if (teamLogViewMode_ === 'graph') teamLogExpandedEntryKey_ = '';
   if (teamLogViewMode_ === 'graph' && teamLogShowAllTeams_) {
     ensureTeamLogAllSeries_();
