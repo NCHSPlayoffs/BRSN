@@ -48,6 +48,109 @@
       .app-settings-grid {
         grid-template-columns: 1fr;
       }
+
+      .admin-auth-row,
+      .admin-inline-row {
+        flex-wrap: wrap;
+      }
+
+      .admin-inline-row select,
+      .admin-auth-row input,
+      .admin-inline-row input,
+      .admin-team-search-wrap {
+        flex-basis: 100%;
+      }
+
+      .admin-team-search-menu {
+        max-height: 245px;
+      }
+
+      .admin-inline-row .admin-team-search-option,
+      .admin-team-search-option {
+        min-height: 52px;
+        gap: 9px;
+        padding: 8px 9px;
+      }
+
+      .admin-team-search-logo {
+        width: 38px;
+        height: 34px;
+        flex-basis: 38px;
+      }
+
+      .admin-team-search-name {
+        font-size: 13px;
+      }
+
+      .admin-auth-row button,
+      .admin-inline-row button {
+        flex: 1 1 0;
+      }
+
+      .admin-manager-overlay {
+        padding: 10px;
+        align-items: flex-start;
+      }
+
+      .admin-manager-card {
+        width: calc(100vw - 20px);
+        max-height: calc(100dvh - 20px);
+        border-radius: 10px;
+      }
+
+      .admin-manager-head {
+        padding: 16px;
+      }
+
+      .admin-manager-title {
+        font-size: 25px;
+      }
+
+      .admin-manager-subtitle {
+        font-size: 10px;
+        line-height: 1.35;
+      }
+
+      .admin-manager-close {
+        width: 38px;
+        height: 38px;
+        flex-basis: 38px;
+        font-size: 26px;
+      }
+
+      .admin-controls {
+        padding: 14px;
+      }
+
+      .admin-manager-context {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .admin-manager-context-field select {
+        min-height: 42px;
+        font-size: 14px;
+      }
+
+      .admin-manager-context-note {
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .admin-edit-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .admin-inline-row select,
+      .admin-inline-row button {
+        flex-basis: 100%;
+      }
+
+      .team-admin-context-menu {
+        min-width: 190px;
+      }
     }
 
 @media (max-width: 900px) {
@@ -108,7 +211,7 @@
     }
 
 @media (max-width: 1200px) {
-      .controls { grid-template-columns: 1fr 1fr 1fr; }
+      .controls { grid-template-columns: 1fr 1fr; }
       .playoff-brand { width: 88px; min-width: 88px; max-width: 88px; flex-basis: 88px; }
       .brand-mark { width: 96px; max-width: 20vw; }
     }
@@ -291,7 +394,8 @@
   select,
   button,
   .sport-picker-btn,
-  .class-picker-btn {
+  .class-picker-btn,
+  .team-jump-input {
     min-width: 0;
     height: 42px;
     font-size: 15px;
@@ -305,16 +409,73 @@
   }
 
   .sport-picker-option,
-  .class-picker-option {
+  .class-picker-option,
+  .team-jump-option {
     min-height: 38px;
     font-size: 14px;
   }
 
   .sport-picker-menu,
-  .class-picker-menu {
+  .class-picker-menu,
+  .team-jump-menu {
     z-index: 500;
     max-height: 56vh;
     overflow: auto;
+  }
+
+  .team-jump-menu {
+    max-height: 50vh;
+  }
+
+  .team-jump-option {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 9px;
+    padding: 8px 9px;
+  }
+
+  .team-jump-option-logo {
+    width: 36px;
+    height: 32px;
+  }
+
+  .team-jump-option-name {
+    font-size: 13px;
+  }
+
+  .rpi-info-head {
+    gap: 5px;
+  }
+
+  .rpi-info-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
+  }
+
+  .rpi-info-popover {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 18px;
+    width: auto;
+    max-width: none;
+    transform: none;
+    font-size: 11px;
+    line-height: 1.42;
+    padding: 13px 14px;
+  }
+
+  .rpi-info-popover::after {
+    display: none;
+  }
+
+  .rpi-info-popover strong {
+    font-size: 13px;
+  }
+
+  .rpi-info-sub {
+    font-size: 10px;
   }
 
   .board-actions {

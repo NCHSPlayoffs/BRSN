@@ -30,18 +30,8 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
       };
     }
 
-    function loadTeamNameNormalizeConfig_() {
-      try {
-        const req = new XMLHttpRequest();
-        req.open('GET', './supabase/functions/_shared/team-name-normalize.config.json', false);
-        req.send(null);
-        if (req.status >= 200 && req.status < 300) {
-          return compileTeamNameNormalizeConfig_(JSON.parse(req.responseText));
-        }
-      } catch (err) {
-        console.warn('Team name normalize config unavailable; using built-in fallback.', err);
-      }
-      return compileTeamNameNormalizeConfig_({
+    function fallbackTeamNameNormalizeConfigRaw_() {
+      return {
         phraseReplacements: [
           { pattern: '\\bsaint\\b', flags: 'ig', to: 'St' },
           { pattern: '\\bmount\\b', flags: 'ig', to: 'Mt' },
@@ -56,9 +46,9 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
         ],
         removePhrases: [
           'high school', 'highschool', 'junior senior', 'middle and high school', 'middle and highschool',
-          'middle and', 'andhigh school', 'and Sustainability', 'Collegiate and Technical Academy', 'of Technology and Arts', 'Classical Academy'
+          'middle and', 'andhigh school', 'and Sustainability', 'Collegiate and Technical Academy', 'of Technology and Arts', 'Classical Academy', 'SILSA'
         ],
-        removeTokens: ['junior', 'senior', 'stem', 'magnet', 'andhighschool'],
+        removeTokens: ['junior', 'senior', 'stem', 'magnet', 'andhighschool', 'SILSA'],
         removeTrailingSchool: true,
         removeLeadingThe: true,
         acronymOverrides: {
@@ -66,19 +56,42 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
           'north carolina school of science and mathematics morganton': 'NCSSM Morganton',
           'american leadership academy johnston': 'American Leadership - Johnston'
         }
-      });
+      };
     }
+
+    function loadTeamNameNormalizeConfigRaw_() {
+      try {
+        const req = new XMLHttpRequest();
+        req.open('GET', './supabase/functions/_shared/team-name-normalize.config.json', false);
+        req.send(null);
+        if (req.status >= 200 && req.status < 300) {
+          return JSON.parse(req.responseText);
+        }
+      } catch (err) {
+        console.warn('Team name normalize config unavailable; using built-in fallback.', err);
+      }
+      return fallbackTeamNameNormalizeConfigRaw_();
+    }
+
+    function loadTeamNameNormalizeConfig_() {
+      return compileTeamNameNormalizeConfig_(loadTeamNameNormalizeConfigRaw_());
+    }
+
+    const APP_BASE_TEAM_NAME_NORMALIZE_RAW_ = loadTeamNameNormalizeConfigRaw_();
 
     const APP = {
         //TEAM OPT OUT CONFIG
       OptOut: {
         all: [],
         football: [],
-        baseball: ["Phoenix Academy", "KIPP Pride","Rocky Mt Prep", "Raleigh Charter"],
-        softball: ["Bishop McGuinness","Millennium Charter Academy","Wilson Prep Academy","Rocky Mt Prep","KIPP Pride","WSPA","Weldon","NCLA" ],
+        baseball: ["Phoenix Academy", "KIPP Pride", "Raleigh Charter", "Central Carolina Academy", "Ocracoke", "Columbia", "Northampton County"],
+        softball: ["Bishop McGuinness","Millennium Charter Academy","KIPP Pride","WSPA","Weldon","NCLA","Columbia","Ascend Leadership Academy","Tarboro","Phoenix Academy",
+        "Northampton County","Bertie","Sugar Creek Charter", "Albemarle", "Alleghany", "Christ the King", "Carrboro", "SE Guilford", "Williams", "Vance County"
+
+        ],
         volleyball: [],
         boys: [], girls: [],
-        girls_soccer: ["CPLA","Howard"],
+        girls_soccer: ["CPLA"],
         boys_soccer: []
       },
       FetchRpi: {
@@ -94,8 +107,20 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
         basketballAnchorGirls: '<h3>Girls Basketball RPI standings</h3>',
         basketballAnchorBoys: '<h3>Boys Basketball RPI standings</h3>'
       },
-      TeamNameNormalize: loadTeamNameNormalizeConfig_()
+      TeamNameNormalize: compileTeamNameNormalizeConfig_(APP_BASE_TEAM_NAME_NORMALIZE_RAW_)
     };
+
+    const APP_BASE_OPT_OUT_ = JSON.parse(JSON.stringify(APP.OptOut || {}));
+    const APP_BASE_TEAM_NAME_NORMALIZE_ = APP.TeamNameNormalize;
+    let liveOptOutConfig_ = APP_BASE_OPT_OUT_;
+    let liveTeamNameNormalizeConfig_ = APP_BASE_TEAM_NAME_NORMALIZE_;
+    let adminConfig_ = { OptOut: {}, TeamNameNormalize: {} };
+    let adminConfigLoaded_ = false;
+    let adminConfigPromise_ = null;
+    let adminUnlocked_ = false;
+    let adminSecret_ = '';
+    let adminOptOutSearch_ = '';
+    let adminOptOutMenuOpen_ = false;
 
     const NC_MAP_DEFAULT_LATITUDE_ = 35.34651886289863;
     const NC_BOUNDARY_GEOJSON_URL_ = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0/query?where=STATE%3D%2737%27&outFields=STATE,NAME&outSR=4326&f=geojson";
@@ -115,6 +140,9 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     // Core page controls, overlays, and view containers.
     const sportEl = document.getElementById('sport');
     const classEl = document.getElementById('classification');
+    const teamJumpPicker = document.getElementById('teamJumpPicker');
+    const teamJumpInput = document.getElementById('teamJumpInput');
+    const teamJumpMenu = document.getElementById('teamJumpMenu');
     const classPicker = document.getElementById('classPicker');
     const classPickerBtn = document.getElementById('classPickerBtn');
     const classPickerBtnText = document.getElementById('classPickerBtnText');
@@ -128,6 +156,31 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const appSettingsBtn = document.getElementById('appSettingsBtn');
     const appSettingsPanel = document.getElementById('appSettingsPanel');
     const appSettingsCloseBtn = document.getElementById('appSettingsCloseBtn');
+    const adminSecretInput = document.getElementById('adminSecretInput');
+    const adminUnlockBtn = document.getElementById('adminUnlockBtn');
+    const adminLockBtn = document.getElementById('adminLockBtn');
+    const adminStatus = document.getElementById('adminStatus');
+    const adminManageField = document.getElementById('adminManageField');
+    const adminManageBtn = document.getElementById('adminManageBtn');
+    const adminManagerOverlay = document.getElementById('adminManagerOverlay');
+    const adminManagerCloseBtn = document.getElementById('adminManagerCloseBtn');
+    const adminControls = document.getElementById('adminControls');
+    const adminOptOutSport = document.getElementById('adminOptOutSport');
+    const adminClassFilter = document.getElementById('adminClassFilter');
+    const adminOptOutInput = document.getElementById('adminOptOutInput');
+    const adminOptOutMenu = document.getElementById('adminOptOutMenu');
+    const adminOptOutAddBtn = document.getElementById('adminOptOutAddBtn');
+    const adminOptOutList = document.getElementById('adminOptOutList');
+    const adminRemovePhraseInput = document.getElementById('adminRemovePhraseInput');
+    const adminRemovePhraseAddBtn = document.getElementById('adminRemovePhraseAddBtn');
+    const adminRemovePhraseList = document.getElementById('adminRemovePhraseList');
+    const adminRemoveTokenInput = document.getElementById('adminRemoveTokenInput');
+    const adminRemoveTokenAddBtn = document.getElementById('adminRemoveTokenAddBtn');
+    const adminRemoveTokenList = document.getElementById('adminRemoveTokenList');
+    const adminAcronymFromInput = document.getElementById('adminAcronymFromInput');
+    const adminAcronymToInput = document.getElementById('adminAcronymToInput');
+    const adminAcronymAddBtn = document.getElementById('adminAcronymAddBtn');
+    const adminAcronymList = document.getElementById('adminAcronymList');
     const performanceModeToggle = document.getElementById('performanceModeToggle');
     const compareSnapshotCalendarBtn = document.getElementById('compareSnapshotCalendarBtn');
     const compareSnapshotDate = document.getElementById('compareSnapshotDate');
@@ -169,6 +222,7 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const eastWestMapCanvas = document.getElementById('eastWestMapCanvas');
     const eastWestMapInfoCards = document.getElementById('eastWestMapInfoCards');
     const eastWestMapContextMenu = document.getElementById('eastWestMapContextMenu');
+    const teamAdminContextMenu = document.getElementById('teamAdminContextMenu');
     const exportPreviewOverlay = document.getElementById('exportPreviewOverlay');
     const closeExportPreviewBtn = document.getElementById('closeExportPreviewBtn');
     const downloadAllExportsBtn = document.getElementById('downloadAllExportsBtn');
@@ -238,9 +292,12 @@ let teamLogTeamMenuOpen_ = false;
 let teamLogSelectorRequestToken_ = 0;
 let teamLogShowAllTeams_ = false;
 let teamLogSelectedTeamKey_ = '';
-let teamLogGraphAllSeries_ = [];
-let teamLogGraphAllLoading_ = false;
-let teamLogGraphAllRequestToken_ = 0;
+    let teamLogGraphAllSeries_ = [];
+    let teamLogGraphAllLoading_ = false;
+    let teamLogGraphAllRequestToken_ = 0;
+    let teamJumpSearch_ = '';
+    let teamJumpMenuOpen_ = false;
+    let teamJumpHighlightedKey_ = '';
 let compareSnapshotId_ = '';
 let compareSnapshotLabel_ = '';
 let historySnapshotId_ = '';
@@ -290,6 +347,167 @@ const SPORT_KEY_LABEL_ = {
   girls_soccer: 'Girls Soccer',
   boys_soccer: 'Boys Soccer'
 };
+
+const ADMIN_OPT_OUT_SPORT_KEYS_ = ['all', 'football', 'baseball', 'softball', 'volleyball', 'boys', 'girls', 'girls_soccer', 'boys_soccer'];
+const TEAM_DETAILS_SHEET_URL_ = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?gid=${TEAMDETAILS_GID}#gid=${TEAMDETAILS_GID}`;
+
+function emptyAdminConfig_() {
+  return {
+    OptOut: {},
+    OptOutByClass: {},
+    TeamNameNormalize: {
+      phraseReplacements: [],
+      removePhrases: [],
+      removeTokens: [],
+      acronymOverrides: {}
+    },
+    TeamNameNormalizeBySport: {},
+    TeamNameNormalizeBySportClass: {}
+  };
+}
+
+function adminSportLabel_(key) {
+  return key === 'all' ? 'All Sports' : (SPORT_KEY_LABEL_[key] || key);
+}
+
+function uniqueStringList_(values) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : [])
+    .map(value => String(value || '').trim())
+    .filter(value => {
+      if (!value) return false;
+      const key = value.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function mergeOptOutConfig_(base = {}, override = {}) {
+  const merged = {};
+  ADMIN_OPT_OUT_SPORT_KEYS_.forEach(key => {
+    merged[key] = uniqueStringList_([...(base[key] || []), ...(override[key] || [])]);
+  });
+  Object.keys(override || {}).forEach(key => {
+    if (!merged[key]) merged[key] = uniqueStringList_(override[key] || []);
+  });
+  return merged;
+}
+
+function normalizeClassKey_(value) {
+  const raw = String(value || '').trim();
+  if (!raw || raw.toLowerCase() === 'all') return 'all';
+  const match = raw.match(/\b(\d+)A\b/i);
+  return match ? `Class ${match[1]}A` : raw;
+}
+
+function mergeTeamNameNormalizeRaw_(base = {}, override = {}) {
+  return {
+    phraseReplacements: [
+      ...(Array.isArray(base.phraseReplacements) ? base.phraseReplacements : []),
+      ...(Array.isArray(override.phraseReplacements) ? override.phraseReplacements : [])
+    ],
+    removePhrases: uniqueStringList_([
+      ...(Array.isArray(base.removePhrases) ? base.removePhrases : []),
+      ...(Array.isArray(override.removePhrases) ? override.removePhrases : [])
+    ]),
+    removeTokens: uniqueStringList_([
+      ...(Array.isArray(base.removeTokens) ? base.removeTokens : []),
+      ...(Array.isArray(override.removeTokens) ? override.removeTokens : [])
+    ]),
+    removeTrailingSchool: override.removeTrailingSchool ?? base.removeTrailingSchool,
+    removeLeadingThe: override.removeLeadingThe ?? base.removeLeadingThe,
+    acronymOverrides: {
+      ...(base.acronymOverrides || {}),
+      ...(override.acronymOverrides || {})
+    }
+  };
+}
+
+function normalizeAdminConfig_(config = {}) {
+  const clean = emptyAdminConfig_();
+  clean.OptOut = Object.fromEntries(
+    Object.entries(config.OptOut || {}).map(([key, values]) => [key, uniqueStringList_(values)])
+  );
+  clean.OptOutByClass = Object.fromEntries(
+    Object.entries(config.OptOutByClass || {}).map(([sportKey, classes]) => [
+      sportKey,
+      Object.fromEntries(
+        Object.entries(classes || {}).map(([classKey, values]) => [normalizeClassKey_(classKey), uniqueStringList_(values)])
+      )
+    ])
+  );
+  const normalizeBucket_ = (rawNormalize = {}) => ({
+    phraseReplacements: Array.isArray(rawNormalize.phraseReplacements) ? rawNormalize.phraseReplacements : [],
+    removePhrases: uniqueStringList_(rawNormalize.removePhrases || []),
+    removeTokens: uniqueStringList_(rawNormalize.removeTokens || []),
+    acronymOverrides: rawNormalize.acronymOverrides && typeof rawNormalize.acronymOverrides === 'object'
+      ? { ...rawNormalize.acronymOverrides }
+      : {}
+  });
+  clean.TeamNameNormalize = normalizeBucket_(config.TeamNameNormalize || {});
+  clean.TeamNameNormalizeBySport = Object.fromEntries(
+    Object.entries(config.TeamNameNormalizeBySport || {}).map(([key, value]) => [key, normalizeBucket_(value)])
+  );
+  clean.TeamNameNormalizeBySportClass = Object.fromEntries(
+    Object.entries(config.TeamNameNormalizeBySportClass || {}).map(([sportKey, classes]) => [
+      sportKey,
+      Object.fromEntries(
+        Object.entries(classes || {}).map(([classKey, value]) => [normalizeClassKey_(classKey), normalizeBucket_(value)])
+      )
+    ])
+  );
+  return clean;
+}
+
+function applyLiveAdminConfig_(config = {}) {
+  adminConfig_ = normalizeAdminConfig_(config);
+  liveOptOutConfig_ = mergeOptOutConfig_(APP_BASE_OPT_OUT_, adminConfig_.OptOut);
+  liveTeamNameNormalizeConfig_ = liveTeamNameNormalizeForSport_('all');
+}
+
+function adminNormalizeBucketForSport_(config = adminConfig_, sportKey = 'all', create = false) {
+  const key = sportKey === 'all' ? 'all' : String(sportKey || '').trim();
+  if (key === 'all') return config.TeamNameNormalize || (create ? (config.TeamNameNormalize = emptyAdminConfig_().TeamNameNormalize) : {});
+  if (!config.TeamNameNormalizeBySport) {
+    if (!create) return {};
+    config.TeamNameNormalizeBySport = {};
+  }
+  if (!config.TeamNameNormalizeBySport[key] && create) {
+    config.TeamNameNormalizeBySport[key] = emptyAdminConfig_().TeamNameNormalize;
+  }
+  return config.TeamNameNormalizeBySport[key] || {};
+}
+
+function adminNormalizeBucketForSportClass_(config = adminConfig_, sportKey = 'all', classKey = 'all', create = false) {
+  const sport = sportKey === 'all' ? 'all' : String(sportKey || '').trim();
+  const cls = normalizeClassKey_(classKey);
+  if (cls === 'all') return {};
+  if (!config.TeamNameNormalizeBySportClass) {
+    if (!create) return {};
+    config.TeamNameNormalizeBySportClass = {};
+  }
+  if (!config.TeamNameNormalizeBySportClass[sport]) {
+    if (!create) return {};
+    config.TeamNameNormalizeBySportClass[sport] = {};
+  }
+  if (!config.TeamNameNormalizeBySportClass[sport][cls] && create) {
+    config.TeamNameNormalizeBySportClass[sport][cls] = emptyAdminConfig_().TeamNameNormalize;
+  }
+  return config.TeamNameNormalizeBySportClass[sport]?.[cls] || {};
+}
+
+function liveTeamNameNormalizeForSport_(sportKey, classKey = 'all') {
+  const globalRaw = adminNormalizeBucketForSport_(adminConfig_, 'all');
+  const sportRaw = adminNormalizeBucketForSport_(adminConfig_, sportKey);
+  const classRaw = adminNormalizeBucketForSportClass_(adminConfig_, sportKey, classKey);
+  return compileTeamNameNormalizeConfig_(
+    mergeTeamNameNormalizeRaw_(
+      mergeTeamNameNormalizeRaw_(APP_BASE_TEAM_NAME_NORMALIZE_RAW_, globalRaw),
+      mergeTeamNameNormalizeRaw_(sportRaw, classRaw)
+    )
+  );
+}
 
 // ============================================================================
 // 2. Config-backed display metadata and lightweight picker helpers
@@ -449,27 +667,47 @@ function setEastWestMapSportPickerOpen_(isOpen) {
 // 3. Shared board UI state, status text, and layout helpers
 // ============================================================================
     function setViewMode_(mode) {
-      document.body.classList.remove('rankings-mode', 'regions-mode', 'playoff-mode', 'east-west-mode');
+      document.body.classList.remove('rankings-mode', 'regions-mode', 'playoff-mode', 'east-west-mode', 'full-bracket-mode');
       document.body.classList.remove('has-rpi-changes');
       document.body.classList.add(`${mode}-mode`);
+      if (mode !== 'full-bracket') clearFullBracketWidgetStyles_();
     }
 
     function mainHeaderCells_() {
       return [...document.querySelectorAll('.table-card > .table-scroll > table > thead th')];
     }
 
+    function rpiInfoHeaderHtml_() {
+      return `
+        <span class="rpi-info-head">
+          <span>RPI</span>
+          <span class="rpi-info-wrap">
+            <span class="rpi-info-icon" tabindex="0" role="button" aria-label="RPI formula information">i</span>
+            <span class="rpi-info-popover" role="tooltip">
+              <span class="rpi-info-intro">Introduced in 2025 NCHSAA Playoff teams are seeded by this RPI Formula:</span>
+              <strong>RPI = (0.4 x WP) + (0.4 x OWP) + (0.2 x OOWP)</strong>
+              <span class="rpi-info-sub">WP = Win Percentage, OWP = Opponent Win Percentage, OOWP = Opponents Opponent Win Percentage</span>
+            </span>
+          </span>
+        </span>`;
+    }
+
+    function tableHeaderLabelHtml_(label) {
+      return String(label || '') === 'RPI' ? rpiInfoHeaderHtml_() : escapeHtml(label);
+    }
+
     function setMainHeaderLabels_(labels) {
       mainHeaderCells_().forEach((th, i) => {
         const hasLabel = i < labels.length;
         th.hidden = !hasLabel;
-        th.textContent = hasLabel ? labels[i] : '';
+        th.innerHTML = hasLabel ? tableHeaderLabelHtml_(labels[i]) : '';
       });
     }
 
     function setMainHeaderBlank() {
       mainHeaderCells_().forEach(th => {
         th.hidden = false;
-        th.textContent = '';
+        th.innerHTML = '';
       });
     }
 
@@ -920,26 +1158,34 @@ function setEastWestMapSportPickerOpen_(isOpen) {
     function scheduleRowDataAttrs_(row) {
       const scheduleOptions = scheduleOptionsForRow_(row);
       const url = maxPrepsScheduleUrl_(row?.maxPrepsUrl, scheduleOptions);
-      if (!url) return '';
+      const contextAttrs = teamContextDataAttrs_(row);
+      const scheduleAttrs = url
+        ? [
+            'data-schedule-row="1"',
+            `data-maxpreps-url="${escapeHtml(url)}"`,
+            `data-schedule-year="${escapeHtml(scheduleOptions.year || '')}"`,
+            `data-schedule-sport="${escapeHtml(scheduleOptions.sport || '')}"`
+          ]
+        : [];
       return [
-        'data-schedule-row="1"',
-        `data-maxpreps-url="${escapeHtml(url)}"`,
-        `data-schedule-year="${escapeHtml(scheduleOptions.year || '')}"`,
-        `data-schedule-sport="${escapeHtml(scheduleOptions.sport || '')}"`,
+        contextAttrs,
+        ...scheduleAttrs,
         `data-schedule-team="${escapeHtml(row?.school || row?.team || '')}"`,
+        `data-schedule-original-team="${escapeHtml(row?.originalSchool || row?.school || row?.team || '')}"`,
         `data-schedule-record="${escapeHtml(row?.record || '')}"`,
         `data-schedule-rpi="${escapeHtml(row?.rpi || '')}"`,
         `data-schedule-rank="${escapeHtml(row?.rank || row?.regionRank || row?.lineRank || '')}"`,
         `data-schedule-region-rank="${escapeHtml(row?.regionRank || '')}"`,
         `data-schedule-region="${escapeHtml(row?.lineRegion || '')}"`,
         `data-schedule-logo="${escapeHtml(row?.logoUrl || row?.mapLogoUrl || '')}"`
-      ].join(' ');
+      ].filter(Boolean).join(' ');
     }
 
     function teamLogRowDataAttrs_(row) {
       return [
         'data-team-log-row="1"',
         `data-log-team="${escapeHtml(row?.school || row?.team || '')}"`,
+        `data-log-original-team="${escapeHtml(row?.originalSchool || row?.school || row?.team || '')}"`,
         `data-log-record="${escapeHtml(row?.record || '')}"`,
         `data-log-rpi="${escapeHtml(row?.rpi || '')}"`,
         `data-log-rank="${escapeHtml(row?.rank || row?.regionRank || row?.lineRank || '')}"`,
@@ -952,6 +1198,7 @@ function setEastWestMapSportPickerOpen_(isOpen) {
     function teamLogRowFromDataset_(dataset) {
       return {
         school: dataset.logTeam || '',
+        originalSchool: dataset.logOriginalTeam || dataset.logTeam || '',
         record: dataset.logRecord || '',
         rpi: dataset.logRpi || '',
         rank: dataset.logRank || '',
@@ -1198,12 +1445,19 @@ function setEastWestMapSportPickerOpen_(isOpen) {
 // ============================================================================
 
 async function fetchTeamRpiLog_(row, options = {}) {
+  const schoolAliases = uniqueStringList_([
+    row?.school,
+    row?.originalSchool,
+    row?.team,
+    row?.logOriginalTeam
+  ]).join('||');
   return requestSnapshotApiJson_('/rpi-snapshots/team-log', {
     sport: options.sport || row?.sport || sportEl?.value || '',
     classification: options.classification || row?.classification || classEl?.value || '',
     seasonYear: options.seasonYear || selectedRpiYear_() || 'live',
     source: 'official',
     school: row?.school || '',
+    schoolAliases,
     limit: 200
   });
 }
@@ -1442,6 +1696,14 @@ function sortedUniqueTeamLogRows_(rows) {
     .sort((a, b) => String(a.school || '').localeCompare(String(b.school || '')));
 }
 
+function teamLogNormalizeConfig_(options = {}) {
+  const seasonYear = options.seasonYear || teamLogCurrentResult_?.seasonYear || selectedRpiYear_() || 'live';
+  if (seasonYear !== 'live') return APP_BASE_TEAM_NAME_NORMALIZE_;
+  const sport = options.sport || teamLogCurrentResult_?.sport || sportEl?.value || '';
+  const classification = options.classification || teamLogSelectorClass_ || classEl?.value || '';
+  return liveTeamNameNormalizeForSport_(sportKeyFromLabel_(sport), classification);
+}
+
 function teamLogSelectedTeamLabel_() {
   return teamLogShowAllTeams_
     ? 'All Teams'
@@ -1452,7 +1714,7 @@ function teamLogSeriesCacheKey_(row, options = {}) {
   const classification = options.classification || row?.classification || classEl?.value || '';
   const sport = options.sport || row?.sport || sportEl?.value || '';
   const seasonYear = options.seasonYear || selectedRpiYear_() || 'live';
-  const school = canonicalTeamName_(row?.school || '');
+  const school = canonicalTeamName_(row?.school || '', teamLogNormalizeConfig_({ ...options, sport, classification, seasonYear }));
   return `${seasonYear}|${sport}|${classification}|${school}`;
 }
 
@@ -1490,9 +1752,10 @@ async function fetchTeamLogSnapshotBundle_(options = {}) {
 }
 
 function buildAllTeamLogSeriesFromSnapshots_(snapshots, rows, options = {}) {
+  const normalizeCfg = teamLogNormalizeConfig_(options);
   const rowMap = new Map();
   (Array.isArray(rows) ? rows : []).forEach(row => {
-    const key = canonicalTeamName_(row?.school || '').toLowerCase();
+    const key = canonicalTeamName_(row?.school || '', normalizeCfg).toLowerCase();
     if (key && !rowMap.has(key)) rowMap.set(key, row);
   });
   if (!rowMap.size) return [];
@@ -1505,7 +1768,8 @@ function buildAllTeamLogSeriesFromSnapshots_(snapshots, rows, options = {}) {
   orderedSnapshots.forEach(snapshot => {
     const snapshotRows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
     snapshotRows.forEach(item => {
-      const key = canonicalTeamName_(item?.school || item?.team || '').toLowerCase();
+      const key = String(item?.teamKey || '').trim().toLowerCase()
+        || canonicalTeamName_(item?.school || item?.team || '', normalizeCfg).toLowerCase();
       if (!key || !seriesMap.has(key)) return;
       const rank = Number(item?.rank);
       const rpi = Number(item?.rpi);
@@ -2754,6 +3018,11 @@ function applyTeamLogRangeSelection_(value) {
       return s.replace(/\s+/g, ' ').trim();
     }
 
+    function liveDisplayTeamName_(name, normalizeCfg = APP.TeamNameNormalize) {
+      const normalized = canonicalTeamName_(name, normalizeCfg);
+      return normalized || String(name || '').trim();
+    }
+
     function splitAliasList_(value) { return String(value || '').split(/[,;\n|]/).map(s => s.trim()).filter(Boolean); }
 
     function sportKeyFromLabel_(s) {
@@ -2799,8 +3068,8 @@ function applyTeamLogRangeSelection_(value) {
       return { kind: 'single_table', url: map[sportKey] };
     }
 
-    function getOptOutEntriesForSport_(sportKey) {
-      const cfg = APP.OptOut || {};
+    function getOptOutEntriesForSport_(sportKey, optOutConfig = APP.OptOut) {
+      const cfg = optOutConfig || {};
       const allTeams = Array.isArray(cfg.all) ? cfg.all : [];
       const sportTeams = Array.isArray(cfg[sportKey]) ? cfg[sportKey] : [];
       const seen = new Set();
@@ -2815,32 +3084,46 @@ function applyTeamLogRangeSelection_(value) {
         });
     }
 
-    function teamDetailOptOutKeys_(teamObj) {
+    function getOptOutEntriesForSportClass_(sportKey, classification, optOutConfig = APP.OptOut, classOptOutConfig = {}) {
+      const cls = normalizeClassKey_(classification);
+      const scoped = cls === 'all'
+        ? []
+        : [
+          ...(classOptOutConfig?.all?.[cls] || []),
+          ...(classOptOutConfig?.[sportKey]?.[cls] || [])
+        ];
+      return uniqueStringList_([...getOptOutEntriesForSport_(sportKey, optOutConfig), ...scoped]);
+    }
+
+    function teamDetailOptOutKeys_(teamObj, normalizeCfg = APP.TeamNameNormalize) {
       const keys = new Set();
       if (!teamObj) return keys;
-      if (teamObj.name) keys.add(canonicalTeamName_(teamObj.name));
-      splitAliasList_(teamObj.aliases).forEach(v => keys.add(canonicalTeamName_(v)));
+      if (teamObj.name) keys.add(canonicalTeamName_(teamObj.name, normalizeCfg));
+      splitAliasList_(teamObj.aliases).forEach(v => keys.add(canonicalTeamName_(v, normalizeCfg)));
+      splitAliasList_(teamObj.keyAliases).forEach(v => keys.add(canonicalTeamName_(v, normalizeCfg)));
+      if (teamObj.keyName) keys.add(canonicalTeamName_(teamObj.keyName, normalizeCfg));
+      if (teamObj.keyAcr) keys.add(canonicalTeamName_(teamObj.keyAcr, normalizeCfg));
       return new Set([...keys].filter(Boolean));
     }
 
-    function findTeamDetailForOptOutKey_(rowKey, tdMap = null) {
+    function findTeamDetailForOptOutKey_(rowKey, tdMap = null, normalizeCfg = APP.TeamNameNormalize) {
       if (!rowKey || !tdMap) return null;
       const seen = new Set();
       for (const teamObj of tdMap.values()) {
         if (!teamObj || seen.has(teamObj)) continue;
         seen.add(teamObj);
-        if (teamDetailOptOutKeys_(teamObj).has(rowKey)) return teamObj;
+        if (teamDetailOptOutKeys_(teamObj, normalizeCfg).has(rowKey)) return teamObj;
       }
       return null;
     }
 
-    function filterOptedOutTeams_(rows, sportKey, tdMap = null) {
-      const optOutLabels = getOptOutEntriesForSport_(sportKey);
+    function filterOptedOutTeams_(rows, sportKey, tdMap = null, optOutConfig = APP.OptOut, normalizeCfg = APP.TeamNameNormalize, options = {}) {
+      const optOutLabels = getOptOutEntriesForSportClass_(sportKey, options.classification || classEl?.value || '', optOutConfig, options.classOptOutConfig || {});
       if (!optOutLabels.length) return { rows, excludedTeams: [] };
 
       const optOutEntries = optOutLabels.map(label => ({
         label,
-        key: canonicalTeamName_(label)
+        key: canonicalTeamName_(label, normalizeCfg)
       })).filter(entry => entry.key);
 
       if (!optOutEntries.length) return { rows, excludedTeams: [] };
@@ -2848,10 +3131,10 @@ function applyTeamLogRangeSelection_(value) {
       const excludedTeams = [];
       const filteredRows = (Array.isArray(rows) ? rows : []).filter(row => {
         const school = String(row?.school || row?.team || '').trim();
-        const rowKey = canonicalTeamName_(school);
+        const rowKey = canonicalTeamName_(school, normalizeCfg);
         if (!rowKey) return true;
-        const teamObj = findTeamDetailForOptOutKey_(rowKey, tdMap);
-        const rowKeys = teamDetailOptOutKeys_(teamObj);
+        const teamObj = findTeamDetailForOptOutKey_(rowKey, tdMap, normalizeCfg);
+        const rowKeys = teamDetailOptOutKeys_(teamObj, normalizeCfg);
         rowKeys.add(rowKey);
 
         const matchedEntry = optOutEntries.find(entry => rowKeys.has(entry.key)) || null;
@@ -2986,6 +3269,77 @@ function applyTeamLogRangeSelection_(value) {
       if (!API_BASE_URL_) return '';
       const path = String(pathWithQuery || '');
       return `${API_BASE_URL_}${path.startsWith('/') ? path : `/${path}`}`;
+    }
+
+    async function requestAdminApiJson_(pathWithQuery, options = {}) {
+      const endpoints = uniqueEndpoints_([
+        configuredApiEndpoint_(pathWithQuery),
+        window.location.protocol === 'file:' ? `http://localhost:8000${pathWithQuery}` : pathWithQuery
+      ]);
+      let lastErr = null;
+      for (const endpoint of endpoints) {
+        if (!endpoint) continue;
+        try {
+          const res = await fetch(endpoint, options);
+          const text = await res.text();
+          let payload = {};
+          try { payload = text ? JSON.parse(text) : {}; } catch (_) { payload = { raw: text }; }
+          if (!res.ok) throw new Error(payload?.error || `Request failed (${res.status})`);
+          return payload;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error('Admin API unavailable.');
+    }
+
+    async function loadAdminConfig_() {
+      if (adminConfigLoaded_) return adminConfig_;
+      if (!adminConfigPromise_) {
+        adminConfigPromise_ = requestAdminApiJson_('/admin/config')
+          .then(payload => {
+            applyLiveAdminConfig_(payload?.config || {});
+            adminConfigLoaded_ = true;
+            renderAdminPanel_();
+            return adminConfig_;
+          })
+          .catch(err => {
+            console.warn('Admin config unavailable; using local defaults.', err);
+            applyLiveAdminConfig_({});
+            adminConfigLoaded_ = true;
+            renderAdminPanel_();
+            return adminConfig_;
+          })
+          .finally(() => {
+            adminConfigPromise_ = null;
+          });
+      }
+      return adminConfigPromise_;
+    }
+
+    function ensureAdminSecret_() {
+      return String(adminSecret_ || sessionStorage.getItem('rpi-admin-secret') || '').trim();
+    }
+
+    async function saveAdminConfig_(config) {
+      const secret = ensureAdminSecret_();
+      if (!secret) throw new Error('Enter the admin secret first.');
+      const payload = await requestAdminApiJson_('/admin/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RPI-Admin-Secret': secret
+        },
+        body: JSON.stringify({ config: normalizeAdminConfig_(config) })
+      });
+      applyLiveAdminConfig_(payload?.config || config);
+      adminConfigLoaded_ = true;
+      teamLogSeriesCache_.clear();
+      teamLogSnapshotBundleCache_.clear();
+      teamLogSelectorCache_.clear();
+      renderAdminPanel_();
+      await refreshCurrentViewAfterAdminEdit_();
+      return adminConfig_;
     }
 
     function localFetchPageEndpointCandidates_() {
@@ -3675,11 +4029,28 @@ function applyTeamLogRangeSelection_(value) {
       }
     }
 
-    function mergeRows_(rpiRows, tdMap, sportLabel = sportEl?.value || '', rpiResult = {}) {
+    function findTeamDetailByName_(tdMap, teamName, normalizeCfg = APP.TeamNameNormalize) {
+      if (!tdMap || !teamName) return null;
+      const direct = tdMap.get(canonicalTeamName_(teamName, normalizeCfg)) || tdMap.get(canonicalTeamName_(teamName)) || null;
+      if (direct) return direct;
+      const key = canonicalTeamName_(teamName, normalizeCfg);
+      const seen = new Set();
+      for (const teamObj of tdMap.values()) {
+        if (!teamObj || seen.has(teamObj)) continue;
+        seen.add(teamObj);
+        if (teamDetailOptOutKeys_(teamObj, normalizeCfg).has(key)) return teamObj;
+      }
+      return null;
+    }
+
+    function mergeRows_(rpiRows, tdMap, sportLabel = sportEl?.value || '', rpiResult = {}, normalizeCfg = APP.TeamNameNormalize, options = {}) {
       const scheduleYear = scheduleYearForRpiResult_(rpiResult);
+      const normalizeDisplayNames = Boolean(options.normalizeDisplayNames);
       let rank = 1;
       return rpiRows.map(row => {
-        const match = tdMap.get(canonicalTeamName_(row.team)) || null;
+        const match = findTeamDetailByName_(tdMap, row.team, normalizeCfg);
+        const originalTeam = String(row.team || '').trim();
+        const displayTeam = normalizeDisplayNames ? liveDisplayTeamName_(originalTeam, normalizeCfg) : originalTeam;
         const officialUrl = normalizeMaxPrepsUrl_(row.maxPrepsUrl || '');
         const teamDetailsUrl = teamDetailsMaxPrepsUrl_(match, sportLabel);
         const cachedUrl = cachedMaxPrepsUrl_(row.team, sportLabel);
@@ -3687,7 +4058,8 @@ function applyTeamLogRangeSelection_(value) {
         if (officialUrl || teamDetailsUrl) cacheMaxPrepsUrl_(row.team, sportLabel, maxPrepsUrl);
         return {
           rank: rank++,
-          school: row.team,
+          school: displayTeam,
+          originalSchool: originalTeam,
           record: row.record,
           wp: row.wp,
           mwp: row.mwp || '',
@@ -3825,6 +4197,260 @@ function applyTeamLogRangeSelection_(value) {
             <img class="playoff-brand" src="https://iili.io/Bga3mQe.png" alt="Brand logo" crossorigin="anonymous" referrerpolicy="no-referrer">
           </div>
         </div>`;
+    }
+
+    function fullBracketYearForSelection_() {
+      const raw = selectedRpiYear_();
+      if (!raw || raw === 'live') {
+        const now = new Date();
+        const current = now.getFullYear();
+        const fallSports = new Set(['Football', 'Volleyball', 'Boys Soccer']);
+        return String(fallSports.has(sportEl.value) && now.getMonth() < 7 ? current - 1 : current);
+      }
+      const season = String(raw).trim().match(/^(\d{4})-(\d{2})$/);
+      if (season) {
+        const start = Number(season[1]);
+        const end = Math.floor(start / 100) * 100 + Number(season[2]);
+        const fallSports = new Set(['Football', 'Volleyball', 'Boys Soccer']);
+        return String(fallSports.has(sportEl.value) ? start : end);
+      }
+      const year = String(raw).match(/\d{4}/);
+      return year ? year[0] : String(new Date().getFullYear());
+    }
+
+    function fullBracketWidgetStyleEl_() {
+      let el = document.getElementById('fullBracketWidgetStyles');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'fullBracketWidgetStyles';
+        const appStylesheet = document.querySelector('link[href*="playoff_board.css"]');
+        document.head.insertBefore(el, appStylesheet || null);
+      }
+      return el;
+    }
+
+    function setFullBracketWidgetStyles_(styles) {
+      fullBracketWidgetStyleEl_().innerHTML = styles || '';
+    }
+
+    function clearFullBracketWidgetStyles_() {
+      const el = document.getElementById('fullBracketWidgetStyles');
+      if (el) el.innerHTML = '';
+    }
+
+    function fullBracketApiEndpointCandidates_(pathWithQuery) {
+      const localEndpoint = window.location.protocol === 'file:' ? `http://localhost:8000${pathWithQuery}` : pathWithQuery;
+      const isLocalPage = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(window.location.hostname || '');
+      return uniqueEndpoints_([
+        isLocalPage ? localEndpoint : '',
+        configuredApiEndpoint_(pathWithQuery),
+        isLocalPage ? '' : localEndpoint
+      ]);
+    }
+
+    async function requestFullBracketJson_(params) {
+      const query = new URLSearchParams(params);
+      const path = `/full-bracket?${query.toString()}`;
+      let lastError = null;
+      for (const endpoint of fullBracketApiEndpointCandidates_(path)) {
+        if (!endpoint) continue;
+        try {
+          const res = await fetch(endpoint);
+          const text = await res.text();
+          let payload = {};
+          try { payload = text ? JSON.parse(text) : {}; } catch (_) { payload = { raw: text }; }
+          if (!res.ok) throw new Error(payload?.error || `Full bracket request failed (${res.status})`);
+          return payload;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      throw lastError || new Error('Full bracket API unavailable.');
+    }
+
+    async function runFullBracketInjectedScripts_(root) {
+      const scripts = Array.from(root.querySelectorAll('script'));
+      for (const oldScript of scripts) {
+        if (oldScript.src && oldScript.src.includes('plugins.compressed')) {
+          oldScript.remove();
+          continue;
+        }
+        const script = document.createElement('script');
+        for (const attr of oldScript.attributes) script.setAttribute(attr.name, attr.value);
+        script.textContent = oldScript.textContent;
+        if (script.src && script.src.includes('tournament_renderer')) {
+          // Prototype is loaded after the app has already reached DOMContentLoaded,
+          // so its document.loaded flag can stay false. The MaxPreps renderer waits
+          // on that flag before building bracket spacing/connector geometry.
+          document.loaded = true;
+        }
+        oldScript.replaceWith(script);
+        if (script.src) {
+          await new Promise(resolve => {
+            script.addEventListener('load', resolve, { once: true });
+            script.addEventListener('error', resolve, { once: true });
+          });
+          if (script.src.includes('prototype-')) {
+            document.loaded = true;
+          }
+        }
+      }
+    }
+
+    async function decorateFullBracketTeams_(root) {
+      try {
+        await getTeamDetailsMapCached_();
+      } catch (err) {
+        console.warn('Full bracket team details unavailable:', err);
+        return;
+      }
+
+      root.querySelectorAll('.team').forEach(team => {
+        const nameEl = team.querySelector('.name a, .name');
+        const rawName = String(nameEl?.textContent || '').trim();
+        if (!rawName || /^bye$/i.test(rawName) || /winner/i.test(rawName)) return;
+        const detail = teamDetailsRowForName_(rawName);
+        if (!detail) return;
+
+        const displayName = String(detail.name || rawName).trim();
+        const mascot = String(detail.mascot || '').trim();
+        const preferredLogo = detail.mapLogoUrl || (!/drive\.google\.com|googleusercontent\.com/i.test(detail.logoUrl || '') ? detail.logoUrl : '');
+        const logoUrl = normalizeDriveImageUrl_(preferredLogo || '');
+        team.dataset.teamName = displayName;
+        team.dataset.teamKey = canonicalTeamName_(displayName);
+        team.title = mascot ? `${displayName} ${mascot}` : displayName;
+
+        if (nameEl) {
+          nameEl.textContent = displayName;
+          nameEl.setAttribute('title', displayName);
+        }
+
+        if (mascot && !team.querySelector('.brsn-bracket-mascot')) {
+          const mascotEl = document.createElement('span');
+          mascotEl.className = 'brsn-bracket-mascot';
+          mascotEl.textContent = mascot;
+          nameEl?.insertAdjacentElement('afterend', mascotEl);
+        }
+
+        if (logoUrl) {
+          let logoWrap = team.querySelector('.mascotimage');
+          if (!logoWrap) {
+            logoWrap = document.createElement('span');
+            logoWrap.className = 'mascotimage';
+            team.prepend(logoWrap);
+          }
+          const candidates = logoCandidates_(logoUrl);
+          let img = logoWrap.querySelector('img');
+          if (!img) {
+            img = document.createElement('img');
+            img.alt = '';
+            img.loading = 'lazy';
+            img.referrerPolicy = 'no-referrer';
+            logoWrap.innerHTML = '';
+            logoWrap.appendChild(img);
+          }
+          img.src = candidates[0] || logoUrl;
+          img.dataset.srcCandidates = candidates.join('|||');
+          img.dataset.srcIndex = '0';
+        }
+      });
+      armImageFallbacks_(root);
+    }
+
+    function normalizeFullBracketFinalFour_(root) {
+      const finalsView = root?.querySelector?.('.view[data-view-type="horizontal-championship-view"]');
+      if (!finalsView) return;
+
+      const reorderHeader = (matchup, sideLabel) => {
+        const header = matchup.querySelector(':scope > .matchup > .contest-header, :scope > .matchup > .matchup-header');
+        if (!header) return;
+        const gameNumber = header.querySelector('.game-number');
+        const gameStatus = header.querySelector('.game-status');
+        if (gameNumber && sideLabel) gameNumber.textContent = `${sideLabel} - Game 1`;
+        if (gameNumber && gameStatus && header.firstElementChild !== gameNumber) {
+          header.insertBefore(gameNumber, gameStatus);
+        }
+      };
+
+      const regionalRound = finalsView.querySelector(':scope > .rounds > .round:first-child');
+      regionalRound?.querySelectorAll(':scope .matchup-container').forEach((matchup, index) => {
+        const side = index === 0 ? 'east' : 'west';
+        matchup.classList.remove('brsn-west', 'brsn-east');
+        matchup.classList.add(side === 'west' ? 'brsn-west' : 'brsn-east');
+        reorderHeader(matchup, side === 'west' ? 'West' : 'East');
+      });
+
+      const stateRound = finalsView.querySelector(':scope > .rounds > .round:last-child');
+      stateRound?.querySelectorAll(':scope .matchup-container').forEach(matchup => {
+        reorderHeader(matchup, 'State');
+      });
+    }
+
+    function renderFullBracketShell_(payload, classification, sportLabel) {
+      const canvasWidth = escapeHtml(payload?.canvasWidth || '3000');
+      const sourceLink = payload?.sourcePageUrl
+        ? `<a href="${escapeHtml(payload.sourcePageUrl)}" target="_blank" rel="noopener">NCHSAA</a>`
+        : 'NCHSAA';
+      const widgetLink = payload?.widgetUrl
+        ? `<a href="${escapeHtml(payload.widgetUrl)}" target="_blank" rel="noopener">MaxPreps</a>`
+        : 'MaxPreps';
+
+      return `
+        <tr class="full-bracket-table-row">
+          <td colspan="${MAIN_TABLE_COLSPAN_}">
+            <section class="full-bracket-board">
+              ${playoffHeaderHtml_(classification, sportLabel, 'Full Playoff Brackets', 'Official NCHSAA bracket widget')}
+              <section class="bracket-shell">
+                <div class="bracket-tools export-hidden" aria-label="Bracket viewport controls">
+                  <button type="button" data-zoom="out" aria-label="Zoom out">−</button>
+                  
+                  <input type="number" id="zoomValue" class="zoom-input" min="50" max="150" step="5" value="100" aria-label="Zoom percentage">
+                  
+                  <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+                  <button type="button" data-zoom="reset">Reset</button>
+                  <button type="button" data-zoom="fullscreen" class="bracket-fullscreen-btn" title="Full screen" aria-label="Toggle full screen" aria-pressed="false">&#x26F6;</button>
+                  <span class="bracket-tools-sep" aria-hidden="true"></span>
+                  <div class="bracket-search-wrap" id="bracketSearchWrap">
+                    <input type="search" id="bracketTeamSearch" class="bracket-search-input" placeholder="Search team&#x2026;" autocomplete="off" aria-label="Search team in bracket">
+                    <div id="bracketTeamMenu" class="team-jump-menu" role="listbox" hidden></div>
+                  </div>
+                  <span class="bracket-select-group">
+                    <label class="bracket-select-label" for="bracketSport">Sport</label>
+                    <select id="bracketSport" class="bracket-select"></select>
+                  </span>
+                  <span class="bracket-select-group">
+                    <label class="bracket-select-label" for="bracketClass">Class</label>
+                    <select id="bracketClass" class="bracket-select"></select>
+                  </span>
+                  <span class="bracket-select-group">
+                    <label class="bracket-select-label" for="bracketYear">Year</label>
+                    <select id="bracketYear" class="bracket-select"></select>
+                  </span>
+                </div>
+                <div class="bracket-host" id="bracketViewport">
+                  <div class="bracket-zoom" id="bracketZoom" data-canvas-width="${canvasWidth}" style="--brsn-canvas-width: ${canvasWidth}px">
+                    ${payload?.html || ''}
+                  </div>
+                </div>
+              </section>
+            </section>
+          </td>
+        </tr>`;
+    }
+
+    async function renderFullBracket_(payload, classification, sportLabel) {
+      setFullBracketWidgetStyles_(payload?.styles || '');
+      setMainHeaderBlank();
+      tbody.innerHTML = renderFullBracketShell_(payload, classification, sportLabel);
+      const board = tbody.querySelector('.full-bracket-board');
+      if (!board) return;
+      await runFullBracketInjectedScripts_(board);
+      await decorateFullBracketTeams_(board);
+      normalizeFullBracketFinalFour_(board);
+      if (window.BRSNFullBracketView?.init) {
+        window.BRSNFullBracketView.init(board);
+      }
+      armImageFallbacks_(board);
     }
 
     // ============================================================================
@@ -5535,7 +6161,7 @@ function applyTeamLogRangeSelection_(value) {
           : '';
 
         return `
-          <tr class="${escapeHtml(scheduleRowClass_(scheduleRow))}" ${scheduleRowDataAttrs_(scheduleRow)}>
+          <tr class="${escapeHtml(scheduleRowClass_(scheduleRow))}" ${scheduleRowDataAttrs_(scheduleRow)} ${teamJumpRowAttrs_(scheduleRow)}>
             ${showChanges ? `<td data-label="Change">${teamLogTriggerHtml_(scheduleRow, rankChangeHtml_(row), `rank-change ${rankChangeClass}`, { raw: true })}</td>` : ''}
             <td class="rank" data-label="Rank">${mobileRankChangeHtml}<span class="rank-number rpi-log-trigger" ${teamLogRowDataAttrs_(scheduleRow)}>${escapeHtml(row.rank)}</span></td>
             <td data-label="School">
@@ -5608,7 +6234,7 @@ function applyTeamLogRangeSelection_(value) {
                 <th class="is-centered" data-col="rank">Rank</th>
                 <th data-col="school">School</th>
                 <th class="is-centered" data-col="record">Record</th>
-                <th class="is-centered" data-col="rpi">RPI</th>
+                <th class="is-centered" data-col="rpi">${rpiInfoHeaderHtml_()}</th>
               </tr>
             </thead>
             <tbody>${items || '<tr><td colspan="4" class="muted">No teams.</td></tr>'}</tbody>
@@ -5833,8 +6459,19 @@ function applyTeamLogRangeSelection_(value) {
         fetchRpiRows_(classification, sport)
       ]);
       if (rpiResult?.source === 'fallback' && rpiResult.year) ensureSeasonYearOption_(rpiResult.year);
-      const mergedRows = mergeRows_(rpiResult.rows, tdMap, sport, rpiResult);
-      const { rows: filteredRows, excludedTeams } = filterOptedOutTeams_(mergedRows, sportKeyFromLabel_(sport), tdMap);
+      const useLiveAdminConfig = shouldUseLiveRpiSnapshots_(rpiResult);
+      if (useLiveAdminConfig) await loadAdminConfig_();
+      const sportKey = sportKeyFromLabel_(sport);
+      const normalizeCfg = useLiveAdminConfig ? liveTeamNameNormalizeForSport_(sportKey, classification) : APP_BASE_TEAM_NAME_NORMALIZE_;
+      const mergedRows = mergeRows_(rpiResult.rows, tdMap, sport, rpiResult, normalizeCfg, {
+        normalizeDisplayNames: useLiveAdminConfig
+      });
+      const { rows: filteredRows, excludedTeams } = useLiveAdminConfig
+        ? filterOptedOutTeams_(mergedRows, sportKey, tdMap, liveOptOutConfig_, normalizeCfg, {
+          classification,
+          classOptOutConfig: adminConfig_.OptOutByClass
+        })
+        : { rows: mergedRows, excludedTeams: [] };
       const rowsWithChanges = await addLiveRpiChangeData_(filteredRows, sport, classification, rpiResult);
       return {
         sport,
@@ -6684,7 +7321,553 @@ let eastWestLineMapState_ = null;
     }
 
     // ============================================================================
-    // 12. Primary board loading and view refresh entrypoints
+    // 12. Admin settings and live-table config management
+    // ============================================================================
+
+    function setAdminStatus_(message, isError = false) {
+      if (!adminStatus) return;
+      adminStatus.textContent = message;
+      adminStatus.style.color = isError ? '#ffb4bd' : '';
+    }
+
+    function renderAdminChips_(container, values, removeAction) {
+      if (!container) return;
+      const list = uniqueStringList_(values || []);
+      container.innerHTML = list.length
+        ? list.map(value => `
+            <span class="admin-chip">
+              <span>${escapeHtml(value)}</span>
+              <button type="button" data-admin-remove="${escapeHtml(removeAction)}" data-value="${escapeHtml(value)}" aria-label="Remove ${escapeHtml(value)}">&times;</button>
+            </span>`).join('')
+        : '<span class="snapshot-empty">None yet.</span>';
+    }
+
+    function renderAdminScopedChips_(container, entries, removeAction) {
+      if (!container) return;
+      const list = Array.isArray(entries) ? entries : [];
+      container.innerHTML = list.length
+        ? list.map(entry => {
+          const scope = normalizeClassKey_(entry.classKey || 'all');
+          const label = String(entry.label || '').trim();
+          const scopeText = scope === 'all' ? 'All' : scope.replace(/^Class\s+/i, '');
+          return `
+            <span class="admin-chip" data-admin-chip-class="${escapeHtml(scope)}">
+              <span>${escapeHtml(label)}</span>
+              <small>${escapeHtml(scopeText)}</small>
+              <button type="button" data-admin-remove="${escapeHtml(removeAction)}" data-value="${escapeHtml(label)}" data-sport-key="${escapeHtml(entry.sportKey || '')}" data-class-key="${escapeHtml(scope)}" aria-label="Remove ${escapeHtml(label)}">&times;</button>
+            </span>`;
+        }).join('')
+        : '<span class="snapshot-empty">None yet.</span>';
+    }
+
+    function adminScopedListEntries_(sportKey, classFilter, sportValues = [], classValuesBySport = {}) {
+      const selectedClass = normalizeClassKey_(classFilter);
+      const entries = uniqueStringList_(sportValues || []).map(label => ({ label, sportKey, classKey: 'all' }));
+      const sportClasses = classValuesBySport?.[sportKey] || {};
+      const classKeys = selectedClass === 'all'
+        ? Object.keys(sportClasses)
+        : [selectedClass];
+      classKeys.forEach(classKey => {
+        uniqueStringList_(sportClasses?.[classKey] || []).forEach(label => {
+          entries.push({ label, sportKey, classKey });
+        });
+      });
+      return entries;
+    }
+
+    function adminNormalizeEntries_(sportKey, classFilter, field) {
+      const selectedClass = normalizeClassKey_(classFilter);
+      const selectedNormalize = adminNormalizeBucketForSport_(adminConfig_, sportKey);
+      const entries = uniqueStringList_(selectedNormalize?.[field] || []).map(label => ({ label, sportKey, classKey: 'all' }));
+      const classBuckets = adminConfig_.TeamNameNormalizeBySportClass?.[sportKey] || {};
+      const classKeys = selectedClass === 'all' ? Object.keys(classBuckets) : [selectedClass];
+      classKeys.forEach(classKey => {
+        uniqueStringList_(classBuckets?.[classKey]?.[field] || []).forEach(label => {
+          entries.push({ label, sportKey, classKey });
+        });
+      });
+      return entries;
+    }
+
+    function adminAcronymEntries_(sportKey, classFilter) {
+      const selectedClass = normalizeClassKey_(classFilter);
+      const entries = Object.entries(adminNormalizeBucketForSport_(adminConfig_, sportKey)?.acronymOverrides || {})
+        .map(([from, to]) => ({ from, to, sportKey, classKey: 'all' }));
+      const classBuckets = adminConfig_.TeamNameNormalizeBySportClass?.[sportKey] || {};
+      const classKeys = selectedClass === 'all' ? Object.keys(classBuckets) : [selectedClass];
+      classKeys.forEach(classKey => {
+        Object.entries(classBuckets?.[classKey]?.acronymOverrides || {}).forEach(([from, to]) => {
+          entries.push({ from, to, sportKey, classKey });
+        });
+      });
+      return entries;
+    }
+
+    function adminTeamSearchRows_(sportKey, classFilter, query = '') {
+      if (!(teamDetailsMapResolved_ instanceof Map)) return [];
+      const selectedClass = normalizeClassKey_(classFilter);
+      const normalizeCfg = liveTeamNameNormalizeForSport_(sportKey, selectedClass);
+      const needle = canonicalTeamName_(query, normalizeCfg).toLowerCase();
+      const seen = new Set();
+      const rows = [];
+      for (const teamObj of teamDetailsMapResolved_.values()) {
+        if (!teamObj || seen.has(teamObj)) continue;
+        seen.add(teamObj);
+        const teamClass = normalizeClassKey_(teamObj.teamClass || '');
+        if (selectedClass !== 'all' && teamClass !== selectedClass) continue;
+        const searchable = [
+          teamObj.name,
+          teamObj.keyName,
+          teamObj.keyAcr,
+          ...splitAliasList_(teamObj.aliases),
+          ...splitAliasList_(teamObj.keyAliases)
+        ];
+        const haystack = searchable.map(value => canonicalTeamName_(value, normalizeCfg).toLowerCase()).join(' ');
+        if (needle && !haystack.includes(needle)) continue;
+        rows.push({
+          name: teamObj.name || teamObj.keyName || '',
+          teamClass,
+          classShort: teamClass.replace(/^Class\s+/i, ''),
+          aliases: splitAliasList_(teamObj.aliases).slice(0, 2).join(', '),
+          logoUrl: teamObj.mapLogoUrl || teamObj.logoUrl || ''
+        });
+      }
+      return rows
+        .filter(row => row.name)
+        .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+        .slice(0, 30);
+    }
+
+    function teamJumpNormalizeCfg_(classKey = classEl?.value || '') {
+      return liveTeamNameNormalizeForSport_(sportKeyFromLabel_(sportEl?.value || ''), normalizeClassKey_(classKey));
+    }
+
+    function teamJumpKey_(name, classKey = classEl?.value || '') {
+      return canonicalTeamName_(name, teamJumpNormalizeCfg_(classKey)).toLowerCase();
+    }
+
+    function teamJumpRowAttrs_(row) {
+      const key = teamJumpKey_(row?.school || row?.name || '');
+      if (!key) return '';
+      return [
+        'data-rpi-team-row="1"',
+        `data-rpi-team-key="${escapeHtml(key)}"`,
+        `data-rpi-team-name="${escapeHtml(row?.school || row?.name || '')}"`
+      ].join(' ');
+    }
+
+    function teamContextDataAttrs_(row) {
+      const teamName = row?.school || row?.team || row?.name || '';
+      const key = teamJumpKey_(teamName);
+      if (!teamName || !key) return '';
+      return [
+        'data-team-context-row="1"',
+        `data-team-context-key="${escapeHtml(key)}"`,
+        `data-team-context-team="${escapeHtml(teamName)}"`,
+        `data-team-context-original-team="${escapeHtml(row?.originalSchool || teamName)}"`
+      ].join(' ');
+    }
+
+    function teamJumpSearchRows_(query = '') {
+      if (!(teamDetailsMapResolved_ instanceof Map)) return [];
+      const sportKey = sportKeyFromLabel_(sportEl?.value || '');
+      const selectedClass = normalizeClassKey_(classEl?.value || '');
+      const normalizeCfg = liveTeamNameNormalizeForSport_(sportKey, selectedClass);
+      const needle = canonicalTeamName_(query, normalizeCfg).toLowerCase();
+      const seen = new Set();
+      const rows = [];
+      for (const teamObj of teamDetailsMapResolved_.values()) {
+        if (!teamObj || seen.has(teamObj)) continue;
+        seen.add(teamObj);
+        const teamClass = normalizeClassKey_(teamObj.teamClass || '');
+        if (!needle && teamClass !== selectedClass) continue;
+        const aliases = splitAliasList_(teamObj.aliases);
+        const keyAliases = splitAliasList_(teamObj.keyAliases);
+        const searchable = [teamObj.name, teamObj.keyName, teamObj.keyAcr, teamObj.mascot, ...aliases, ...keyAliases];
+        const haystack = searchable.map(value => canonicalTeamName_(value, normalizeCfg).toLowerCase()).join(' ');
+        if (needle && !haystack.includes(needle)) continue;
+        rows.push({
+          name: teamObj.name || teamObj.keyName || '',
+          mascot: teamObj.mascot || '',
+          teamClass,
+          classShort: teamClass.replace(/^Class\s+/i, ''),
+          logoUrl: teamObj.mapLogoUrl || teamObj.logoUrl || '',
+          key: teamJumpKey_(teamObj.name || teamObj.keyName || '', teamClass),
+          aliases: aliases.slice(0, 2).join(', ')
+        });
+      }
+      return rows
+        .filter(row => row.name && row.teamClass)
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+        .slice(0, needle ? 40 : 32);
+    }
+
+    function renderTeamJumpMenu_() {
+      if (!teamJumpMenu) return;
+      const rows = teamJumpSearchRows_(teamJumpSearch_);
+      const isOpen = teamJumpMenuOpen_ && rows.length;
+      teamJumpMenu.hidden = !isOpen;
+      teamJumpPicker?.classList.toggle('open', Boolean(isOpen));
+      teamJumpMenu.innerHTML = isOpen
+        ? rows.map(row => `
+            <button type="button" class="team-jump-option" data-team-jump-name="${escapeHtml(row.name)}" data-team-jump-class="${escapeHtml(row.teamClass)}" data-team-jump-key="${escapeHtml(row.key)}">
+              <span class="team-jump-option-logo">${row.logoUrl ? `<img src="${escapeHtml(row.logoUrl)}" alt="" loading="lazy">` : ''}</span>
+              <span class="team-jump-option-copy">
+                <span class="team-jump-option-name">${escapeHtml(row.name)}</span>
+                <small>${row.mascot ? `<b>${escapeHtml(row.mascot)}</b>` : ''}<span>${escapeHtml(row.classShort || row.teamClass)}</span></small>
+              </span>
+            </button>`).join('')
+        : '';
+    }
+
+    async function openTeamJumpMenu_(query = teamJumpInput?.value || '') {
+      teamJumpSearch_ = String(query || '').trim();
+      teamJumpMenuOpen_ = true;
+      try {
+        await getTeamDetailsMapCached_();
+      } catch (err) {
+        console.warn('Unable to load TeamDetails for team search:', err);
+      }
+      renderTeamJumpMenu_();
+    }
+
+    function closeTeamJumpMenu_() {
+      teamJumpMenuOpen_ = false;
+      teamJumpPicker?.classList.remove('open');
+      renderTeamJumpMenu_();
+    }
+
+    function focusRpiTeamRow_(teamKey) {
+      const key = String(teamKey || '').trim();
+      if (!key) return false;
+      const row = tbody?.querySelector?.(`[data-rpi-team-key="${CSS.escape(key)}"], [data-team-context-key="${CSS.escape(key)}"]`) || null;
+      if (!row) return false;
+      row.classList.remove('team-jump-focus');
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => row.classList.add('team-jump-focus'), 120);
+      window.setTimeout(() => row.classList.remove('team-jump-focus'), 5600);
+      return true;
+    }
+
+    function teamContextRowFromTarget_(target) {
+      let rowTarget = closestFromTarget_(target, '[data-team-context-row="1"], [data-team-log-row="1"], [data-schedule-row="1"]');
+      if (!rowTarget) {
+        rowTarget = closestFromTarget_(target, 'tr, .game-box')?.querySelector?.('[data-team-context-row="1"], [data-team-log-row="1"], [data-schedule-row="1"]') || closestFromTarget_(target, 'tr[data-team-context-row="1"], .game-box[data-team-context-row="1"]');
+      }
+      if (!rowTarget) return null;
+      if (rowTarget.dataset?.logTeam) return teamLogRowFromDataset_(rowTarget.dataset);
+      return {
+        school: rowTarget.dataset?.teamContextTeam || rowTarget.dataset?.scheduleTeam || '',
+        originalSchool: rowTarget.dataset?.teamContextOriginalTeam || rowTarget.dataset?.scheduleOriginalTeam || rowTarget.dataset?.scheduleTeam || '',
+        record: rowTarget.dataset?.scheduleRecord || '',
+        rpi: rowTarget.dataset?.scheduleRpi || '',
+        rank: rowTarget.dataset?.scheduleRank || '',
+        regionRank: rowTarget.dataset?.scheduleRegionRank || '',
+        lineRegion: rowTarget.dataset?.scheduleRegion || '',
+        logoUrl: rowTarget.dataset?.scheduleLogo || '',
+        key: rowTarget.dataset?.teamContextKey || rowTarget.dataset?.rpiTeamKey || ''
+      };
+    }
+
+    function focusRenderedTeam_(teamName, classKey = classEl?.value || '') {
+      const key = teamJumpKey_(teamName, classKey);
+      return focusRpiTeamRow_(key);
+    }
+
+    async function jumpToTeam_(team) {
+      const targetClass = normalizeClassKey_(team?.teamClass || '');
+      const targetKey = String(team?.key || teamJumpKey_(team?.name || '', targetClass)).trim();
+      if (!targetClass || !targetKey) return;
+      teamJumpHighlightedKey_ = targetKey;
+      closeTeamJumpMenu_();
+      if (teamJumpInput) teamJumpInput.value = team?.name || '';
+      if (classEl.value !== targetClass) {
+        classEl.value = targetClass;
+        resetSnapshotSelectionsForNewTable_();
+        syncClassPickerUi_();
+        syncExportPreviewClassesToCurrent_();
+      }
+      await loadRankings();
+      if (!focusRpiTeamRow_(targetKey)) {
+        window.setTimeout(() => focusRpiTeamRow_(targetKey), 250);
+      }
+    }
+
+    function renderAdminOptOutMenu_() {
+      if (!adminOptOutMenu) return;
+      const selectedSport = adminOptOutSport?.value || sportKeyFromLabel_(sportEl?.value || '');
+      const selectedClass = adminClassFilter?.value || 'all';
+      const rows = adminTeamSearchRows_(selectedSport, selectedClass, adminOptOutSearch_);
+      const isOpen = adminOptOutMenuOpen_ && rows.length;
+      adminOptOutMenu.hidden = !isOpen;
+      adminOptOutMenu.innerHTML = isOpen
+        ? rows.map(row => `
+            <button type="button" class="admin-team-search-option" data-admin-team-option="${escapeHtml(row.name)}">
+              <span class="admin-team-search-logo">${row.logoUrl ? `<img src="${escapeHtml(row.logoUrl)}" alt="" loading="lazy">` : ''}</span>
+              <span class="admin-team-search-copy">
+                <span class="admin-team-search-name">${escapeHtml(row.name)}</span>
+                <small><b>${escapeHtml(row.classShort || row.teamClass)}</b>${row.aliases ? ` <span>${escapeHtml(row.aliases)}</span>` : ''}</small>
+              </span>
+            </button>`).join('')
+        : '';
+    }
+
+    function renderAdminPanel_() {
+      if (adminOptOutSport && !adminOptOutSport.options.length) {
+        adminOptOutSport.innerHTML = ADMIN_OPT_OUT_SPORT_KEYS_
+          .map(key => `<option value="${escapeHtml(key)}">${escapeHtml(adminSportLabel_(key))}</option>`)
+          .join('');
+        adminOptOutSport.value = sportKeyFromLabel_(sportEl?.value || 'baseball');
+      }
+      if (adminClassFilter && adminClassFilter.options.length <= 1) {
+        adminClassFilter.innerHTML = ['all', ...ALL_CLASS_OPTIONS_]
+          .map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value === 'all' ? 'All Classes' : value)}</option>`)
+          .join('');
+        adminClassFilter.value = 'all';
+      }
+
+      if (adminControls) adminControls.hidden = !adminUnlocked_;
+      if (adminManageField) adminManageField.hidden = !adminUnlocked_;
+      if (adminLockBtn) adminLockBtn.hidden = !adminUnlocked_;
+      if (adminUnlockBtn) adminUnlockBtn.hidden = adminUnlocked_;
+
+      const selectedSport = adminOptOutSport?.value || sportKeyFromLabel_(sportEl?.value || '');
+      const selectedClass = adminClassFilter?.value || 'all';
+      renderAdminScopedChips_(adminOptOutList, adminScopedListEntries_(selectedSport, selectedClass, adminConfig_.OptOut?.[selectedSport] || [], adminConfig_.OptOutByClass), 'optout');
+      renderAdminScopedChips_(adminRemovePhraseList, adminNormalizeEntries_(selectedSport, selectedClass, 'removePhrases'), 'phrase');
+      renderAdminScopedChips_(adminRemoveTokenList, adminNormalizeEntries_(selectedSport, selectedClass, 'removeTokens'), 'token');
+
+      if (adminAcronymList) {
+        const entries = adminAcronymEntries_(selectedSport, selectedClass);
+        adminAcronymList.innerHTML = entries.length
+          ? entries.map(entry => {
+            const scope = normalizeClassKey_(entry.classKey || 'all');
+            const scopeText = scope === 'all' ? 'All' : scope.replace(/^Class\s+/i, '');
+            return `
+              <span class="admin-chip" data-admin-chip-class="${escapeHtml(scope)}">
+                <span>${escapeHtml(entry.from)} → ${escapeHtml(entry.to)}</span>
+                <small>${escapeHtml(scopeText)}</small>
+                <button type="button" data-admin-remove="acronym" data-value="${escapeHtml(entry.from)}" data-sport-key="${escapeHtml(entry.sportKey || '')}" data-class-key="${escapeHtml(scope)}" aria-label="Remove override">&times;</button>
+              </span>`;
+          }).join('')
+          : '<span class="snapshot-empty">None yet.</span>';
+      }
+
+      if (!adminUnlocked_) {
+        setAdminStatus_(adminConfigLoaded_ ? 'Admin config loaded. Unlock to edit live opt-outs and matching.' : 'Loading admin config...');
+      } else {
+        setAdminStatus_('Admin tools unlocked. Open Manage Teams to edit live settings.');
+      }
+      renderAdminOptOutMenu_();
+    }
+
+    function setAdminManagerOpen_(isOpen) {
+      if (!adminManagerOverlay) return;
+      const open = Boolean(isOpen && adminUnlocked_);
+      adminManagerOverlay.classList.toggle('open', open);
+      adminManagerOverlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+      if (open) {
+        renderAdminPanel_();
+        getTeamDetailsMapCached_().then(() => renderAdminPanel_()).catch(() => {});
+      } else {
+        adminOptOutMenuOpen_ = false;
+        renderAdminOptOutMenu_();
+      }
+    }
+
+    async function refreshCurrentViewAfterAdminEdit_() {
+      if (typeof reloadCurrentBoardForSelection_ === 'function') {
+        await reloadCurrentBoardForSelection_();
+      }
+    }
+
+    function cloneAdminConfig_() {
+      return JSON.parse(JSON.stringify(normalizeAdminConfig_(adminConfig_)));
+    }
+
+    async function addAdminListValue_(path, value) {
+      const next = cloneAdminConfig_();
+      const label = String(value || '').trim();
+      if (!label) return;
+      const classKey = normalizeClassKey_(path.classKey || adminClassFilter?.value || 'all');
+      if (path.type === 'optout') {
+        const sportKey = path.sportKey || sportKeyFromLabel_(sportEl?.value || '');
+        if (classKey === 'all') {
+          next.OptOut[sportKey] = uniqueStringList_([...(next.OptOut[sportKey] || []), label]);
+        } else {
+          next.OptOutByClass[sportKey] = next.OptOutByClass[sportKey] || {};
+          next.OptOutByClass[sportKey][classKey] = uniqueStringList_([...(next.OptOutByClass[sportKey][classKey] || []), label]);
+        }
+      } else if (path.type === 'phrase') {
+        const sportKey = path.sportKey || adminOptOutSport?.value || 'all';
+        const bucket = classKey === 'all'
+          ? adminNormalizeBucketForSport_(next, sportKey, true)
+          : adminNormalizeBucketForSportClass_(next, sportKey, classKey, true);
+        bucket.removePhrases = uniqueStringList_([...(bucket.removePhrases || []), label]);
+      } else if (path.type === 'token') {
+        const sportKey = path.sportKey || adminOptOutSport?.value || 'all';
+        const bucket = classKey === 'all'
+          ? adminNormalizeBucketForSport_(next, sportKey, true)
+          : adminNormalizeBucketForSportClass_(next, sportKey, classKey, true);
+        bucket.removeTokens = uniqueStringList_([...(bucket.removeTokens || []), label]);
+      }
+      await saveAdminConfig_(next);
+    }
+
+    async function removeAdminListValue_(type, value, options = {}) {
+      const next = cloneAdminConfig_();
+      const selectedSport = options.sportKey || adminOptOutSport?.value || sportKeyFromLabel_(sportEl?.value || '');
+      const selectedClass = normalizeClassKey_(options.classKey || adminClassFilter?.value || 'all');
+      const key = String(value || '').trim().toLowerCase();
+      if (!key) return;
+      if (type === 'optout') {
+        if (selectedClass === 'all') {
+          next.OptOut[selectedSport] = (next.OptOut[selectedSport] || []).filter(item => String(item).trim().toLowerCase() !== key);
+        } else if (next.OptOutByClass?.[selectedSport]?.[selectedClass]) {
+          next.OptOutByClass[selectedSport][selectedClass] = next.OptOutByClass[selectedSport][selectedClass].filter(item => String(item).trim().toLowerCase() !== key);
+        }
+      } else if (type === 'phrase') {
+        const bucket = selectedClass === 'all'
+          ? adminNormalizeBucketForSport_(next, selectedSport, true)
+          : adminNormalizeBucketForSportClass_(next, selectedSport, selectedClass, true);
+        bucket.removePhrases = (bucket.removePhrases || []).filter(item => String(item).trim().toLowerCase() !== key);
+      } else if (type === 'token') {
+        const bucket = selectedClass === 'all'
+          ? adminNormalizeBucketForSport_(next, selectedSport, true)
+          : adminNormalizeBucketForSportClass_(next, selectedSport, selectedClass, true);
+        bucket.removeTokens = (bucket.removeTokens || []).filter(item => String(item).trim().toLowerCase() !== key);
+      } else if (type === 'acronym') {
+        const bucket = selectedClass === 'all'
+          ? adminNormalizeBucketForSport_(next, selectedSport, true)
+          : adminNormalizeBucketForSportClass_(next, selectedSport, selectedClass, true);
+        delete bucket.acronymOverrides[value];
+      }
+      await saveAdminConfig_(next);
+    }
+
+    async function addAdminAcronymOverride_() {
+      const from = String(adminAcronymFromInput?.value || '').trim();
+      const to = String(adminAcronymToInput?.value || '').trim();
+      if (!from || !to) return;
+      const next = cloneAdminConfig_();
+      const selectedSport = adminOptOutSport?.value || sportKeyFromLabel_(sportEl?.value || '') || 'all';
+      const selectedClass = normalizeClassKey_(adminClassFilter?.value || 'all');
+      const bucket = selectedClass === 'all'
+        ? adminNormalizeBucketForSport_(next, selectedSport, true)
+        : adminNormalizeBucketForSportClass_(next, selectedSport, selectedClass, true);
+      bucket.acronymOverrides[from.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim()] = to;
+      await saveAdminConfig_(next);
+      if (adminAcronymFromInput) adminAcronymFromInput.value = '';
+      if (adminAcronymToInput) adminAcronymToInput.value = '';
+    }
+
+    async function unlockAdminPanel_() {
+      adminSecret_ = String(adminSecretInput?.value || '').trim();
+      if (!adminSecret_) {
+        setAdminStatus_('Enter the admin secret.', true);
+        return;
+      }
+      sessionStorage.setItem('rpi-admin-secret', adminSecret_);
+      try {
+        await saveAdminConfig_(adminConfig_);
+        adminUnlocked_ = true;
+        renderAdminPanel_();
+        setAdminStatus_('Admin tools unlocked.');
+      } catch (err) {
+        adminUnlocked_ = false;
+        sessionStorage.removeItem('rpi-admin-secret');
+        setAdminStatus_(`Admin unlock failed. ${err.message}`, true);
+        renderAdminPanel_();
+      }
+    }
+
+    function lockAdminPanel_() {
+      adminUnlocked_ = false;
+      adminSecret_ = '';
+      sessionStorage.removeItem('rpi-admin-secret');
+      if (adminSecretInput) adminSecretInput.value = '';
+      setAdminManagerOpen_(false);
+      hideTeamAdminContextMenu_();
+      renderAdminPanel_();
+    }
+
+    function rowFromTeamAdminTarget_(target) {
+      let rowTarget = closestFromTarget_(target, '[data-team-context-row="1"], [data-team-log-row="1"], [data-schedule-row="1"]');
+      if (!rowTarget) {
+        rowTarget = closestFromTarget_(target, 'tr, .game-box')?.querySelector?.('[data-team-context-row="1"], [data-team-log-row="1"], [data-schedule-row="1"]') || null;
+      }
+      if (!rowTarget) return null;
+      if (rowTarget.dataset?.logTeam) return teamLogRowFromDataset_(rowTarget.dataset);
+      return {
+        school: rowTarget.dataset?.teamContextTeam || rowTarget.dataset?.scheduleTeam || '',
+        originalSchool: rowTarget.dataset?.teamContextOriginalTeam || rowTarget.dataset?.scheduleOriginalTeam || rowTarget.dataset?.scheduleTeam || '',
+        record: rowTarget.dataset?.scheduleRecord || '',
+        rpi: rowTarget.dataset?.scheduleRpi || '',
+        rank: rowTarget.dataset?.scheduleRank || '',
+        regionRank: rowTarget.dataset?.scheduleRegionRank || '',
+        lineRegion: rowTarget.dataset?.scheduleRegion || '',
+        logoUrl: rowTarget.dataset?.scheduleLogo || '',
+        key: rowTarget.dataset?.teamContextKey || ''
+      };
+    }
+
+    function hideTeamAdminContextMenu_() {
+      if (!teamAdminContextMenu) return;
+      teamAdminContextMenu.hidden = true;
+      teamAdminContextMenu.innerHTML = '';
+      delete teamAdminContextMenu.dataset.team;
+    }
+
+    function canShowTeamAdminContextMenu_() {
+      return adminUnlocked_ && selectedRpiYear_() === 'live' && !historySnapshotId_;
+    }
+
+    function positionFloatingMenu_(node, x, y) {
+      if (!node) return;
+      node.hidden = false;
+      node.style.left = `${Math.max(8, Math.min(x, window.innerWidth - node.offsetWidth - 8))}px`;
+      node.style.top = `${Math.max(8, Math.min(y, window.innerHeight - node.offsetHeight - 8))}px`;
+    }
+
+    function showTeamAdminContextMenu_(row, event) {
+      if (!teamAdminContextMenu || !row?.school) return false;
+      teamAdminContextMenu.dataset.team = row.school;
+      teamAdminContextMenu.dataset.teamKey = row.key || teamJumpKey_(row.school);
+      teamAdminContextMenu.innerHTML = `
+        <button type="button" data-team-admin-action="map">View on Map</button>
+        <button type="button" data-team-admin-action="regions">Region Standings</button>
+        <button type="button" data-team-admin-action="playoff">Playoff Picture</button>
+        ${canShowTeamAdminContextMenu_() ? '<button type="button" data-team-admin-action="exclude">Exclude Team</button>' : ''}
+      `;
+      positionFloatingMenu_(teamAdminContextMenu, event.clientX || 24, event.clientY || 24);
+      return true;
+    }
+
+    function focusEastWestMapTeamByName_(teamName) {
+      const key = canonicalTeamName_(teamName || '').toLowerCase();
+      if (!key) return false;
+      const row = [...eastWestMapRowsByKey_.values()].find(item => (
+        canonicalTeamName_(item.school || '').toLowerCase() === key
+        || canonicalTeamName_(item.originalSchool || '').toLowerCase() === key
+      ));
+      if (!row) return false;
+      focusEastWestMapTeam_(row);
+      const marker = eastWestMapCanvas?.querySelector?.(`.nc-map-marker[data-team-key="${CSS.escape(row.teamKey)}"]`);
+      marker?.scrollIntoView?.({ behavior: 'smooth', block: 'center', inline: 'center' });
+      return true;
+    }
+
+    async function excludeTeamFromAdminContext_(teamName) {
+      const label = String(teamName || '').trim();
+      if (!label) return;
+      const sportKey = sportKeyFromLabel_(sportEl?.value || '');
+      const classKey = normalizeClassKey_(classEl?.value || 'all');
+      await addAdminListValue_({ type: 'optout', sportKey, classKey }, label);
+      setAdminStatus_(`Excluded ${label} from live ${adminSportLabel_(sportKey)} ${classKey}.`);
+    }
+
+    // ============================================================================
+    // 13. Primary board loading and view refresh entrypoints
     // ============================================================================
 
     async function loadRankings() {
@@ -6715,6 +7898,16 @@ let eastWestLineMapState_ = null;
         setBoardActionsDisabled_(false);
       }
     }
+
+    // ============================================================================
+    // 14. Public API for bracket view integration
+    // ============================================================================
+
+    window.BRSNBoard = window.BRSNBoard || {};
+    // Expose team search so full_bracket_view.js can populate the bracket toolbar search menu.
+    window.BRSNBoard.searchTeams = function(query) {
+      try { return teamJumpSearchRows_(String(query || '')); } catch(e) { return []; }
+    };
 
     
   

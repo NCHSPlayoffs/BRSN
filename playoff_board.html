@@ -6,6 +6,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NCHSAA RPI Rankings</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./playoff_board.css" />
 </head>
 <body>
@@ -82,6 +83,25 @@
             </details>
 
             <details class="app-settings-section">
+              <summary>Admin</summary>
+              <div class="app-settings-section-body">
+                <div class="app-settings-field admin-auth-field">
+                  <label for="adminSecretInput">Admin Access</label>
+                  <div class="admin-auth-row">
+                    <input id="adminSecretInput" type="password" autocomplete="off" placeholder="Admin secret">
+                    <button id="adminUnlockBtn" type="button">Unlock</button>
+                    <button id="adminLockBtn" type="button" hidden>Lock</button>
+                  </div>
+                  <div id="adminStatus" class="setting-note">Unlock admin tools to manage live opt-outs and name matching.</div>
+                </div>
+
+                <div id="adminManageField" class="app-settings-field admin-manage-field" hidden>
+                  <button id="adminManageBtn" class="admin-manage-btn" type="button">Manage Teams</button>
+                </div>
+              </div>
+            </details>
+
+            <details class="app-settings-section">
               <summary>Compare History</summary>
               <div class="app-settings-section-body">
                 <div class="app-settings-field snapshot-settings-field">
@@ -130,8 +150,88 @@
           </div>
         </div>
 
+        <div id="adminManagerOverlay" class="admin-manager-overlay export-hidden" aria-hidden="true">
+          <div class="admin-manager-card" role="dialog" aria-modal="true" aria-labelledby="adminManagerTitle">
+            <div class="admin-manager-head">
+              <div>
+                <div class="admin-manager-kicker">Live Admin Tools</div>
+                <div id="adminManagerTitle" class="admin-manager-title">Manage Teams</div>
+                <div class="admin-manager-subtitle">Edit live opt-outs and team name matching rules.</div>
+              </div>
+              <button id="adminManagerCloseBtn" class="admin-manager-close" type="button" aria-label="Close admin manager">&times;</button>
+            </div>
+
+            <div id="adminControls" class="admin-controls" hidden>
+              <div class="admin-manager-context" aria-label="Admin list context">
+                <label class="admin-manager-context-field" for="adminOptOutSport">
+                  <span>Sport Lists</span>
+                  <select id="adminOptOutSport" aria-label="Admin sport"></select>
+                </label>
+                <label class="admin-manager-context-field" for="adminClassFilter">
+                  <span>Class Filter</span>
+                  <select id="adminClassFilter" aria-label="Admin class filter">
+                    <option value="all">All Classes</option>
+                  </select>
+                </label>
+                <div class="admin-manager-context-note">Each sport manages its own lists. All applies sport-wide; a class selection saves class-only edits.</div>
+              </div>
+
+              <a class="admin-sheet-link" href="https://docs.google.com/spreadsheets/d/1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE/edit?gid=510129710#gid=510129710" target="_blank" rel="noopener">Open TeamDetails Sheet</a>
+
+              <div class="admin-edit-grid">
+                <div class="app-settings-field admin-edit-field">
+                  <label for="adminOptOutInput">Live Opt-Out Teams</label>
+                  <div class="admin-inline-row">
+                    <span class="admin-team-search-wrap">
+                      <input id="adminOptOutInput" type="text" autocomplete="off" placeholder="Search team or alias">
+                      <span id="adminOptOutMenu" class="admin-team-search-menu" hidden></span>
+                    </span>
+                    <button id="adminOptOutAddBtn" type="button">Add</button>
+                  </div>
+                  <div id="adminOptOutList" class="admin-chip-list"></div>
+                </div>
+
+                <div class="app-settings-field admin-edit-field">
+                  <label for="adminRemovePhraseInput">Remove Phrases</label>
+                  <div class="admin-inline-row">
+                    <input id="adminRemovePhraseInput" type="text" placeholder="Classical Academy">
+                    <button id="adminRemovePhraseAddBtn" type="button">Add</button>
+                  </div>
+                  <div id="adminRemovePhraseList" class="admin-chip-list"></div>
+                </div>
+
+                <div class="app-settings-field admin-edit-field">
+                  <label for="adminRemoveTokenInput">Remove Tokens</label>
+                  <div class="admin-inline-row">
+                    <input id="adminRemoveTokenInput" type="text" placeholder="STEM">
+                    <button id="adminRemoveTokenAddBtn" type="button">Add</button>
+                  </div>
+                  <div id="adminRemoveTokenList" class="admin-chip-list"></div>
+                </div>
+
+                <div class="app-settings-field admin-edit-field">
+                  <label>Normalization Overrides</label>
+                  <div class="admin-inline-row admin-inline-row-split">
+                    <input id="adminAcronymFromInput" type="text" placeholder="Original name">
+                    <input id="adminAcronymToInput" type="text" placeholder="Normalized name">
+                    <button id="adminAcronymAddBtn" type="button">Add</button>
+                  </div>
+                  <div id="adminAcronymList" class="admin-chip-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       <div class="hero-controls">
         <div class="controls">
+          <div class="team-jump-control export-hidden">
+            <label for="teamJumpInput">Search</label>
+            <div class="team-jump-picker" id="teamJumpPicker">
+              <input id="teamJumpInput" class="team-jump-input" type="text" autocomplete="off" placeholder="Search teams">
+              <div id="teamJumpMenu" class="team-jump-menu" role="listbox" hidden></div>
+            </div>
+          </div>
           <div>
   <label for="sport">Sport</label>
 
@@ -200,7 +300,7 @@
             <button id="loadBtn">RPI Standings</button>
             <button id="regionBtn">Region Standings</button>
             <button id="playoffBtn">Playoff Picture</button>
-            <button id="eastWestLineBtn">East/West Line</button>
+            <button id="eastWestLineBtn">Full Playoff Brackets</button>
             <button id="viewMapBtn" type="button" data-east-west-map-btn>View Map</button>
           </div>
         </div>
@@ -343,6 +443,8 @@
     </div>
   </div>
 
+  <div id="teamAdminContextMenu" class="team-admin-context-menu export-hidden" hidden></div>
+
   <div id="teamScheduleOverlay" class="team-schedule-overlay export-hidden" aria-hidden="true">
     <div class="team-schedule-card" role="dialog" aria-modal="true" aria-labelledby="teamScheduleTitle">
       <button id="teamScheduleCloseBtn" class="team-schedule-close" type="button" aria-label="Close team schedule">&times;</button>
@@ -365,6 +467,7 @@
     </div>
   </div>
 
+      <script src="./full_bracket_view.js"></script>
       <script src="./playoff_board.js"></script>
   <script src="./playoff_board.runtime.js"></script>
 

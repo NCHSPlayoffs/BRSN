@@ -558,6 +558,416 @@
       box-shadow: 0 10px 22px rgba(0,0,0,0.26);
     }
 
+    .admin-auth-row,
+    .admin-inline-row {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .admin-auth-row input,
+    .admin-inline-row input,
+    .admin-inline-row select {
+      min-width: 0;
+      flex: 1 1 auto;
+      height: 42px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(10,10,14,0.52);
+      color: #fff;
+      padding: 0 12px;
+      font-family: 'Russo One', Arial, sans-serif;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+    }
+
+    .admin-auth-row button,
+    .admin-manage-btn,
+    .admin-inline-row button,
+    .admin-sheet-link {
+      width: auto;
+      min-width: 118px;
+      height: 42px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(214,214,218,0.82));
+      color: #140407;
+      font-family: 'Goldman', 'Russo One', Arial, sans-serif;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+    }
+
+    .admin-manage-field {
+      margin-top: 10px;
+    }
+
+    .admin-manage-btn {
+      width: 100%;
+    }
+
+    .admin-manager-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9800;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0,0,0,0.48);
+      backdrop-filter: blur(12px);
+    }
+
+    .admin-manager-overlay.open {
+      display: flex;
+    }
+
+    .admin-manager-card {
+      width: min(1700px, calc(100vw - 48px));
+      height: min(820px, calc(100vh - 48px));
+      overflow: auto;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06)),
+        rgba(22,23,30,0.84);
+      box-shadow: 0 28px 90px rgba(0,0,0,0.58);
+      color: #fff;
+    }
+
+    .admin-manager-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.16);
+      background: linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04));
+    }
+
+    .admin-manager-kicker,
+    .admin-manager-subtitle {
+      color: var(--muted);
+      font-family: 'Goldman', 'Russo One', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .admin-manager-title {
+      margin-top: 5px;
+      color: #fff;
+      font-family: 'Goldman', 'Russo One', Arial, sans-serif;
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .admin-manager-close {
+      width: 44px;
+      height: 44px;
+      flex: 0 0 44px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.24);
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+      font-size: 30px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .admin-controls {
+      display: grid;
+      gap: 16px;
+      padding: 22px;
+    }
+
+    .admin-manager-context {
+      display: grid;
+      grid-template-columns: minmax(180px, 240px) minmax(180px, 220px) minmax(220px, 1fr);
+      gap: 12px;
+      align-items: stretch;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06)),
+        rgba(0,0,0,0.2);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+    }
+
+    .admin-manager-context-field {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .admin-manager-context-field span,
+    .admin-manager-context-note {
+      color: var(--muted);
+      font-family: 'Goldman', 'Russo One', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .admin-manager-context-field select {
+      width: 100%;
+      min-height: 44px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08)),
+        rgba(18,18,24,0.7);
+      color: #fff;
+      font-family: 'Russo One', Arial, sans-serif;
+      font-size: 15px;
+      padding: 0 12px;
+    }
+
+    .admin-manager-context-note {
+      display: flex;
+      align-items: center;
+      line-height: 1.45;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.22);
+      color: rgba(210, 222, 245, 0.86);
+      text-transform: none;
+      letter-spacing: 0.04em;
+    }
+
+    .admin-edit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .admin-edit-field {
+      min-width: 0;
+    }
+
+    .admin-inline-row-split input {
+      flex-basis: 42%;
+    }
+
+    .admin-inline-row button {
+      flex: 0 0 96px;
+      min-width: 96px;
+    }
+
+    .admin-team-search-wrap {
+      position: relative;
+      display: block;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .admin-team-search-wrap input {
+      width: 100%;
+    }
+
+    .admin-team-search-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 40;
+      max-height: 275px;
+      overflow: auto;
+      display: grid;
+      gap: 7px;
+      padding: 9px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.24);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.07)),
+        rgba(20,21,28,0.78);
+      backdrop-filter: blur(16px) saturate(1.25);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.18),
+        0 18px 44px rgba(0,0,0,0.45);
+    }
+
+    .admin-team-search-menu[hidden] {
+      display: none;
+    }
+
+    .admin-inline-row .admin-team-search-option,
+    .admin-team-search-option {
+      width: 100%;
+      min-height: 54px;
+      height: auto;
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08)),
+        rgba(0,0,0,0.2);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 8px 11px;
+      font-family: 'Russo One', Arial, sans-serif;
+      text-align: left;
+      cursor: pointer;
+      overflow: hidden;
+      text-transform: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+    }
+
+    .admin-inline-row .admin-team-search-option:hover,
+    .admin-team-search-option:hover {
+      border-color: rgba(255,255,255,0.32);
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.32), rgba(255,255,255,0.13)),
+        rgba(0,0,0,0.16);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.26),
+        0 0 18px rgba(255,255,255,0.12);
+    }
+
+    .admin-team-search-logo {
+      width: 42px;
+      height: 36px;
+      flex: 0 0 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      background: rgba(255,255,255,0.14);
+      overflow: hidden;
+    }
+
+    .admin-team-search-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .admin-team-search-copy {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+      flex: 1 1 auto;
+    }
+
+    .admin-team-search-name {
+      min-width: 0;
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.05;
+      letter-spacing: 0.04em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .admin-team-search-option small,
+    .admin-chip small {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .admin-team-search-option small b {
+      color: rgba(255,255,255,0.92);
+      margin-right: 7px;
+    }
+
+    .admin-team-search-option small span {
+      color: rgba(183, 199, 226, 0.82);
+    }
+
+    .admin-sheet-link {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      text-decoration: none;
+    }
+
+    .admin-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 30px;
+      margin-top: 10px;
+    }
+
+    .admin-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      max-width: 100%;
+      padding: 7px 9px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      font-family: 'Russo One', Arial, sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }
+
+    .admin-chip button {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,80,95,0.18);
+      color: #fff;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .team-admin-context-menu {
+      position: fixed;
+      z-index: 10050;
+      min-width: 170px;
+      padding: 7px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(20,20,26,0.94);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+    }
+
+    .team-admin-context-menu[hidden] {
+      display: none;
+    }
+
+    .team-admin-context-menu button {
+      width: 100%;
+      border: 0;
+      border-radius: 7px;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+      color: #fff;
+      font-family: 'Russo One', Arial, sans-serif;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .team-admin-context-menu button:hover {
+      background: rgba(255,80,95,0.24);
+    }
+
     .setting-note {
       margin-top: 9px;
       padding: 9px 10px;
@@ -623,7 +1033,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: repeat(3, minmax(240px, 1fr));
+      grid-template-columns: minmax(280px, 1.25fr) repeat(3, minmax(210px, 1fr));
       gap: 12px;
       margin-bottom: 12px;
       align-items: end;
@@ -688,7 +1098,8 @@
 }
 
 .sport-picker,
-.class-picker {
+.class-picker,
+.team-jump-picker {
   position: relative;
   width: 100%;
 }
@@ -701,7 +1112,8 @@
 }
 
 .sport-picker-btn,
-.class-picker-btn {
+.class-picker-btn,
+.team-jump-input {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) 16px;
   align-items: center;
@@ -717,6 +1129,32 @@
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
+}
+
+.team-jump-input {
+  display: block;
+  grid-template-columns: none;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff;
+  cursor: text;
+}
+
+.team-jump-input::placeholder {
+  color: rgba(255,255,255,0.72);
+}
+
+.team-jump-input:focus::placeholder,
+.team-jump-input:hover::placeholder {
+  color: rgba(255,255,255,0.70);
+}
+
+.team-jump-input:hover,
+.team-jump-input:focus,
+.hero-controls .team-jump-input:hover,
+.hero-controls .team-jump-input:focus,
+.hero-controls .team-jump-picker.open .team-jump-input {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff;
 }
 
 .sport-picker-btn {
@@ -738,8 +1176,11 @@
 
 .sport-picker-btn:hover,
 .class-picker-btn:hover,
+.team-jump-input:hover,
+.team-jump-input:focus,
 .sport-picker.open .sport-picker-btn,
-.class-picker.open .class-picker-btn {
+.class-picker.open .class-picker-btn,
+.team-jump-picker.open .team-jump-input {
   border-color: rgba(255,255,255,0.44);
   background: linear-gradient(180deg, #ffdfdf 0%, #bababa 100%);
   color: #120405;
@@ -780,7 +1221,8 @@
 }
 
 .sport-picker-menu,
-.class-picker-menu {
+.class-picker-menu,
+.team-jump-menu {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -802,6 +1244,10 @@
 }
 
 .class-picker-menu[hidden] {
+  display: none;
+}
+
+.team-jump-menu[hidden] {
   display: none;
 }
 
@@ -858,6 +1304,277 @@
   outline: 1px solid rgba(255,255,255,0.12);
 }
 
+.team-jump-menu {
+  max-height: min(52vh, 430px);
+  overflow: auto;
+  
+}
+#bracketTeamMenu.team-jump-menu {
+  max-height: min(52vh, 430px);
+  overflow: auto;
+  width: 395px;
+}
+
+#bracketTeamMenu .team-jump-option {
+  gap: 10px !important;
+}
+
+#bracketTeamMenu .bracket-team-option-logo {
+  flex: 0 0 24px;
+  width: 48px !important;
+  height: 48px !important;
+  object-fit: contain;
+  display: block;
+}
+
+.team-jump-option {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  height: auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.07)),
+    rgba(12, 14, 18, 0.72);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  backdrop-filter: blur(14px) saturate(1.12);
+}
+
+.team-jump-option:hover,
+.team-jump-option:focus {
+  border-color: rgba(255,255,255,0.34);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.30), rgba(255,255,255,0.12)),
+    rgba(12, 14, 18, 0.82);
+  outline: none;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.24);
+}
+
+.team-jump-option-logo {
+  width: 42px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.10);
+  overflow: hidden;
+}
+
+.team-jump-option-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.team-jump-option-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.team-jump-option-name {
+  min-width: 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.65);
+}
+
+.team-jump-option small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-jump-option small b {
+  color: rgba(255,255,255,0.92);
+  margin-right: 7px;
+}
+
+.team-jump-option small span {
+  color: rgba(183, 199, 226, 0.86);
+}
+
+[data-team-context-row].team-jump-focus,
+tr.team-jump-focus {
+  animation: teamJumpFocusPulse 5.6s ease-out;
+}
+
+.rpi-info-head {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  position: relative;
+  line-height: 1;
+}
+
+.rpi-info-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rpi-info-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.58);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.30), rgba(255,255,255,0.10)),
+    rgba(255,255,255,0.08);
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: help;
+  box-shadow: 0 0 12px rgba(255,255,255,0.16);
+}
+
+.rpi-info-icon:hover,
+.rpi-info-icon:focus {
+  outline: none;
+  border-color: rgba(255,255,255,0.92);
+  box-shadow: 0 0 18px rgba(255,255,255,0.34);
+}
+
+.rpi-info-popover {
+  position: absolute;
+  right: 50%;
+  top: calc(100% + 12px);
+  bottom: auto;
+  z-index: 12000;
+  width: min(420px, calc(100vw - 34px));
+  display: none;
+  gap: 9px;
+  padding: 14px 15px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.26);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06)),
+    rgba(17, 19, 25, 0.92);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+  transform: translateX(50%);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.18);
+  backdrop-filter: blur(16px) saturate(1.12);
+}
+
+.table-card,
+.table-scroll,
+table,
+thead,
+th,
+.region-rankings-table,
+.region-rankings-table thead,
+.region-rankings-table th {
+  overflow: visible;
+}
+
+.rpi-info-popover::after {
+  content: "";
+  position: absolute;
+  right: 50%;
+  bottom: 100%;
+  width: 12px;
+  height: 12px;
+  border-left: 1px solid rgba(255,255,255,0.24);
+  border-top: 1px solid rgba(255,255,255,0.24);
+  background: rgba(28, 30, 38, 0.92);
+  transform: translate(50%, 6px) rotate(45deg);
+}
+
+.rpi-info-popover strong {
+  display: block;
+  color: #fff;
+  font-family: var(--font-header);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 12px rgba(255,255,255,0.42), 0 0 18px rgba(31,120,255,0.28);
+}
+
+.rpi-info-intro,
+.rpi-info-sub {
+  display: block;
+  color: rgba(218, 229, 248, 0.92);
+}
+
+.rpi-info-sub {
+  font-size: 11px;
+  color: rgba(185, 201, 226, 0.92);
+}
+
+.rpi-info-wrap:hover .rpi-info-popover,
+.rpi-info-icon:focus + .rpi-info-popover,
+.rpi-info-icon:focus-visible + .rpi-info-popover {
+  display: grid;
+}
+
+.table-card:has(.rpi-info-wrap:hover),
+.table-card:has(.rpi-info-icon:focus),
+.table-card:has(.rpi-info-icon:focus-visible) {
+  z-index: 13000;
+}
+
+/* While the RPI info popover is open, let the .table-scroll show it.
+   Needed because a later rule (.table-scroll { overflow-x: auto; }) overrides
+   the earlier `overflow: visible` and per spec forces overflow-y to auto too,
+   which clips this absolutely-positioned popover. */
+.table-card:has(.rpi-info-wrap:hover) .table-scroll,
+.table-card:has(.rpi-info-icon:focus) .table-scroll,
+.table-card:has(.rpi-info-icon:focus-visible) .table-scroll {
+  overflow: visible;
+}
+
+@keyframes teamJumpFocusPulse {
+  0% {
+    outline: 3px solid rgba(255,255,255,0.85);
+    box-shadow: inset 0 0 0 999px rgba(255,255,255,0.18), 0 0 30px rgba(255,255,255,0.42);
+  }
+  55% {
+    outline: 2px solid rgba(255,255,255,0.48);
+    box-shadow: inset 0 0 0 999px rgba(255,255,255,0.10), 0 0 18px rgba(255,255,255,0.28);
+  }
+  100% {
+    outline: 0 solid transparent;
+    box-shadow: none;
+  }
+}
+
     #classification,
     #classification option,
     .class-picker-btn,
@@ -868,6 +1585,9 @@
     .sport-picker-menu,
     .sport-picker-option,
     .sport-picker-option-text,
+    .team-jump-input,
+    .team-jump-menu,
+    .team-jump-option,
     .east-west-map-selectors select,
     .east-west-map-selectors select option {
       font-family: var(--font-body);
@@ -879,9 +1599,9 @@
       cursor: pointer;
       background: var(--button-bg);
       color: var(--button-text);
-      letter-spacing: 0.08em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      font-weight: 900;
+      font-weight: 500;
     }
 
     button:disabled { opacity: .65; cursor: default; }
@@ -898,7 +1618,7 @@
       border-radius: 4px;
       background: var(--control-bg);
       color: var(--text);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -2671,15 +3391,14 @@
     .bracket-grid { display: grid; grid-template-columns: minmax(0, 1fr) 0px minmax(0, 1fr); }
 
     .round-label {
-      padding: 10px 12px;
+      padding: 5px 5px;
       text-align: center;
-      font-size: 13px;
+      font-size: 18px;
       font-weight: 900;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: #b9c7e0;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.03);
+
     }
 
     .slot-round-label {
@@ -2828,7 +3547,7 @@
 }
 
     .team-logo {
-      width: var(--bracket-team-logo-width);
+      
       height: var(--bracket-team-logo-height);
       object-fit: contain;
       object-position: center;
@@ -4871,6 +5590,9 @@ td,
 .sport-picker-menu,
 .sport-picker-option,
 .sport-picker-option-text,
+.team-jump-input,
+.team-jump-menu,
+.team-jump-option,
 .east-west-map-selectors select,
 .east-west-map-selectors select option,
 .app-settings-field select,
@@ -5002,6 +5724,7 @@ body {
 select,
 .sport-picker-btn,
 .class-picker-btn,
+.team-jump-input,
 .export-preview-class-toggle,
 .export-preview-name,
 .export-preview-progress,
@@ -5023,7 +5746,8 @@ select,
 }
 
 .sport-picker-btn,
-.class-picker-btn {
+.class-picker-btn,
+.team-jump-input {
   background: var(--button-bg);
   color: var(--button-text);
   text-shadow: 0 1px 0 rgba(255,255,255,0.14);
@@ -5034,6 +5758,7 @@ button:focus-visible,
 input:focus-visible,
 .sport-picker-btn:focus-visible,
 .class-picker-btn:focus-visible,
+.team-jump-input:focus-visible,
 .export-preview-class-toggle:focus-visible,
 .east-west-map-corner-control:focus-visible,
 .east-west-map-card-close:focus-visible {
@@ -5059,6 +5784,7 @@ button:not(:disabled):hover {
 
 .sport-picker-menu,
 .class-picker-menu,
+.team-jump-menu,
 .export-preview-class-menu,
 .east-west-map-sport-menu,
 .east-west-map-class-menu,
@@ -5076,6 +5802,7 @@ button:not(:disabled):hover {
 
 .sport-picker-option,
 .class-picker-option,
+.team-jump-option,
 .export-preview-class-option,
 .export-preview-select-all,
 .east-west-map-menu-item,
@@ -5090,6 +5817,8 @@ button:not(:disabled):hover {
 .sport-picker-option.is-selected,
 .class-picker-option:hover,
 .class-picker-option.is-selected,
+.team-jump-option:hover,
+.team-jump-option:focus,
 .export-preview-class-option:hover,
 .export-preview-select-all:hover,
 .east-west-map-menu-item:hover,
@@ -5217,7 +5946,7 @@ td {
     rgba(0,0,0,0.18);
 }
 
-.region-panel,
+/*.region-panel,
 .bracket-region,
 .east-west-line-table,
 .game-stack,
@@ -5232,7 +5961,7 @@ td {
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
     0 16px 40px rgba(0,0,0,0.26);
-}
+}*/
 
 .region-standings-board,
 .playoff-board {
@@ -5722,6 +6451,7 @@ body.performance-mode .round1-slot .game-stack {
 .hero-controls .sport-picker-btn,
 .hero-controls .class-picker-btn,
 .hero-controls .year-picker-btn,
+.hero-controls .team-jump-input,
 .east-west-map-class-btn,
 .east-west-map-sport-btn {
   border-color: rgba(255,255,255,0.30);
@@ -5746,6 +6476,7 @@ body.performance-mode .round1-slot .game-stack {
 .hero-controls .sport-picker-btn-caret,
 .hero-controls .class-picker-btn-text,
 .hero-controls .class-picker-btn-caret,
+.hero-controls .team-jump-input,
 .east-west-map-sport-btn .sport-picker-btn-icon,
 .east-west-map-sport-btn .sport-picker-btn-text,
 .east-west-map-sport-btn .sport-picker-btn-caret,
@@ -5756,8 +6487,11 @@ body.performance-mode .round1-slot .game-stack {
 
 .hero-controls .sport-picker-btn:hover,
 .hero-controls .class-picker-btn:hover,
+.hero-controls .team-jump-input:hover,
+.hero-controls .team-jump-input:focus,
 .hero-controls .sport-picker.open .sport-picker-btn,
 .hero-controls .class-picker.open .class-picker-btn,
+.hero-controls .team-jump-picker.open .team-jump-input,
 .east-west-map-sport-btn:hover,
 .east-west-map-class-btn:hover,
 .east-west-map-sport-picker.open .east-west-map-sport-btn,
@@ -5778,6 +6512,7 @@ body.performance-mode .round1-slot .game-stack {
 
 .hero-controls .sport-picker-menu,
 .hero-controls .class-picker-menu,
+.hero-controls .team-jump-menu,
 .east-west-map-sport-menu,
 .east-west-map-class-menu {
   border-color: rgba(255,255,255,0.26);
@@ -5794,6 +6529,7 @@ body.performance-mode .round1-slot .game-stack {
 
 .hero-controls .sport-picker-option,
 .hero-controls .class-picker-option,
+.hero-controls .team-jump-option,
 .east-west-map-sport-menu .sport-picker-option,
 .east-west-map-class-menu .class-picker-option {
   color: #fff7f7;
@@ -5807,6 +6543,8 @@ body.performance-mode .round1-slot .game-stack {
 .hero-controls .sport-picker-option.is-selected,
 .hero-controls .class-picker-option:hover,
 .hero-controls .class-picker-option.is-selected,
+.hero-controls .team-jump-option:hover,
+.hero-controls .team-jump-option:focus,
 .east-west-map-sport-menu .sport-picker-option:hover,
 .east-west-map-sport-menu .sport-picker-option.is-selected,
 .east-west-map-class-menu .class-picker-option:hover,
@@ -5914,6 +6652,7 @@ body.performance-mode .board-actions button,
 body.performance-mode .hero-controls .sport-picker-btn,
 body.performance-mode .hero-controls .class-picker-btn,
 body.performance-mode .hero-controls .year-picker-btn,
+body.performance-mode .hero-controls .team-jump-input,
 body.performance-mode .east-west-map-class-btn,
 body.performance-mode .east-west-map-sport-btn,
 body.performance-mode .export-preview-toolbar button,
@@ -5988,6 +6727,7 @@ body.performance-mode .nc-map-marker.is-focused rect,
 body.performance-mode .app-settings-field .snapshot-calendar-btn,
 body.performance-mode .hero-controls .sport-picker-option,
 body.performance-mode .hero-controls .class-picker-option,
+body.performance-mode .hero-controls .team-jump-option,
 body.performance-mode .east-west-map-sport-menu .sport-picker-option,
 body.performance-mode .east-west-map-class-menu .class-picker-option {
   filter: none !important;
@@ -6008,6 +6748,7 @@ body.performance-mode .connector-line.east {
 
 body.performance-mode .hero-controls .sport-picker-menu,
 body.performance-mode .hero-controls .class-picker-menu,
+body.performance-mode .hero-controls .team-jump-menu,
 body.performance-mode .east-west-map-sport-menu,
 body.performance-mode .east-west-map-class-menu {
   background:
@@ -6022,6 +6763,7 @@ body.performance-mode .east-west-map-class-menu {
 
 body.performance-mode .hero-controls .sport-picker-option,
 body.performance-mode .hero-controls .class-picker-option,
+body.performance-mode .hero-controls .team-jump-option,
 body.performance-mode .east-west-map-sport-menu .sport-picker-option,
 body.performance-mode .east-west-map-class-menu .class-picker-option {
   background: var(--control-soft-bg) !important;
@@ -6031,6 +6773,8 @@ body.performance-mode .hero-controls .sport-picker-option:hover,
 body.performance-mode .hero-controls .sport-picker-option.is-selected,
 body.performance-mode .hero-controls .class-picker-option:hover,
 body.performance-mode .hero-controls .class-picker-option.is-selected,
+body.performance-mode .hero-controls .team-jump-option:hover,
+body.performance-mode .hero-controls .team-jump-option:focus,
 body.performance-mode .east-west-map-sport-menu .sport-picker-option:hover,
 body.performance-mode .east-west-map-sport-menu .sport-picker-option.is-selected,
 body.performance-mode .east-west-map-class-menu .class-picker-option:hover,

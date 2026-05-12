@@ -1,4 +1,5 @@
 /* Split stylesheet entrypoint for the playoff board. */
 @import url('./playoff_board.themes.css');
 @import url('./playoff_board.desktop.css');
+@import url('./full_bracket.css');
 @import url('./playoff_board.mobile.css');

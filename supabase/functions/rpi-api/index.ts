@@ -3,13 +3,15 @@ import TEAM_NAME_NORMALIZE_CONFIG from "../_shared/team-name-normalize.config.js
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rpi-cron-secret",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rpi-cron-secret, x-rpi-admin-secret",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const RPI_CRON_SECRET = Deno.env.get("RPI_CRON_SECRET") || "";
+const RPI_ADMIN_SECRET = Deno.env.get("RPI_ADMIN_SECRET") || "";
+const ADMIN_CONFIG_KEY = "app";
 
 const RPI_CLASSES = [
   "Class 1A", "Class 2A", "Class 3A", "Class 4A",
@@ -111,7 +113,109 @@ function compileTeamNameNormalizeConfig(raw: any = {}) {
   };
 }
 
+function uniqueStrings(values: any[]) {
+  const seen = new Set<string>();
+  return (Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim())
+    .filter((value) => {
+      if (!value) return false;
+      const key = value.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function mergeNormalizeConfig(base: any = {}, override: any = {}) {
+  return {
+    phraseReplacements: [
+      ...(Array.isArray(base.phraseReplacements) ? base.phraseReplacements : []),
+      ...(Array.isArray(override.phraseReplacements) ? override.phraseReplacements : []),
+    ],
+    removePhrases: uniqueStrings([
+      ...(Array.isArray(base.removePhrases) ? base.removePhrases : []),
+      ...(Array.isArray(override.removePhrases) ? override.removePhrases : []),
+    ]),
+    removeTokens: uniqueStrings([
+      ...(Array.isArray(base.removeTokens) ? base.removeTokens : []),
+      ...(Array.isArray(override.removeTokens) ? override.removeTokens : []),
+    ]),
+    removeTrailingSchool: override.removeTrailingSchool ?? base.removeTrailingSchool,
+    removeLeadingThe: override.removeLeadingThe ?? base.removeLeadingThe,
+    acronymOverrides: {
+      ...(base.acronymOverrides || {}),
+      ...(override.acronymOverrides || {}),
+    },
+  };
+}
+
+function sportKeyFromLabel(value: string | null) {
+  const needle = String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  if (needle.includes("football")) return "football";
+  if (needle.includes("baseball")) return "baseball";
+  if (needle.includes("softball")) return "softball";
+  if (needle.includes("volleyball")) return "volleyball";
+  if (needle.includes("soccer") && (needle.includes("boy") || needle.includes("men"))) return "boys_soccer";
+  if (needle.includes("soccer") && (needle.includes("girl") || needle.includes("women"))) return "girls_soccer";
+  if (needle.includes("basket") && (needle.includes("boy") || needle.includes("men"))) return "boys";
+  if (needle.includes("basket") && (needle.includes("girl") || needle.includes("women"))) return "girls";
+  return needle.replace(/\s+/g, "_");
+}
+
 const TEAM_NAME_NORMALIZE = compileTeamNameNormalizeConfig(TEAM_NAME_NORMALIZE_CONFIG);
+
+async function getAdminConfig() {
+  try {
+    const query = new URLSearchParams({ select: "value", key: `eq.${ADMIN_CONFIG_KEY}`, limit: "1" });
+    const records = await restRequest(`/app_admin_config?${query}`);
+    return Array.isArray(records) && records[0]?.value && typeof records[0].value === "object"
+      ? records[0].value
+      : {};
+  } catch (err) {
+    console.warn("Admin config unavailable; using defaults.", err instanceof Error ? err.message : String(err));
+    return {};
+  }
+}
+
+function normalizeClassKey(value: string) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.toLowerCase() === "all") return "all";
+  const match = raw.match(/\b(\d+)A\b/i);
+  return match ? `Class ${match[1]}A` : raw;
+}
+
+function effectiveNormalizeConfig(adminConfig: any = {}, sportLabel = "", classification = "") {
+  const sportKey = sportKeyFromLabel(sportLabel);
+  const globalNormalize = adminConfig?.TeamNameNormalize || {};
+  const sportNormalize = adminConfig?.TeamNameNormalizeBySport?.[sportKey] || {};
+  const classKey = normalizeClassKey(classification);
+  const classNormalize = classKey === "all" ? {} : (adminConfig?.TeamNameNormalizeBySportClass?.[sportKey]?.[classKey] || {});
+  return compileTeamNameNormalizeConfig(
+    mergeNormalizeConfig(
+      mergeNormalizeConfig(
+        mergeNormalizeConfig(TEAM_NAME_NORMALIZE_CONFIG, globalNormalize),
+        sportNormalize
+      ),
+      classNormalize
+    )
+  );
+}
+
+async function saveAdminConfig(value: any) {
+  const records = await restRequest("/app_admin_config?on_conflict=key", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify([{
+      key: ADMIN_CONFIG_KEY,
+      value: value && typeof value === "object" ? value : {},
+      updated_at: new Date().toISOString(),
+    }]),
+  });
+  return Array.isArray(records) && records[0]?.value ? records[0].value : {};
+}
 
 function escapeRegex(value: string) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -156,14 +260,14 @@ function normalizeTeamKey(name: string, cfg = TEAM_NAME_NORMALIZE) {
   return s.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-function normalizeSnapshotRows(rows: any[]) {
+function normalizeSnapshotRows(rows: any[], normalizeConfig = TEAM_NAME_NORMALIZE) {
   return (Array.isArray(rows) ? rows : [])
     .map((row, index) => {
       const school = String(row.school || row.team || "").trim();
       const rank = Number(row.rank || index + 1);
       const rpi = Number.parseFloat(String(row.rpi || "").replace(/[^\d.-]/g, ""));
       return {
-        teamKey: normalizeTeamKey(school || row.teamKey || ""),
+        teamKey: normalizeTeamKey(school || row.teamKey || "", normalizeConfig),
         school,
         rank: Number.isFinite(rank) ? rank : index + 1,
         rpi: Number.isFinite(rpi) ? rpi : null,
@@ -193,7 +297,7 @@ async function snapshotHash(rows: any[]) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function snapshotFromRecord(record: any) {
+function snapshotFromRecord(record: any, normalizeConfig = TEAM_NAME_NORMALIZE) {
   return {
     id: record.id,
     sport: record.sport,
@@ -202,22 +306,22 @@ function snapshotFromRecord(record: any) {
     source: record.source,
     fetchedAt: record.fetched_at,
     rowHash: record.row_hash,
-    rows: normalizeSnapshotRows(record.rows || []),
+    rows: normalizeSnapshotRows(record.rows || [], normalizeConfig),
     lastUpdated: record.last_updated || "",
     testMode: Boolean(record.test_mode),
   };
 }
 
-async function selectSnapshots(filters: Record<string, string>, limit = 200) {
+async function selectSnapshots(filters: Record<string, string>, limit = 200, normalizeConfig = TEAM_NAME_NORMALIZE) {
   const query = new URLSearchParams({ select: "*", order: "fetched_at.desc", limit: String(limit) });
   Object.entries(filters).forEach(([key, value]) => {
     if (value) query.set(key, `eq.${value}`);
   });
   const records = await restRequest(`/rpi_snapshots?${query}`);
-  return (Array.isArray(records) ? records : []).map(snapshotFromRecord);
+  return (Array.isArray(records) ? records : []).map((record) => snapshotFromRecord(record, normalizeConfig));
 }
 
-async function insertSnapshot(snapshot: any) {
+async function insertSnapshot(snapshot: any, normalizeConfig = TEAM_NAME_NORMALIZE) {
   const records = await restRequest("/rpi_snapshots", {
     method: "POST",
     headers: {
@@ -226,7 +330,7 @@ async function insertSnapshot(snapshot: any) {
     },
     body: JSON.stringify(snapshot),
   });
-  return snapshotFromRecord(Array.isArray(records) ? records[0] : records);
+  return snapshotFromRecord(Array.isArray(records) ? records[0] : records, normalizeConfig);
 }
 
 function snapshotSummary(snapshot: any) {
@@ -243,13 +347,22 @@ function snapshotSummary(snapshot: any) {
   };
 }
 
-function buildTeamSnapshotLog(snapshots: any[], school: string, fallbackSchool = "") {
-  const teamKey = normalizeTeamKey(school);
+function splitTeamAliases(value: string) {
+  return String(value || "")
+    .split("||")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function buildTeamSnapshotLog(snapshots: any[], school: string, fallbackSchool = "", normalizeConfig = TEAM_NAME_NORMALIZE, aliases: string[] = []) {
+  const candidates = uniqueStrings([school, fallbackSchool, ...aliases]);
+  const teamKeys = new Set(candidates.map((item) => normalizeTeamKey(item, normalizeConfig)).filter(Boolean));
+  const teamKey = [...teamKeys][0] || "";
   const matchingLogs = snapshots
     .map((snapshot) => {
       const row = (snapshot.rows || []).find((item: any) =>
-        item.teamKey === teamKey ||
-        normalizeTeamKey(item.school) === teamKey
+        teamKeys.has(item.teamKey) ||
+        teamKeys.has(normalizeTeamKey(item.school, normalizeConfig))
       ) || null;
       return row ? { snapshot, row } : null;
     })
@@ -335,12 +448,12 @@ function computeLastSnapshotChanges(rows: any[], snapshots: any[]) {
   });
 }
 
-async function compareSnapshots(payload: any, allowSave = false) {
+async function compareSnapshots(payload: any, allowSave = false, normalizeConfig = TEAM_NAME_NORMALIZE) {
   const sport = String(payload.sport || "").trim();
   const classification = String(payload.classification || "").trim();
   const source = String(payload.source || "official").trim();
   const seasonYear = String(payload.seasonYear || "live").trim();
-  const rows = normalizeSnapshotRows(payload.rows);
+  const rows = normalizeSnapshotRows(payload.rows, normalizeConfig);
   const shouldSave = allowSave && payload.save !== false;
   const compareSnapshotId = String(payload.compareSnapshotId || "").trim();
   const includeLastChange = payload.includeLastChange === true || payload.includeLastChange === "true";
@@ -348,7 +461,7 @@ async function compareSnapshots(payload: any, allowSave = false) {
 
   const now = new Date().toISOString();
   const rowHash = await snapshotHash(rows);
-  const matching = await selectSnapshots({ sport, classification, season_year: seasonYear, source }, 200);
+  const matching = await selectSnapshots({ sport, classification, season_year: seasonYear, source }, 200, normalizeConfig);
 
   const latest = matching[0] || null;
   const selectedPrevious = compareSnapshotId
@@ -369,7 +482,7 @@ async function compareSnapshots(payload: any, allowSave = false) {
       rows,
       last_updated: String(payload.lastUpdated || ""),
       test_mode: Boolean(payload.testMode),
-    });
+    }, normalizeConfig);
     saved = true;
     fetchedAt = inserted.fetchedAt || now;
   }
@@ -415,6 +528,14 @@ function isAuthorizedMutation(req: Request, url: URL) {
   return auth === RPI_CRON_SECRET ||
     req.headers.get("x-rpi-cron-secret") === RPI_CRON_SECRET ||
     url.searchParams.get("secret") === RPI_CRON_SECRET;
+}
+
+function isAuthorizedAdmin(req: Request, url: URL) {
+  if (!RPI_ADMIN_SECRET) return false;
+  const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  return auth === RPI_ADMIN_SECRET ||
+    req.headers.get("x-rpi-admin-secret") === RPI_ADMIN_SECRET ||
+    url.searchParams.get("adminSecret") === RPI_ADMIN_SECRET;
 }
 
 function ensureAllowedRemoteUrl(raw: string) {
@@ -577,7 +698,7 @@ function findSnapshotSport(value: string | null) {
   }) || null;
 }
 
-async function captureSnapshot(sport: any, classification: string) {
+async function captureSnapshot(sport: any, classification: string, normalizeConfig = TEAM_NAME_NORMALIZE) {
   const result = await fetchOfficialRpiRows(sport, classification);
   const compare = await compareSnapshots({
     sport: sport.label,
@@ -595,7 +716,7 @@ async function captureSnapshot(sport: any, classification: string) {
       owp: row.owp,
       oowp: row.oowp,
     })),
-  }, true);
+  }, true, normalizeConfig);
 
   return {
     sport: sport.label,
@@ -873,12 +994,35 @@ Deno.serve(async (req) => {
     }
 
     if (req.method === "GET" && path === "/rpi-snapshots/status") {
-      return jsonResponse({ ok: true, backend: "supabase", captureProtected: Boolean(RPI_CRON_SECRET) });
+      return jsonResponse({
+        ok: true,
+        backend: "supabase",
+        captureProtected: Boolean(RPI_CRON_SECRET),
+        adminProtected: Boolean(RPI_ADMIN_SECRET),
+      });
+    }
+
+    if (req.method === "GET" && path === "/admin/config") {
+      return jsonResponse({
+        ok: true,
+        config: await getAdminConfig(),
+        protected: Boolean(RPI_ADMIN_SECRET),
+      });
+    }
+
+    if (req.method === "POST" && path === "/admin/config") {
+      if (!isAuthorizedAdmin(req, url)) return jsonResponse({ error: "Unauthorized" }, 401);
+      const body = await readJson(req);
+      const config = await saveAdminConfig(body?.config || {});
+      return jsonResponse({ ok: true, config });
     }
 
     if (req.method === "POST" && path === "/rpi-snapshots/compare") {
       const body = await readJson(req);
-      return jsonResponse(await compareSnapshots(body, false));
+      const normalizeConfig = String(body?.seasonYear || "live") === "live"
+        ? effectiveNormalizeConfig(await getAdminConfig(), String(body?.sport || ""), String(body?.classification || ""))
+        : TEAM_NAME_NORMALIZE;
+      return jsonResponse(await compareSnapshots(body, false, normalizeConfig));
     }
 
     if (req.method === "GET" && path === "/rpi-snapshots/list") {
@@ -894,7 +1038,11 @@ Deno.serve(async (req) => {
 
     if (req.method === "GET" && path === "/rpi-snapshots/snapshot") {
       const id = url.searchParams.get("id") || "";
-      const snapshots = await selectSnapshots({ id }, 1);
+      const adminConfig = await getAdminConfig();
+      let snapshots = await selectSnapshots({ id }, 1, effectiveNormalizeConfig(adminConfig));
+      if (snapshots[0]?.sport) {
+        snapshots = await selectSnapshots({ id }, 1, effectiveNormalizeConfig(adminConfig, snapshots[0].sport, snapshots[0].classification));
+      }
       if (!snapshots.length) return jsonResponse({ error: "Snapshot not found" }, 404);
       return jsonResponse({ snapshot: snapshots[0] });
     }
@@ -905,9 +1053,11 @@ Deno.serve(async (req) => {
       const seasonYear = url.searchParams.get("seasonYear") || "live";
       const source = url.searchParams.get("source") || "official";
       const school = url.searchParams.get("school") || "";
+      const schoolAliases = splitTeamAliases(url.searchParams.get("schoolAliases") || "");
       const limit = Math.max(1, Number(url.searchParams.get("limit") || 80));
-      const snapshots = await selectSnapshots({ sport, classification, season_year: seasonYear, source }, Math.min(limit, 200));
-      const logResult = buildTeamSnapshotLog(snapshots, school, school);
+      const normalizeConfig = seasonYear === "live" ? effectiveNormalizeConfig(await getAdminConfig(), sport, classification) : TEAM_NAME_NORMALIZE;
+      const snapshots = await selectSnapshots({ sport, classification, season_year: seasonYear, source }, Math.min(limit, 200), normalizeConfig);
+      const logResult = buildTeamSnapshotLog(snapshots, school, school, normalizeConfig, schoolAliases);
       return jsonResponse({
         sport,
         classification,
@@ -924,7 +1074,7 @@ Deno.serve(async (req) => {
       const sport = findSnapshotSport(body.sport);
       const classification = String(body.classification || "").trim();
       if (!sport || !RPI_CLASSES.includes(classification)) throw new Error("Missing or invalid sport/classification");
-      return jsonResponse(await captureSnapshot(sport, classification));
+      return jsonResponse(await captureSnapshot(sport, classification, effectiveNormalizeConfig(await getAdminConfig(), sport.label, classification)));
     }
 
     if (path === "/rpi-snapshots/capture-all" && (req.method === "POST" || req.method === "GET")) {
@@ -933,7 +1083,7 @@ Deno.serve(async (req) => {
       for (const sport of RPI_SPORTS) {
         for (const classification of RPI_CLASSES) {
           try {
-            const result = await captureSnapshot(sport, classification);
+            const result = await captureSnapshot(sport, classification, effectiveNormalizeConfig(await getAdminConfig(), sport.label, classification));
             stats.checked += 1;
             if (result.saved) stats.saved += 1;
           } catch (err) {

@@ -97,6 +97,12 @@ try {
     applyTheme_(themeEl.value);
     syncOddTeamSplitToggleUi_();
     setViewMode_('rankings');
+    try {
+      adminSecret_ = sessionStorage.getItem('rpi-admin-secret') || '';
+      if (adminSecretInput && adminSecret_) adminSecretInput.value = adminSecret_;
+      adminUnlocked_ = Boolean(adminSecret_);
+    } catch (e) {}
+    loadAdminConfig_().catch(err => console.warn('Unable to load admin config:', err));
 
 
     function applyExportPreviewFilter_() {
@@ -454,6 +460,8 @@ teamLogContent?.addEventListener('wheel', (e) => {
     let mobileStatsSuppressClickUntil_ = 0;
 
     function mobileStatsExpandableRow_(target) {
+      const gameBox = closestFromTarget_(target, '.game-box[data-team-context-row="1"]');
+      if (gameBox) return gameBox;
       const row = closestFromTarget_(target, 'tr');
       if (!row || row.classList.contains('mobile-rpi-board-header') || row.classList.contains('east-west-line-section-row')) return null;
       if (!row.querySelector?.('td[data-label]')) return null;
@@ -479,6 +487,13 @@ teamLogContent?.addEventListener('wheel', (e) => {
       mobileStatsLongPressStart_ = { x: e.clientX, y: e.clientY };
       mobileStatsLongPressTimer_ = setTimeout(() => {
         if (!mobileStatsLongPressRow_) return;
+        const menuRow = rowFromTeamAdminTarget_(mobileStatsLongPressRow_);
+        if (menuRow && showTeamAdminContextMenu_(menuRow, e)) {
+          mobileStatsSuppressClickUntil_ = Date.now() + 650;
+          if (navigator.vibrate) navigator.vibrate(18);
+          clearMobileStatsLongPress_();
+          return;
+        }
         toggleMobileStatsRow_(mobileStatsLongPressRow_);
         mobileStatsSuppressClickUntil_ = Date.now() + 650;
         if (navigator.vibrate) navigator.vibrate(18);
@@ -496,6 +511,31 @@ teamLogContent?.addEventListener('wheel', (e) => {
     tbody.addEventListener('pointerup', clearMobileStatsLongPress_);
     tbody.addEventListener('pointercancel', clearMobileStatsLongPress_);
     tbody.addEventListener('pointerleave', clearMobileStatsLongPress_);
+
+    tbody.addEventListener('contextmenu', (e) => {
+      const row = rowFromTeamAdminTarget_(e.target);
+      if (!row?.school) return;
+      e.preventDefault();
+      e.stopPropagation();
+      showTeamAdminContextMenu_(row, e);
+    });
+
+    teamAdminContextMenu?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const action = e.target.closest('[data-team-admin-action]')?.dataset.teamAdminAction || '';
+      const team = teamAdminContextMenu.dataset.team || '';
+      if (!action || !team) return;
+      hideTeamAdminContextMenu_();
+      if (action === 'exclude') {
+        excludeTeamFromAdminContext_(team).catch(err => setAdminStatus_(`Unable to exclude team. ${err.message}`, true));
+      } else if (action === 'map') {
+        viewTeamOnMap_(team).catch(err => setStatus(`Unable to open map for ${team}. ${err.message}`, true));
+      } else if (action === 'regions') {
+        jumpTeamToRegionStandings_(team).catch(err => setStatus(`Unable to open region standings for ${team}. ${err.message}`, true));
+      } else if (action === 'playoff') {
+        jumpTeamToPlayoffPicture_(team).catch(err => setStatus(`Unable to open playoff picture for ${team}. ${err.message}`, true));
+      }
+    });
 
     tbody.addEventListener('click', (e) => {
       if (e.target.closest('[data-east-west-map-btn], #eastWestMapBtn')) openEastWestMap_();
@@ -796,10 +836,12 @@ teamLogContent?.addEventListener('wheel', (e) => {
       if (e.key === 'Escape') {
         setSportPickerOpen_(false);
         setClassPickerOpen_(false);
+        closeTeamJumpMenu_();
         setEastWestMapClassPickerOpen_(false);
         setEastWestMapSportPickerOpen_(false);
         setExportPreviewClassMenuOpen_(false);
         setAppSettingsOpen_(false);
+        setAdminManagerOpen_(false);
         closeTeamScheduleCard_();
         closeEastWestMap_();
       }
@@ -850,10 +892,87 @@ teamLogContent?.addEventListener('wheel', (e) => {
       e.stopPropagation();
     });
 
+    adminUnlockBtn?.addEventListener('click', () => {
+      unlockAdminPanel_();
+    });
+
+    adminSecretInput?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      unlockAdminPanel_();
+    });
+
+    adminLockBtn?.addEventListener('click', lockAdminPanel_);
+    adminManageBtn?.addEventListener('click', () => setAdminManagerOpen_(true));
+    adminManagerCloseBtn?.addEventListener('click', () => setAdminManagerOpen_(false));
+    adminManagerOverlay?.addEventListener('click', (e) => {
+      if (e.target === adminManagerOverlay) setAdminManagerOpen_(false);
+    });
+    adminOptOutSport?.addEventListener('change', renderAdminPanel_);
+    adminClassFilter?.addEventListener('change', renderAdminPanel_);
+    adminOptOutInput?.addEventListener('input', () => {
+      adminOptOutSearch_ = adminOptOutInput.value || '';
+      adminOptOutMenuOpen_ = true;
+      renderAdminOptOutMenu_();
+    });
+    adminOptOutInput?.addEventListener('focus', () => {
+      adminOptOutSearch_ = adminOptOutInput.value || '';
+      adminOptOutMenuOpen_ = true;
+      renderAdminOptOutMenu_();
+    });
+    adminOptOutMenu?.addEventListener('click', (e) => {
+      const option = e.target.closest('[data-admin-team-option]');
+      if (!option) return;
+      adminOptOutInput.value = option.dataset.adminTeamOption || '';
+      adminOptOutSearch_ = adminOptOutInput.value;
+      adminOptOutMenuOpen_ = false;
+      renderAdminOptOutMenu_();
+    });
+    adminOptOutAddBtn?.addEventListener('click', () => {
+      addAdminListValue_({ type: 'optout', sportKey: adminOptOutSport?.value || sportKeyFromLabel_(sportEl.value), classKey: adminClassFilter?.value || 'all' }, adminOptOutInput?.value || '')
+        .then(() => {
+          if (adminOptOutInput) adminOptOutInput.value = '';
+          adminOptOutSearch_ = '';
+          adminOptOutMenuOpen_ = false;
+          renderAdminOptOutMenu_();
+        })
+        .catch(err => setAdminStatus_(`Unable to save opt-out. ${err.message}`, true));
+    });
+    adminRemovePhraseAddBtn?.addEventListener('click', () => {
+      addAdminListValue_({ type: 'phrase', sportKey: adminOptOutSport?.value || 'all', classKey: adminClassFilter?.value || 'all' }, adminRemovePhraseInput?.value || '')
+        .then(() => { if (adminRemovePhraseInput) adminRemovePhraseInput.value = ''; })
+        .catch(err => setAdminStatus_(`Unable to save phrase. ${err.message}`, true));
+    });
+    adminRemoveTokenAddBtn?.addEventListener('click', () => {
+      addAdminListValue_({ type: 'token', sportKey: adminOptOutSport?.value || 'all', classKey: adminClassFilter?.value || 'all' }, adminRemoveTokenInput?.value || '')
+        .then(() => { if (adminRemoveTokenInput) adminRemoveTokenInput.value = ''; })
+        .catch(err => setAdminStatus_(`Unable to save token. ${err.message}`, true));
+    });
+    adminAcronymAddBtn?.addEventListener('click', () => {
+      addAdminAcronymOverride_().catch(err => setAdminStatus_(`Unable to save override. ${err.message}`, true));
+    });
+    adminControls?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-admin-remove]');
+      if (!btn) return;
+      removeAdminListValue_(btn.dataset.adminRemove, btn.dataset.value || '', {
+        sportKey: btn.dataset.sportKey || adminOptOutSport?.value || '',
+        classKey: btn.dataset.classKey || adminClassFilter?.value || 'all'
+      })
+        .catch(err => setAdminStatus_(`Unable to remove item. ${err.message}`, true));
+    });
+
     document.addEventListener('click', (e) => {
       if (!appSettingsPanel.hidden && !appSettingsPanel.contains(e.target) && !appSettingsBtn.contains(e.target)) {
         setAppSettingsOpen_(false);
       }
+      if (teamJumpPicker && !teamJumpPicker.contains(e.target)) {
+        closeTeamJumpMenu_();
+      }
+      if (adminOptOutMenu && !adminOptOutMenu.hidden && !adminOptOutMenu.contains(e.target) && e.target !== adminOptOutInput) {
+        adminOptOutMenuOpen_ = false;
+        renderAdminOptOutMenu_();
+      }
+      hideTeamAdminContextMenu_();
     });
 
     compareSnapshotCalendarBtn?.addEventListener('click', () => openDatePicker_(compareSnapshotDate));
@@ -925,17 +1044,55 @@ teamLogContent?.addEventListener('wheel', (e) => {
     // ============================================================================
 
     themeEl.addEventListener('change', () => applyTheme_(themeEl.value));
+    teamJumpInput?.addEventListener('focus', () => {
+      openTeamJumpMenu_(teamJumpInput.value);
+    });
+    teamJumpInput?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openTeamJumpMenu_(teamJumpInput.value);
+    });
+    teamJumpInput?.addEventListener('input', () => {
+      openTeamJumpMenu_(teamJumpInput.value);
+    });
+    teamJumpInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeTeamJumpMenu_();
+        return;
+      }
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const option = teamJumpMenu?.querySelector?.('[data-team-jump-name]') || null;
+      if (!option) return;
+      jumpToTeam_({
+        name: option.dataset.teamJumpName || '',
+        teamClass: option.dataset.teamJumpClass || '',
+        key: option.dataset.teamJumpKey || ''
+      });
+    });
+    teamJumpMenu?.addEventListener('click', (e) => {
+      const option = e.target.closest('[data-team-jump-name]');
+      if (!option) return;
+      jumpToTeam_({
+        name: option.dataset.teamJumpName || '',
+        teamClass: option.dataset.teamJumpClass || '',
+        key: option.dataset.teamJumpKey || ''
+      });
+    });
     sportEl.addEventListener('change', async () => {
       resetSnapshotSelectionsForNewTable_();
       syncSportPickerUi_();
       syncExportPreviewSportToCurrent_();
       await refreshSeasonYearOptions_({ preserveValue: selectedRpiYear_() });
+      if (teamJumpInput) teamJumpInput.value = '';
+      teamJumpSearch_ = '';
+      renderTeamJumpMenu_();
       reloadCurrentBoardForSelection_();
     });
     classEl.addEventListener('change', () => {
       resetSnapshotSelectionsForNewTable_();
       syncClassPickerUi_();
       syncExportPreviewClassesToCurrent_();
+      if (teamJumpMenuOpen_) openTeamJumpMenu_(teamJumpInput?.value || '');
       reloadCurrentBoardForSelection_();
     });
     yearEl.addEventListener('change', () => {
@@ -949,6 +1106,7 @@ teamLogContent?.addEventListener('wheel', (e) => {
       if (document.body.classList.contains('playoff-mode')) return 'playoff';
       if (document.body.classList.contains('regions-mode')) return 'regions';
       if (document.body.classList.contains('east-west-mode')) return 'east-west';
+      if (document.body.classList.contains('full-bracket-mode')) return 'full-bracket';
       if (document.body.classList.contains('rankings-mode')) return 'rankings';
       return '';
     }
@@ -966,6 +1124,8 @@ teamLogContent?.addEventListener('wheel', (e) => {
         await buildRegionView_();
       } else if (mode === 'east-west') {
         await buildEastWestLineView_({ openMapAfter: mapWasOpen });
+      } else if (mode === 'full-bracket') {
+        await buildFullBracketView_();
       } else {
         await loadRankings();
       }
@@ -1010,7 +1170,40 @@ teamLogContent?.addEventListener('wheel', (e) => {
       }
     }
 
-    eastWestLineBtn.addEventListener('click', buildEastWestLineView_);
+    async function buildFullBracketView_() {
+      setBoardActionsDisabled_(true);
+      updatedText.textContent = '';
+      setStatus(`Loading ${classEl.value} full playoff bracket...`);
+      setViewMode_('full-bracket');
+      setBoardLoading_(true, 'Loading full playoff bracket...', `${sportEl.value} ${classEl.value}`);
+      await nextPaint_();
+
+      try {
+        const params = {
+          sport: sportEl.value,
+          classification: classEl.value,
+          seasonYear: selectedRpiYear_()
+        };
+        const payload = await requestFullBracketJson_(params);
+        setBoardLoading_(true, 'Rendering full playoff bracket...', 'Preserving official bracket geometry');
+        await nextPaint_();
+        await renderFullBracket_(payload, classEl.value, sportEl.value);
+        await idleFrame_();
+        setStatus(`Full playoff bracket loaded for ${classEl.value} ${sportEl.value}.`);
+        updatedText.textContent = payload?.bracketYear ? `Bracket year: ${payload.bracketYear}` : '';
+      } catch (err) {
+        console.error(err);
+        clearFullBracketWidgetStyles_();
+        setMainHeaderBlank();
+        tbody.innerHTML = `<tr><td colspan="${MAIN_TABLE_COLSPAN_}" class="muted">Unable to load full playoff bracket.</td></tr>`;
+        setStatus(`${err.message}. Full brackets need the local/Supabase API helper.`, true);
+      } finally {
+        setBoardLoading_(false);
+        setBoardActionsDisabled_(false);
+      }
+    }
+
+    eastWestLineBtn.addEventListener('click', buildFullBracketView_);
     viewMapBtn.addEventListener('click', async () => {
       const mapMatchesCurrent = eastWestLineMapState_
         && eastWestLineMapState_.classification === classEl.value
@@ -1092,6 +1285,35 @@ teamLogContent?.addEventListener('wheel', (e) => {
       } finally {
         setBoardLoading_(false);
         setBoardActionsDisabled_(false);
+      }
+    }
+
+    async function viewTeamOnMap_(teamName) {
+      const mapMatchesCurrent = eastWestLineMapState_
+        && eastWestLineMapState_.classification === classEl.value
+        && eastWestLineMapState_.sportLabel === sportEl.value
+        && eastWestLineMapState_.year === selectedRpiYear_();
+      if (mapMatchesCurrent) {
+        await openEastWestMap_();
+      } else {
+        await buildEastWestLineView_({ openMapAfter: true });
+      }
+      if (!focusEastWestMapTeamByName_(teamName)) {
+        window.setTimeout(() => focusEastWestMapTeamByName_(teamName), 250);
+      }
+    }
+
+    async function jumpTeamToRegionStandings_(teamName) {
+      await buildRegionView_();
+      if (!focusRenderedTeam_(teamName)) {
+        window.setTimeout(() => focusRenderedTeam_(teamName), 250);
+      }
+    }
+
+    async function jumpTeamToPlayoffPicture_(teamName) {
+      await buildPlayoffView_();
+      if (!focusRenderedTeam_(teamName)) {
+        window.setTimeout(() => focusRenderedTeam_(teamName), 250);
       }
     }
 

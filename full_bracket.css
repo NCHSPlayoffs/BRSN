@@ -1,0 +1,1174 @@
+﻿.full-bracket-board {
+  --brsn-bg-top: #07101d;
+  --brsn-bg-bottom: #07090f;
+  --brsn-text: #f4f7fd;
+  --brsn-muted: #a9b7d0;
+  --brsn-west: #ff3344;
+  --brsn-east: #2f83ff;
+  --brsn-glass: rgba(16, 25, 42, .72);
+  --brsn-glass-soft: rgba(255, 255, 255, .075);
+  --brsn-glass-sheen: linear-gradient(112deg, rgba(255, 255, 255, .17) 0%, rgba(255, 255, 255, .07) 38%, rgba(255, 255, 255, .03) 68%, rgba(255, 255, 255, .08) 100%);
+  --brsn-glass-surface: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .025));
+  --brsn-border: rgba(255, 255, 255, .2);
+  --brsn-font-body: Goldman, Arial, Helvetica, sans-serif;
+  --brsn-font-head: "Russo One", Arial, Helvetica, sans-serif;
+  --brsn-canvas-width: 3000px;
+  --brsn-matchup-width: 325px;
+  width: 100%;
+  padding: 0;
+  color: var(--brsn-text);
+  background:
+    radial-gradient(circle at 18% 34%, rgba(255, 51, 68, .16), transparent 36%),
+    radial-gradient(circle at 82% 34%, rgba(47, 131, 255, .18), transparent 36%),
+    rgba(7, 10, 18, .64);
+}
+
+.full-bracket-board * {
+  box-sizing: border-box;
+}
+
+.full-bracket-table-row > td {
+  padding: 0 !important;
+}
+
+body.full-bracket-mode .table-card > .table-scroll > table > thead {
+  display: none;
+}
+
+body.full-bracket-mode .table-card,
+body.full-bracket-mode .table-scroll {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.full-bracket-mode .table-card > .table-scroll > table,
+body.full-bracket-mode .table-card > .table-scroll > table > tbody,
+body.full-bracket-mode .table-card > .table-scroll > table > tbody > tr,
+body.full-bracket-mode .table-card > .table-scroll > table > tbody > tr > td {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.full-bracket-board .playoff-header {
+  margin-bottom: 16px;
+}
+
+body.full-bracket-mode .hero h1 {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-decoration: none !important;
+  border-bottom: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+body.full-bracket-mode .hero h1::before,
+body.full-bracket-mode .hero h1::after,
+body.full-bracket-mode .title-block::before,
+body.full-bracket-mode .title-block::after {
+  display: none !important;
+  content: none !important;
+}
+
+.full-bracket-source {
+  margin: -4px 0 10px;
+  color: rgba(226, 235, 255, .78);
+  font-family: var(--brsn-font-body);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.full-bracket-source a {
+  color: #fff;
+}
+
+.full-bracket-board .brsn-bracket-mascot {
+  grid-area: mascot;
+  align-self: start;
+  justify-self: stretch;
+  width: 100%;
+  min-width: 0;
+  margin-left: 6px;
+  margin-top: 2px;
+  color: rgba(180, 200, 232, .86) !important;
+  font-family: var(--brsn-font-body);
+  font-size: 12px;
+  letter-spacing: .12em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-align: left;
+  pointer-events: none;
+}
+
+.full-bracket-board .team:has(.brsn-bracket-mascot) .name,
+.full-bracket-board .team:has(.brsn-bracket-mascot) .name a {
+  align-self: end;
+  min-height: 0;
+}
+
+.full-bracket-board .team:hover .brsn-bracket-mascot,
+.full-bracket-board .team.highlight .brsn-bracket-mascot,
+.full-bracket-board .matchup.highlight .brsn-bracket-mascot,
+.full-bracket-board .team:hover .brsn-bracket-mascot:hover {
+  color: rgba(180, 200, 232, .86) !important;
+  -webkit-text-fill-color: rgba(180, 200, 232, .86) !important;
+}
+.bracket-shell {
+  position: relative;
+  margin-top: 12px;
+  background:
+    radial-gradient(circle at 22% 42%, rgba(255, 51, 68, .16), transparent 38%),
+    radial-gradient(circle at 78% 42%, rgba(47, 131, 255, .18), transparent 38%),
+    rgba(7, 10, 18, .55);
+  border: 0;
+  outline: 0;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, .42);
+}
+
+.bracket-tools {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+  background:
+    linear-gradient(90deg, rgba(255, 51, 68, .12), rgba(47, 131, 255, .12)),
+    rgba(9, 15, 26, .92);
+  backdrop-filter: blur(14px) saturate(1.12);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.bracket-tools button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .04)),
+    rgba(13, 24, 42, .9);
+  font-family: var(--brsn-font-head);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.bracket-tools span,
+.bracket-tools label {
+  flex: 0 0 auto;
+  color: rgba(244, 247, 253, .76);
+  cursor: default;
+}
+
+.bracket-tools strong {
+  color: #fff;
+}
+
+/* Editable zoom number input */
+.zoom-input {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 3px;
+  background: rgba(13, 24, 42, .9);
+  color: #fff;
+  font-family: var(--brsn-font-head);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.zoom-input::-webkit-inner-spin-button,
+.zoom-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.zoom-input:focus {
+  border-color: rgba(47, 131, 255, .7);
+  box-shadow: 0 0 0 2px rgba(47, 131, 255, .18);
+}
+
+.zoom-pct {
+  margin-left: -4px;
+  color: rgba(244, 247, 253, .55);
+}
+
+/* Fullscreen button */
+.bracket-fullscreen-btn {
+  font-size: 15px !important;
+  padding: 0 10px !important;
+  min-width: 34px !important;
+  letter-spacing: 0 !important;
+}
+.bracket-fullscreen-btn[aria-pressed="true"] {
+  border-color: rgba(47, 131, 255, .5);
+  background:
+    linear-gradient(180deg, rgba(47, 131, 255, .22), rgba(47, 131, 255, .08)),
+    rgba(13, 24, 42, .9);
+}
+
+/* Separator — pushes search/select group to the right */
+.bracket-tools-sep {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, .18);
+  border-radius: 1px;
+}
+
+/* Team search */
+.bracket-search-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.bracket-search-input {
+  width: 130px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 3px;
+  background: rgba(13, 24, 42, .9);
+  color: #fff;
+  font-family: var(--brsn-font-head);
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: none;
+  outline: none;
+  appearance: none;
+}
+.bracket-search-input::placeholder {
+  color: rgba(244, 247, 253, .4);
+  text-transform: none;
+}
+.bracket-search-input:focus {
+  border-color: rgba(47, 131, 255, .7);
+  box-shadow: 0 0 0 2px rgba(47, 131, 255, .18);
+}
+/* Hide the native clear "×" button in search inputs */
+.bracket-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+/* Team search dropdown */
+.bracket-team-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 200px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 5px;
+  background: rgba(9, 15, 26, .97);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  z-index: 200;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.bracket-team-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  color: #fff;
+  font-size: 12px;
+  font-family: var(--brsn-font-head);
+  text-align: left;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.bracket-team-option:hover,
+.bracket-team-option:focus {
+  background: rgba(47, 131, 255, .18);
+  outline: none;
+}
+.bracket-team-option-logo {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+.bracket-team-option-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.bracket-team-option-name {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bracket-team-option small {
+  font-size: 10px;
+  color: rgba(244, 247, 253, .55);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Sport / Class / Year selects */
+.bracket-select-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+.bracket-select-label {
+  font-size: 10px;
+  color: rgba(244, 247, 253, .6);
+  white-space: nowrap;
+  cursor: default;
+}
+.bracket-select {
+  height: 28px;
+  padding: 0 20px 0 7px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 3px;
+  background: rgba(13, 24, 42, .9);
+  color: #fff;
+  font-family: var(--brsn-font-head);
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(244,247,253,.5)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  outline: none;
+}
+.bracket-select:focus {
+  border-color: rgba(47, 131, 255, .7);
+  box-shadow: 0 0 0 2px rgba(47, 131, 255, .18);
+}
+/* Keep Sport select wide enough for longer labels */
+#bracketSport {
+  min-width: 100px;
+}
+#bracketClass {
+  min-width: 78px;
+}
+#bracketYear {
+  min-width: 60px;
+}
+
+/* ── Fullscreen mode ────────────────────────────────────────────────────── */
+.bracket-shell:fullscreen,
+.bracket-shell:-webkit-full-screen {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #07101d !important;
+  overflow: hidden !important;
+}
+
+.bracket-shell:fullscreen .bracket-tools,
+.bracket-shell:-webkit-full-screen .bracket-tools {
+  position: relative !important;
+  flex: 0 0 auto !important;
+}
+
+.bracket-shell:fullscreen .bracket-host,
+.bracket-shell:-webkit-full-screen .bracket-host {
+  flex: 1 1 0% !important;
+  width: 100% !important;
+  height: 0 !important;
+  max-height: none !important;
+  min-height: 0 !important;
+}
+
+.bracket-host {
+  overflow: auto;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  min-height: 700px;
+  padding: 0;
+  cursor: grab;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.bracket-host::-webkit-scrollbar {
+  display: none;
+}
+
+.bracket-host.is-panning {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.bracket-zoom {
+  position: relative;
+  width: var(--brsn-canvas-width);
+  zoom: var(--bracket-zoom, 1);
+  margin: 0 auto;
+}
+
+/* ── Center Gap Tuning ──────────────────────────────────────────────────────
+   Increase --brsn-center-gap to push East and West bracket halves apart.
+   0px = current default. Try 200–400px.
+
+   TWO things must expand together:
+   1. The canvas (min-width on .bracket-zoom) — keeps scroll/zoom math right.
+   2. The inner view (width !important) — the MaxPreps CSS hard-codes the view
+      width in pixels, so expanding only the canvas just adds empty space around
+      the view without touching the actual center gap inside it.
+
+   Per-bracket-size overrides (fall back to --brsn-center-gap if not set):
+     --brsn-center-gap-large  2A–7A  (3000px canvas) — try 200px
+     --brsn-center-gap-small  1A & 8A (2300px canvas) — try 100px
+   ──────────────────────────────────────────────────────────────────────── */
+:root {
+  --brsn-center-gap:       0px;  /* master knob — try 200px */
+  --brsn-center-gap-large: 0px;  /* 2A–7A  override */
+  --brsn-center-gap-small: 400px;  /* 1A & 8A override */
+}
+
+/* View: JS computes canvasWidth + gap and sets --brsn-canvas-width to the total.
+   !important overrides the MaxPreps hard-coded pixel width on .view. */
+.bracket-host .view[data-view-type="horizontal-view"] {
+  width: var(--brsn-canvas-width, 3000px) !important;
+}
+
+/* ── Finals Inner-Gap Tuning ────────────────────────────────────────────────
+   Pushes the STATE column further right of its East-alignment target,
+   adding breathing room between the REGIONAL and STATE matchup boxes.
+   0px = flush with East regional final (default).
+   Try 100–300px. JS reads this and adds it to the stateShift; MaxPreps
+   redraws the connector lines automatically on the triggered resize.
+
+   Per-bracket-size overrides (fall back to --brsn-finals-inner-gap if unset):
+     --brsn-finals-inner-gap-large  2A–7A (5-round brackets)
+     --brsn-finals-inner-gap-small  1A & 8A (3-round brackets)
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --brsn-finals-inner-gap:       0px;  /* master knob */
+  --brsn-finals-inner-gap-large: 0px;  /* 2A–7A override */
+  --brsn-finals-inner-gap-small: -200px;  /* 1A & 8A override */
+}
+
+.bracket-host #widget_form {
+  position: relative;
+  width: var(--brsn-canvas-width);
+  min-width: var(--brsn-canvas-width);
+}
+
+.bracket-host .bracket {
+  position: relative;
+}
+
+.bracket-host .matchup .team > .seed,
+.bracket-host .matchup .team > .name,
+.bracket-host .matchup .team > .result {
+  line-height: 17px !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] > .rounds:first-child {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] > .rounds:nth-child(2) {
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+}
+
+.bracket-host .round.brsn-west .matchup-list {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+  padding-top:100px !important;
+}
+
+.bracket-host .round.brsn-east .matchup-list {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+  padding-top:100px !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] > .rounds:nth-child(2) > .round.brsn-east:first-child .matchup-container {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.bracket-host .brsn-bracket {
+  position: static;
+  color: var(--brsn-text);
+  background:
+    linear-gradient(90deg, rgba(255, 51, 68, .10), rgba(255,255,255,.04) 50%, rgba(47, 131, 255, .10)),
+    rgba(9, 13, 22, .72) !important;
+  border: 0 !important;
+  outline: 0 !important;
+}
+
+.bracket-host .bracket-header {
+  display: none !important;
+  border: 1px solid rgba(255, 255, 255, .14) !important;
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, rgba(255, 51, 68, .18), rgba(47, 131, 255, .18)),
+    rgba(12, 19, 32, .78) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+
+.bracket-host .bracket-name {
+  color: #fff !important;
+  border-bottom-color: rgba(255, 255, 255, .18) !important;
+  font-family: var(--brsn-font-head) !important;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+.bracket-host .bracket-location {
+  color: rgba(244, 247, 253, .78) !important;
+}
+
+.bracket-host .bracket-header .btn {
+  border: 1px solid rgba(255, 255, 255, .18) !important;
+  border-radius: 3px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .04)),
+    rgba(13, 24, 42, .86) !important;
+  color: #fff !important;
+  box-shadow: 0 0 18px rgba(47, 131, 255, .12);
+  font-family: var(--brsn-font-body);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.bracket-host .round-header {
+  color: #fff !important;
+  padding: 0 6px !important;
+  border-top: 0 !important;
+  background-image: none !important;
+  transition: none !important;
+}
+
+.bracket-host .round-header .content {
+  position: relative;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, .14) !important;
+  border-top: 0 !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .11), rgba(255, 255, 255, .032)),
+    rgba(12, 17, 30, .76) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+  transition: none !important;
+}
+
+.bracket-host .round-header .content::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  opacity: .72;
+  display: block !important;
+}
+
+.bracket-host .round.brsn-west .round-header .content::after {
+  background: linear-gradient(90deg, rgba(255, 51, 68, .95), rgba(255, 51, 68, .35));
+  box-shadow: 0 0 10px rgba(255, 51, 68, .16);
+}
+
+.bracket-host .round.brsn-east .round-header .content::after {
+  background: linear-gradient(90deg, rgba(47, 131, 255, .35), rgba(47, 131, 255, .95));
+  box-shadow: 0 0 10px rgba(47, 131, 255, .16);
+}
+
+.bracket-host .round-header,
+.bracket-host .round-header .content,
+.bracket-host .round-header .center,
+.bracket-host .round-header .center * {
+  border-top-width: 0 !important;
+}
+
+.bracket-host .round-header::before,
+.bracket-host .round-header::after,
+.bracket-host .round-header .content::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Kill every JS-driven hover effect on round headers by removing pointer events.
+   Round headers are display-only labels â€” nothing inside them needs to be clicked. */
+.bracket-host .round-header,
+.bracket-host .round-header * {
+  pointer-events: none !important;
+}
+
+.bracket-host .round-header .content:hover,
+.bracket-host .round-header:hover .content,
+.bracket-host .round-header:hover,
+.bracket-host .round-header *:hover {
+  filter: none !important;
+  opacity: 1 !important;
+  transition: none !important;
+  transform: none !important;
+  background-color: unset !important;
+  color: unset !important;
+  box-shadow: unset !important;
+}
+
+.bracket-host .round.brsn-west .round-header .content {
+  border-color: rgba(255, 51, 68, .28) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .028)),
+    rgba(16, 20, 33, .84) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+.bracket-host .round.brsn-east .round-header .content {
+  border-color: rgba(47, 131, 255, .30) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .028)),
+    rgba(16, 20, 33, .84) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] > .rounds > .round > .round-header {
+  width: var(--brsn-matchup-width) !important;
+  max-width: var(--brsn-matchup-width) !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] > .rounds > .round.brsn-west > .round-header {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] > .rounds > .round.brsn-east > .round-header {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.bracket-host .view.brsn-round-count-3[data-view-type="horizontal-view"] > .rounds > .round.brsn-east:last-child > .round-header {
+  position: relative;
+  left: 0;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] > .rounds > .round > .round-header .content {
+  width: 100% !important;
+}
+
+.bracket-host .round-header .center,
+.bracket-host .view-header {
+  color: rgba(244, 247, 253, .92) !important;
+  font-family: var(--brsn-font-head) !important;
+  font-size: 28px !important;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.bracket-host .round-header .center {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 0 0px;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+.bracket-host .round.brsn-east .round-header .center {
+  justify-content: flex-end !important;
+  text-align: right !important;
+}
+
+.bracket-host .round.brsn-east .round-date {
+  margin-left: 0;
+  margin-right: auto;
+  order: -1;
+}
+
+.bracket-host .round-label {
+  color: #fff;
+  flex: 0 0 auto;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.bracket-host .round-date {
+  margin-left: auto;
+  color: var(--brsn-muted);
+  font-family: var(--brsn-font-body);
+  font-size: 14px;
+  letter-spacing: .16em;
+  white-space: nowrap;
+ 
+}
+
+.bracket-host .view-header {
+  text-shadow: none;
+}
+
+.bracket-host .matchup {
+  position: relative;
+  isolation: isolate;
+  border: 2px solid rgba(255, 255, 255, .12) !important;
+  border-radius: 3px !important;
+  background:
+    var(--brsn-glass-sheen),
+    var(--brsn-glass-surface),
+    rgba(255, 255, 255, .055) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .16),
+    inset 0 0 0 1px rgba(255, 255, 255, .035),
+    0 14px 30px rgba(0, 0, 0, .24) !important;
+  overflow: hidden;
+}
+
+.bracket-host .matchup::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .85;
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  pointer-events: none;
+}
+
+.bracket-host .matchup::after {
+  display: none;
+}
+
+.bracket-host .matchup-container {
+  width: var(--brsn-matchup-width) !important;
+}
+
+.bracket-host .matchup-container.brsn-west .matchup {
+  border-color: rgba(255, 72, 86, .30) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .16),
+    inset 0 0 0 1px rgba(255, 255, 255, .035),
+    0 14px 30px rgba(0, 0, 0, .24),
+    0 0 18px rgba(255, 47, 58, .09) !important;
+}
+
+.bracket-host .matchup-container.brsn-east .matchup {
+  border-color: rgba(70, 150, 255, .31) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .16),
+    inset 0 0 0 1px rgba(255, 255, 255, .035),
+    0 14px 30px rgba(0, 0, 0, .24),
+    0 0 18px rgba(31, 120, 255, .10) !important;
+}
+
+.bracket-host .matchup-container.brsn-east.highlight .matchup,
+.bracket-host .matchup-container.brsn-east .matchup.highlight {
+  border-color: var(--brsn-east) !important;
+}
+
+.bracket-host .matchup-container.brsn-west.highlight .matchup,
+.bracket-host .matchup-container.brsn-west .matchup.highlight,
+.bracket-host .matchup-container.brsn-west .matchup:has(.team:hover) {
+  border-color: var(--brsn-west) !important;
+  outline: 1px solid rgba(255, 51, 68, .42);
+  outline-offset: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .22),
+    inset 0 0 0 1px rgba(255, 255, 255, .05),
+    0 18px 38px rgba(0, 0, 0, .34),
+    0 0 12px rgba(255, 51, 68, .34),
+    0 0 30px rgba(255, 51, 68, .30) !important;
+}
+
+.bracket-host .matchup-container.brsn-west .team.highlight {
+  background:
+    linear-gradient(90deg, rgba(255, 51, 68, .18), rgba(255, 255, 255, .04)) !important;
+}
+
+.bracket-host .matchup-container.brsn-west .team:hover {
+  background:
+    linear-gradient(90deg, rgba(255, 51, 68, .18), rgba(255, 255, 255, .04)) !important;
+}
+
+.bracket-host .matchup-container.brsn-east .matchup:has(.team:hover) {
+  border-color: var(--brsn-east) !important;
+  outline: 1px solid rgba(47, 131, 255, .42);
+  outline-offset: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .22),
+    inset 0 0 0 1px rgba(255, 255, 255, .05),
+    0 18px 38px rgba(0, 0, 0, .34),
+    0 0 12px rgba(47, 131, 255, .34),
+    0 0 30px rgba(47, 131, 255, .30) !important;
+}
+
+.bracket-host .matchup-container.brsn-east .team.highlight {
+  background:
+    linear-gradient(90deg, rgba(47, 131, 255, .18), rgba(255, 255, 255, .04)) !important;
+}
+
+.bracket-host .matchup-container.brsn-east .team:hover {
+  background:
+    linear-gradient(90deg, rgba(47, 131, 255, .18), rgba(255, 255, 255, .04)) !important;
+}
+
+.bracket-host .matchup-container.brsn-east .bracket-line.highlight {
+  background-color: var(--brsn-east) !important;
+  border-color: var(--brsn-east) !important;
+  box-shadow: 0 0 10px rgba(47, 131, 255, .32) !important;
+}
+
+.bracket-host .contest-header,
+.bracket-host .matchup-header {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 25px;
+  padding: 0 8px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, .10) !important;
+  background: rgba(0, 0, 0, .18) !important;
+  color: rgba(244, 247, 253, .72) !important;
+  font-family: var(--brsn-font-body) !important;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.bracket-host .matchup-container.brsn-west .contest-header,
+.bracket-host .matchup-container.brsn-west .matchup-header {
+  background: linear-gradient(90deg, rgba(255, 51, 68, .28), rgba(0, 0, 0, .12)) !important;
+}
+
+.bracket-host .matchup-container.brsn-east .contest-header,
+.bracket-host .matchup-container.brsn-east .matchup-header {
+  background: linear-gradient(90deg, rgba(0, 0, 0, .12), rgba(47, 131, 255, .28)) !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-championship-view"] .contest-header,
+.bracket-host .view[data-view-type="horizontal-championship-view"] .matchup-header {
+  flex-direction: row !important;
+  direction: ltr !important;
+}
+
+.bracket-host .game-number {
+  color: rgba(244, 247, 253, .8) !important;
+  font-family: var(--brsn-font-head);
+  font-size: 14px;
+  letter-spacing: .08em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bracket-host .game-status {
+  color: rgba(244, 247, 253, .82);
+  font-family: var(--brsn-font-head);
+  font-size: 14px;
+  letter-spacing: .14em;
+  white-space: nowrap;
+}
+
+.bracket-host .team {
+  display: grid !important;
+  grid-template-columns: 14px 41px minmax(0, 1fr) 28px;
+  grid-template-areas:
+    "seed logo name score"
+    "seed logo mascot score";
+  grid-template-rows: auto auto;
+  align-items: center;
+  align-content: center;
+  column-gap: 6px;
+  row-gap: 2px;
+  min-height: 68px;
+  padding-left: 3px !important;
+  padding-right: 5px !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+
+  border-top: 1px solid rgba(255, 255, 255, .09) !important;
+  /*background: rgba(255, 255, 255, .025) !important;*/
+  color: rgba(244, 247, 253, .82) !important;
+  white-space: normal !important;
+  filter: none !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.bracket-host .team,
+.bracket-host .team:hover,
+.bracket-host .team *,
+.bracket-host .team:hover * {
+  filter: none !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.bracket-host .team:first-child {
+  border-top: 0 !important;
+}
+
+.bracket-host .team.matchwinner {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, .095), rgba(255, 255, 255, .035)) !important;
+  color: #fff !important;
+}
+
+.bracket-host .mascotimage {
+  grid-area: logo;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 50px !important;
+  height: 50px !important;
+  overflow: hidden;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.bracket-host .mascotimage img {
+  display: block;
+  width: 50px !important;
+  height: 50px !important;
+  object-fit: contain;
+  image-rendering: auto;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.mascotimage {
+  width: 20px;
+  padding-right: 0px !important;
+  padding-left: 0px !important;
+  vertical-align: middle;
+}
+
+.bracket-host .brsn-empty-logo {
+  border: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .035);
+}
+
+.bracket-host .seed,
+.bracket-host .result {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 22px !important;
+  min-width: 22px;
+  height: 32px;
+  margin: 0 !important;
+  border: 1px solid rgba(255, 255, 255, .18) !important;
+  color: #fff !important;
+  font-family: var(--brsn-font-head) !important;
+  font-size: 16px !important;
+  line-height: 1;
+  text-align: center;
+}
+
+.bracket-host .seed {
+  grid-area: seed;
+  width: 20px !important;
+  min-width: 20px;
+  height: 20px;
+  border-color: rgba(255, 255, 255, .12) !important;
+  background: rgba(255, 255, 255, .045) !important;
+  color: rgba(244, 247, 253, .72) !important;
+}
+
+.bracket-host .result {
+  grid-area: score;
+  width: 32px !important;
+  min-width: 32px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .045)),
+    rgba(255, 255, 255, .08) !important;
+  font-size: 20px !important;
+}
+
+.bracket-host .name,
+.bracket-host .name a {
+  grid-area: name;
+  min-width: 0;
+  width: auto !important;
+  max-width: none !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: rgba(244, 247, 253, .94) !important;
+  font-family: var(--brsn-font-head) !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  line-height: .99;
+  min-height: 0;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: normal !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  filter: none !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.bracket-host .team:hover .name,
+.bracket-host .team:hover .name a,
+.bracket-host .name:hover,
+.bracket-host .name:hover a,
+.bracket-host .name a:hover {
+  filter: none !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+  text-decoration: none !important;
+  font-weight: 400 !important;
+  -webkit-text-stroke: 0 !important;
+}
+
+/* East team row: Score | Name | Logo | Seed (mirror of West).
+   Scoped to horizontal-view only â€” Final Four layout is unchanged. */
+.bracket-host .view[data-view-type="horizontal-view"] .matchup-container.brsn-east .team {
+  grid-template-columns: 32px minmax(0, 1fr) 43px 22px !important;
+  grid-template-areas:
+    "score name logo seed"
+    "score mascot logo seed" !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] .matchup-container.brsn-east .name,
+.bracket-host .view[data-view-type="horizontal-view"] .matchup-container.brsn-east .name a,
+.bracket-host .view[data-view-type="horizontal-view"] .matchup-container.brsn-east .brsn-bracket-mascot {
+  text-align: right !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"] .matchup-container.brsn-east .brsn-bracket-mascot {
+  margin-left: 0;
+  margin-right: 6px;
+}
+
+.bracket-host .brsn-bye-team {
+  background: rgba(255, 255, 255, .015) !important;
+}
+
+.bracket-host .brsn-bye-team .seed,
+.bracket-host .brsn-bye-team .mascotimage {
+  display: none !important;
+}
+
+.bracket-host .brsn-bye-team .name {
+  grid-column: 1 / -1;
+  justify-self: center;
+  text-align: center !important;
+  color: rgba(244, 247, 253, .72) !important;
+  letter-spacing: .16em;
+}
+
+.bracket-host .matchloser .name,
+.bracket-host .matchloser .name a {
+  color: rgba(244, 247, 253, .72) !important;
+}
+
+.bracket-host .matchwinner .name,
+.bracket-host .matchwinner .name a {
+  color: #fff !important;
+}
+
+.bracket-host .matchup-footer {
+  display: none !important;
+}
+
+.bracket-host .quadrant {
+  display: none !important;
+}
+
+/* Championship-view round headers (REGIONAL, STATE labels): plain centered
+   text only â€” no box, no border, no colored underline bar. */
+.bracket-host .view[data-view-type="horizontal-championship-view"] .round-header,
+.bracket-host .view[data-view-type="horizontal-championship-view"] .round-header * {
+  color: #fff !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-championship-view"] .round-header .content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  min-height: auto !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-championship-view"] .round-header .content::after {
+  display: none !important;
+  content: none !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-championship-view"] .round-header .center {
+  justify-content: center !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-championship-view"] > .rounds > .round {
+  position: relative;
+}
+
+.bracket-host .view[data-view-type="horizontal-championship-view"] {
+  position: relative;
+  transform: translateY(var(--brsn-finals-vertical-shift, 0px));
+}
+
+.bracket-host .view[data-view-type="horizontal-championship-view"] > .rounds > .round:first-child {
+  left: var(--brsn-finals-regional-shift, 0px);
+}
+
+.bracket-host .view[data-view-type="horizontal-championship-view"] > .rounds > .round:last-child {
+  left: var(--brsn-finals-state-shift, 0px);
+}
+
+@-moz-document url-prefix() {
+  .bracket-host .bracket-line {
+    min-width: 2px !important;
+    min-height: 2px !important;
+  }
+}
+
+.bracket-host .attribution {
+  color: rgba(244, 247, 253, .6) !important;
+  font-family: var(--brsn-font-body);
+}
+
+.bracket-host .attribution a {
+  color: #fff !important;
+}
+

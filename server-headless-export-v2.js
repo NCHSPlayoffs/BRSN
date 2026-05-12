@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { chromium } = require('playwright');
+const cheerio = require('cheerio');
 
 const PORT = Number(process.env.PORT || 8000);
 const ROOT = process.cwd();
@@ -17,6 +18,12 @@ const RPI_TEST_MODE = process.env.RPI_TEST_MODE === '1';
 const MAXPREPS_SCHEDULE_CACHE_MS = Number(process.env.MAXPREPS_SCHEDULE_CACHE_MS || 15 * 60 * 1000);
 const MAXPREPS_OPPONENT_RECORD_CACHE_MS = Number(process.env.MAXPREPS_OPPONENT_RECORD_CACHE_MS || 30 * 60 * 1000);
 const MAXPREPS_OPPONENT_RECORD_CONCURRENCY = Number(process.env.MAXPREPS_OPPONENT_RECORD_CONCURRENCY || 4);
+const BRACKET_NCHSAA_BASE = 'https://www.nchsaa.org';
+const BRACKET_MAXPREPS_BASE = 'https://www.maxpreps.com';
+const BRACKET_DEFAULT_WIDTH = '3000';
+const BRACKET_COMPACT_WIDTH = '2300';
+const BRACKET_DEFAULT_HEIGHT = '1100';
+const fullBracketCache = new Map();
 const RPI_CLASSES = [
   'Class 1A', 'Class 2A', 'Class 3A', 'Class 4A',
   'Class 5A', 'Class 6A', 'Class 7A', 'Class 8A'
@@ -464,6 +471,446 @@ function maxPrepsHeaders() {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
   };
+}
+
+function bracketCleanSegment(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+}
+
+function bracketClassSegment(value) {
+  const match = String(value || '').trim().match(/(\d+)a/i);
+  return match ? `${match[1]}a` : bracketCleanSegment(value || '3a');
+}
+
+function bracketSportSegment(value) {
+  const key = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+  const map = {
+    football: 'football',
+    baseball: 'baseball',
+    softball: 'softball',
+    volleyball: 'volleyball',
+    'girls soccer': 'womens-soccer',
+    'boys soccer': 'mens-soccer',
+    'girls basketball': 'womens-basketball',
+    'boys basketball': 'mens-basketball',
+    wrestling: 'wrestling'
+  };
+  return map[key] || bracketCleanSegment(value || 'baseball');
+}
+
+function bracketYearSegment(value, sportLabel) {
+  const raw = String(value || '').trim();
+  const sportKey = String(sportLabel || '').trim().toLowerCase();
+  if (!raw || raw.toLowerCase() === 'live') {
+    const now = new Date();
+    const current = now.getFullYear();
+    const fallSports = new Set(['football', 'volleyball', 'boys soccer', 'boys-soccer', 'mens-soccer']);
+    return String(fallSports.has(sportKey) && now.getMonth() < 7 ? current - 1 : current);
+  }
+  const season = raw.match(/^(\d{4})-(\d{2})$/);
+  if (season) {
+    const start = Number(season[1]);
+    const endShort = Number(season[2]);
+    const end = Math.floor(start / 100) * 100 + endShort;
+    const fallSports = new Set(['football', 'volleyball', 'boys soccer', 'boys-soccer', 'mens-soccer']);
+    return String(fallSports.has(sportKey) ? start : end);
+  }
+  const year = raw.match(/\d{4}/);
+  return year ? year[0] : String(new Date().getFullYear());
+}
+
+function bracketWidgetWidth(classification) {
+  return classification === '1a' || classification === '8a' ? BRACKET_COMPACT_WIDTH : BRACKET_DEFAULT_WIDTH;
+}
+
+function bracketDecodeEntities(value) {
+  return String(value || '').replace(/&amp;/g, '&');
+}
+
+function bracketNormalizeDimension(value, fallback) {
+  if (!value || value === '100%') return fallback;
+  const match = String(value).match(/\d+/);
+  return match ? match[0] : fallback;
+}
+
+function bracketShouldAbsolutize(value) {
+  return !value.startsWith('#') && !value.startsWith('mailto:') && !value.startsWith('javascript:');
+}
+
+function bracketAbsolutizeAttributes($, root, baseUrl) {
+  const urlAttrs = ['href', 'src', 'action', 'data-hover-card', 'data-lazy-image'];
+  root.find('*').addBack().each((_, element) => {
+    const node = $(element);
+    for (const attr of urlAttrs) {
+      const value = node.attr(attr);
+      if (value && bracketShouldAbsolutize(value)) {
+        node.attr(attr, new URL(value, baseUrl).toString());
+      }
+    }
+
+    const srcset = node.attr('srcset');
+    if (srcset) {
+      node.attr(
+        'srcset',
+        srcset
+          .split(',')
+          .map(part => {
+            const pieces = part.trim().split(/\s+/);
+            if (pieces[0] && bracketShouldAbsolutize(pieces[0])) {
+              pieces[0] = new URL(pieces[0], baseUrl).toString();
+            }
+            return pieces.join(' ');
+          })
+          .join(', ')
+      );
+    }
+  });
+}
+
+async function bracketFetchText(url) {
+  const response = await fetch(url, {
+    headers: {
+      'user-agent': 'Mozilla/5.0 (compatible; BRSN bracket customizer/0.1)',
+      accept: 'text/html,application/xhtml+xml'
+    }
+  });
+  if (!response.ok) {
+    const error = new Error(`Fetch failed for ${url}: ${response.status} ${response.statusText}`);
+    error.status = response.status === 404 ? 404 : 502;
+    throw error;
+  }
+  return response.text();
+}
+
+async function discoverFullBracketWidgetUrl(nchsaaUrl, widgetWidth = BRACKET_DEFAULT_WIDTH) {
+  const html = await bracketFetchText(nchsaaUrl);
+  const $ = cheerio.load(html);
+  const link = $('a.maxpreps-widget-link').first();
+  if (!link.length) {
+    const error = new Error(`No MaxPreps widget link found on ${nchsaaUrl}`);
+    error.status = 404;
+    throw error;
+  }
+
+  const href = bracketDecodeEntities(link.attr('href') || '');
+  const sourceUrl = new URL(href, BRACKET_MAXPREPS_BASE);
+  const widgetUrl = new URL('/widgets/tournament.aspx', BRACKET_MAXPREPS_BASE);
+  for (const [key, value] of sourceUrl.searchParams) {
+    widgetUrl.searchParams.set(key, value);
+  }
+  widgetUrl.searchParams.set('width', widgetWidth);
+  widgetUrl.searchParams.set('height', bracketNormalizeDimension(link.attr('data-height'), BRACKET_DEFAULT_HEIGHT));
+  widgetUrl.searchParams.set('allow-scrollbar', link.attr('data-allow-scrollbar') || 'true');
+  return widgetUrl.toString();
+}
+
+async function loadFullBracket({ year, classification, sport }) {
+  const safeYear = bracketCleanSegment(year || new Date().getFullYear());
+  const safeClass = bracketClassSegment(classification || '3a');
+  const safeSport = bracketSportSegment(sport || 'baseball');
+  const nchsaaUrl = `${BRACKET_NCHSAA_BASE}/bracket/${safeYear}-${safeClass}-${safeSport}-bracket/`;
+  const cached = fullBracketCache.get(nchsaaUrl);
+  if (cached && Date.now() - cached.createdAt < 5 * 60 * 1000) return cached.payload;
+
+  const widgetWidth = bracketWidgetWidth(safeClass);
+  const widgetUrl = await discoverFullBracketWidgetUrl(nchsaaUrl, widgetWidth);
+  const payload = await extractFullBracketWidget(widgetUrl, nchsaaUrl, widgetWidth);
+  fullBracketCache.set(nchsaaUrl, { createdAt: Date.now(), payload });
+  return payload;
+}
+
+async function extractFullBracketWidget(widgetUrl, sourcePageUrl, canvasWidth = BRACKET_DEFAULT_WIDTH) {
+  const html = await bracketFetchText(widgetUrl);
+  const $ = cheerio.load(html, { decodeEntities: false });
+  const form = $('#widget_form').first();
+  if (!form.length) {
+    const error = new Error('MaxPreps response did not include #widget_form.');
+    error.status = 502;
+    throw error;
+  }
+
+  bracketAbsolutizeAttributes($, form, widgetUrl);
+  form.find('script[src*="plugins.compressed"]').remove();
+  form.find('script').each((_, script) => {
+    const text = $(script).html() || '';
+    if (text.includes('mpPrivacy') || text.includes('branch.init')) $(script).remove();
+  });
+  normalizeFullBracketByeMatchups($, form);
+  enhanceFullBracketMascotImages($, form);
+  swapFullBracketSides($, form);
+  annotateFullBracketForStyling($, form);
+  form.find('.matchup-footer').remove();
+  ensureFullBracketChampionshipRoundHeaders($, form);
+  form.find('.round > .center').remove();
+  form.find('.bracket-header').remove();
+  form.find('.bracket-logo, .brsn-nchsaa-logo, .brsn-top-branding, .brsn-top-logo').remove();
+
+  const styles = [];
+  $('head link[rel="stylesheet"], head style').each((_, element) => {
+    const node = $(element).clone();
+    bracketAbsolutizeAttributes($, node, widgetUrl);
+    styles.push($.html(node));
+  });
+
+  const title = ($('title').first().text() || 'NCHSAA Bracket').trim();
+  return {
+    title,
+    sourcePageUrl,
+    widgetUrl,
+    canvasWidth,
+    styles: styles.join('\n'),
+    html: $.html(form)
+  };
+}
+
+function ensureFullBracketChampionshipRoundHeaders($, form) {
+  form.find('[data-view-type="horizontal-championship-view"]').each((_, view) => {
+    $(view).find('.round').each((index, round) => {
+      const label = index === 0 ? 'Regional' : 'State';
+      let header = $(round).find('> .round-header').first();
+      if (!header.length) {
+        $(round).prepend('<div class="round-header"></div>');
+        header = $(round).find('> .round-header').first();
+      }
+      header.html(`<div class="content"><div class="center"><span class="round-label">${bracketEscapeHtml(label)}</span></div></div>`);
+    });
+  });
+}
+
+function swapFullBracketSides($, form) {
+  form.find('.view[data-view-type="horizontal-view"]').each((_, view) => {
+    const containers = $(view).find('> .rounds');
+    if (containers.length !== 2) return;
+    const c0 = $(containers[0]);
+    const c1 = $(containers[1]);
+    const rounds0 = c0.find('> .round').get();
+    const rounds1 = c1.find('> .round').get();
+    c0.empty();
+    c1.empty();
+    rounds1.forEach(round => c0.append(round));
+    rounds0.forEach(round => c1.append(round));
+  });
+}
+
+function annotateFullBracketForStyling($, form) {
+  form.find('.bracket-container').addClass('brsn-bracket');
+  const matchupLabels = new Map();
+
+  form.find('.view[data-view-type="horizontal-view"]').each((_, view) => {
+    const rounds = $(view).find('> .rounds > .round');
+    const middle = Math.ceil(rounds.length / 2);
+    const gameCounts = { west: 0, east: 0 };
+    $(view).addClass(`brsn-round-count-${middle}`);
+
+    rounds.each((index, round) => {
+      const sideClass = index < middle ? 'brsn-west' : 'brsn-east';
+      const roundDepth = index < middle ? index : index - middle;
+      $(round).addClass(sideClass);
+      annotateFullBracketRoundHeader($, $(round), roundDepth);
+      $(round).find('.matchup-container').addClass(sideClass).each((_, matchup) => {
+        const side = sideClass === 'brsn-west' ? 'west' : 'east';
+        gameCounts[side] += 1;
+        annotateFullBracketMatchupHeader($, $(matchup), side, gameCounts[side], matchupLabels);
+      });
+    });
+
+    const quadrants = $(view).find('.quadrant');
+    const labels = quadrants.map((_, quadrant) => $(quadrant).text().trim()).get();
+    const repeated = labels.length === 4 && new Set(labels).size === 1;
+    quadrants.each((index, quadrant) => {
+      const isWest = index < 2;
+      $(quadrant).addClass(isWest ? 'brsn-west' : 'brsn-east');
+      if (repeated) $(quadrant).text(isWest ? 'West' : 'East');
+    });
+  });
+
+  form.find('[data-view-type="horizontal-championship-view"]').each((_, view) => {
+    $(view).addClass('brsn-finals');
+    $(view).find('.round').first().find('.matchup-container').each((index, matchup) => {
+      const side = index === 0 ? 'east' : 'west';
+      $(matchup).addClass(side === 'west' ? 'brsn-west' : 'brsn-east');
+      annotateFullBracketPlaceholderNames($, $(matchup), matchupLabels);
+      annotateFullBracketMatchupHeader($, $(matchup), side, 1, matchupLabels, { forceLeftToRight: true });
+    });
+    $(view).find('.round').last().find('.matchup-container').each((_, matchup) => {
+      $(matchup).addClass('brsn-championship');
+      annotateFullBracketPlaceholderNames($, $(matchup), matchupLabels);
+      annotateFullBracketMatchupHeader($, $(matchup), 'championship', 1, matchupLabels, { forceLeftToRight: true });
+    });
+  });
+
+  annotateFullBracketPlaceholderNames($, form, matchupLabels);
+}
+
+function annotateFullBracketRoundHeader($, round, roundDepth) {
+  const labels = ['First Round', 'Second Round', 'Third Round', 'Quarterfinals', 'Semifinals', 'Final'];
+  const label = labels[roundDepth] || `Round ${roundDepth + 1}`;
+  const date = extractFullBracketRoundDate($, round);
+  let header = round.find('> .round-header .center').first();
+  if (!header.length) {
+    const roundHeader = round.find('> .round-header').first();
+    if (roundHeader.length) {
+      roundHeader.empty();
+      roundHeader.append('<div class="center"></div>');
+      header = roundHeader.find('.center').first();
+    }
+  }
+  if (header.length) {
+    const dateMarkup = date ? `<span class="round-date">${bracketEscapeHtml(date)}</span>` : '';
+    header.html(`<span class="round-label">${bracketEscapeHtml(label)}</span>${dateMarkup}`);
+  }
+}
+
+function extractFullBracketRoundDate($, round) {
+  let dateText = '';
+  round.find("a[href*='/games/']").each((_, anchor) => {
+    const href = $(anchor).attr('href') || '';
+    const match = href.match(/\/games\/(\d{1,2})-(\d{1,2})-\d{4}\//);
+    if (match) {
+      dateText = formatFullBracketRoundDate(Number(match[1]), Number(match[2]));
+      return false;
+    }
+    return undefined;
+  });
+  return dateText;
+}
+
+function formatFullBracketRoundDate(month, day) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[month - 1] || ''} ${day}${getFullBracketOrdinalSuffix(day)}`.trim();
+}
+
+function getFullBracketOrdinalSuffix(day) {
+  if (day >= 11 && day <= 13) return 'th';
+  const lastDigit = day % 10;
+  if (lastDigit === 1) return 'st';
+  if (lastDigit === 2) return 'nd';
+  if (lastDigit === 3) return 'rd';
+  return 'th';
+}
+
+function normalizeFullBracketByeMatchups($, form) {
+  form.find('.matchup-container.is-bye').each((_, matchup) => {
+    const teams = $(matchup).find('.team');
+    const byeResult = teams.find('.result').filter((__, result) => $(result).text().trim().toLowerCase() === 'bye').first();
+    const teamWithBye = byeResult.closest('.team');
+    const emptyOpponent = teams.filter((__, team) => {
+      const name = $(team).find('.name').text().trim();
+      const seed = $(team).find('.seed').text().trim();
+      return !name && !seed;
+    }).first();
+    if (!teamWithBye.length || !emptyOpponent.length) return;
+    byeResult.remove();
+    emptyOpponent.addClass('brsn-bye-team');
+    emptyOpponent.find('.name').remove();
+    emptyOpponent.find('.seed').remove();
+    emptyOpponent.find('.mascotimage').remove();
+    emptyOpponent.append('<span class="seed"></span><span class="mascotimage brsn-empty-logo"></span><span class="name">BYE</span>');
+  });
+}
+
+function enhanceFullBracketMascotImages($, form) {
+  form.find('.mascotimage img').each((_, image) => {
+    const node = $(image);
+    const src = node.attr('src');
+    if (!src) return;
+    try {
+      const url = new URL(src);
+      url.searchParams.set('width', '96');
+      url.searchParams.set('fit', 'bounds');
+      node.attr('src', url.toString());
+      node.attr('width', '40');
+      node.attr('height', '40');
+    } catch {
+      // Leave uncommon image URLs untouched.
+    }
+  });
+}
+
+function annotateFullBracketMatchupHeader($, matchup, side, gameNumber, matchupLabels, options = {}) {
+  const matchupBox = matchup.find('> .matchup').first();
+  if (!matchupBox.length) return;
+  const existingHeader = matchupBox.find('> .contest-header').first();
+  const label = `${formatFullBracketSide(side)} - Game ${gameNumber}`;
+  const status = getFullBracketMatchupStatus($, matchup);
+  const mirrorHeader = side === 'east' && !options.forceLeftToRight;
+  const headerContent = mirrorHeader
+    ? `<span class="game-status">${bracketEscapeHtml(status)}</span><span class="game-number">${bracketEscapeHtml(label)}</span>`
+    : `<span class="game-number">${bracketEscapeHtml(label)}</span><span class="game-status">${bracketEscapeHtml(status)}</span>`;
+  const headerHtml = `<header class="contest-header brsn-game-header">${headerContent}</header>`;
+  rememberFullBracketMatchupLabel($, matchup, label, matchupLabels);
+  matchup.find('> .matchup-header').remove();
+  if (existingHeader.length) existingHeader.replaceWith(headerHtml);
+  else matchupBox.prepend(headerHtml);
+}
+
+function rememberFullBracketMatchupLabel($, matchup, label, matchupLabels) {
+  if (!matchupLabels) return;
+  const matchupId = normalizeFullBracketMatchupId(matchup.attr('id'));
+  if (matchupId) matchupLabels.set(matchupId, label);
+  const originalGame = matchup.find('> .matchup > .contest-header .game-number').first().text().trim();
+  const gameMatch = originalGame.match(/^G\s*(\d+)$/i);
+  if (gameMatch) matchupLabels.set(`G${gameMatch[1]}`, label);
+}
+
+function annotateFullBracketPlaceholderNames($, matchup, matchupLabels) {
+  matchup.find('.team .name').each((_, name) => {
+    const node = $(name);
+    const text = node.text().trim();
+    const winnerMatch = text.match(/^Winner\s+G\s*(\d+)$/i);
+    if (!winnerMatch) return;
+    const sourceId = normalizeFullBracketMatchupId(node.closest('.team').attr('data-source-matchup-id'));
+    const mappedLabel = (sourceId && matchupLabels.get(sourceId)) || matchupLabels.get(`G${winnerMatch[1]}`);
+    if (mappedLabel) node.text(`${mappedLabel} Winner`);
+  });
+}
+
+function normalizeFullBracketMatchupId(value) {
+  return String(value || '').trim().replace(/^matchup_/i, '');
+}
+
+function getFullBracketMatchupStatus($, matchup) {
+  if (matchup.hasClass('is-bye')) return 'Bye';
+  const resultText = matchup.find('.result').text().trim().toLowerCase();
+  if (resultText.includes('bye')) return 'Bye';
+  if (matchup.hasClass('has-result') || resultText.length > 0) return 'Final';
+  return getFullBracketScheduledStatus($, matchup) || 'TBD';
+}
+
+function getFullBracketScheduledStatus($, matchup) {
+  const abbrText = matchup.find('> .matchup > .contest-header abbr').first().text().trim();
+  if (abbrText) return normalizeFullBracketScheduledText(abbrText);
+  const datedHref = matchup
+    .find("a[href*='/games/']")
+    .map((_, link) => $(link).attr('href') || '')
+    .get()
+    .find(href => /\/games\/\d{1,2}-\d{1,2}-\d{4}\//.test(href));
+  if (!datedHref) return '';
+  const match = datedHref.match(/\/games\/(\d{1,2})-(\d{1,2})-\d{4}\//);
+  return match ? `${Number(match[1])}/${Number(match[2])}` : '';
+}
+
+function normalizeFullBracketScheduledText(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/\b(\d{1,2})p\b/gi, '$1PM')
+    .replace(/\b(\d{1,2})a\b/gi, '$1AM');
+}
+
+function formatFullBracketSide(side) {
+  if (side === 'west') return 'West';
+  if (side === 'east') return 'East';
+  return 'State';
+}
+
+function bracketEscapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function normalizeMaxPrepsInputUrl(input) {
@@ -945,8 +1392,30 @@ function getSnapshotById(id) {
   return readSnapshotStore().snapshots.find(snapshot => snapshot.id === snapshotId) || null;
 }
 
-function buildTeamSnapshotLog({ sport, classification, seasonYear, source, school, limit = 80 }) {
-  const teamKey = normalizeTeamKey(school);
+function splitTeamAliases(value) {
+  return String(value || '')
+    .split('||')
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function uniqueTeamLogStrings(values) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : [])
+    .map(value => String(value || '').trim())
+    .filter(value => {
+      if (!value) return false;
+      const key = value.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function buildTeamSnapshotLog({ sport, classification, seasonYear, source, school, schoolAliases = [], limit = 80 }) {
+  const candidates = uniqueTeamLogStrings([school, ...schoolAliases]);
+  const teamKeys = new Set(candidates.map(item => normalizeTeamKey(item)).filter(Boolean));
+  const teamKey = [...teamKeys][0] || '';
   if (!sport || !classification || !teamKey) throw new Error('Missing sport, classification, or school');
 
   const snapshots = readSnapshotStore().snapshots
@@ -961,8 +1430,8 @@ function buildTeamSnapshotLog({ sport, classification, seasonYear, source, schoo
   const matchingLogs = snapshots
     .map(snapshot => {
       const row = (snapshot.rows || []).find(item =>
-        item.teamKey === teamKey ||
-        normalizeTeamKey(item.school) === teamKey
+        teamKeys.has(item.teamKey) ||
+        teamKeys.has(normalizeTeamKey(item.school))
       ) || null;
       return row ? { snapshot, row } : null;
     })
@@ -1174,6 +1643,25 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, schedule);
     }
 
+    // FULL NCHSAA/MAXPREPS PLAYOFF BRACKET FETCH + PARSE
+    if (req.method === 'GET' && requestUrl.pathname === '/full-bracket') {
+      const sportLabel = requestUrl.searchParams.get('sport') || 'Baseball';
+      const classification = requestUrl.searchParams.get('classification') || requestUrl.searchParams.get('class') || 'Class 3A';
+      const seasonYear = requestUrl.searchParams.get('seasonYear') || requestUrl.searchParams.get('year') || 'live';
+      const bracketYear = bracketYearSegment(seasonYear, sportLabel);
+      const payload = await loadFullBracket({
+        year: bracketYear,
+        classification,
+        sport: sportLabel
+      });
+      return sendJson(res, 200, {
+        ...payload,
+        bracketYear,
+        sport: sportLabel,
+        classification
+      });
+    }
+
     // LIVE RPI SNAPSHOT COMPARE
     if (req.method === 'GET' && req.url === '/rpi-snapshots/status') {
       return sendJson(res, 200, {
@@ -1274,8 +1762,9 @@ node server-headless-export-v2.js</pre>
       const seasonYear = String(requestUrl.searchParams.get('seasonYear') || 'live').trim();
       const source = String(requestUrl.searchParams.get('source') || 'official').trim();
       const school = String(requestUrl.searchParams.get('school') || '').trim();
+      const schoolAliases = splitTeamAliases(requestUrl.searchParams.get('schoolAliases') || '');
       const limit = Number(requestUrl.searchParams.get('limit') || 80);
-      return sendJson(res, 200, buildTeamSnapshotLog({ sport, classification, seasonYear, source, school, limit }));
+      return sendJson(res, 200, buildTeamSnapshotLog({ sport, classification, seasonYear, source, school, schoolAliases, limit }));
     }
 
     if (req.method === 'POST' && req.url === '/rpi-snapshots/capture') {
