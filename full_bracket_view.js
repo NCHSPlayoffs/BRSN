@@ -85,32 +85,93 @@ window.BRSNFullBracketView.init = function initFullBracketView(root = document) 
   let panStartY = 0;
   let scrollStartLeft = 0;
   let scrollStartTop = 0;
+  let pendingTeamTap_ = null;
+  let panScrolled_ = false;
+  const touchPointers = new Map();
+  let isPinching = false;
+  let pinchStartDistance = 0;
+  let pinchStartZoomPct = zoomPct;
+  let pinchLastDistance = 0;
+  let pinchLastMidpoint = null;
   let isApplyingLayoutAlignment = false;
   let hasCenteredInitialView = false;
 
   viewport.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || event.target.closest("a, button, select, input")) {
+    if ((event.pointerType !== "touch" && event.button !== 0) || event.target.closest("a, button, select, input")) {
       return;
     }
 
+    if (event.pointerType === "touch") {
+      rememberTouchPointer(event);
+      if (usesTwoFingerMobilePan_()) {
+        if (touchPointers.size >= 2) {
+          event.preventDefault();
+          try { viewport.setPointerCapture(event.pointerId); } catch (_) {}
+          startPinchZoom();
+        }
+        return;
+      }
+      event.preventDefault();
+      try { viewport.setPointerCapture(event.pointerId); } catch (_) {}
+      if (touchPointers.size >= 2) {
+        startPinchZoom();
+        return;
+      }
+    }
+
+    pendingTeamTap_ = event.target.closest?.('.team[data-schedule-team]') || null;
+    panScrolled_ = false;
     isPanning = true;
     panStartX = event.clientX;
     panStartY = event.clientY;
     scrollStartLeft = viewport.scrollLeft;
     scrollStartTop = viewport.scrollTop;
     viewport.classList.add("is-panning");
-    viewport.setPointerCapture(event.pointerId);
+    try { viewport.setPointerCapture(event.pointerId); } catch (_) {}
   });
 
   viewport.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "touch" && touchPointers.has(event.pointerId)) {
+      rememberTouchPointer(event);
+      if (usesTwoFingerMobilePan_()) {
+        if (touchPointers.size >= 2) {
+          if (!isPinching) {
+            startPinchZoom();
+          }
+          event.preventDefault();
+          updatePinchZoom();
+        }
+        return;
+      }
+      if (isPinching && touchPointers.size >= 2) {
+        event.preventDefault();
+        updatePinchZoom();
+        return;
+      }
+    }
+
     if (isPanning) {
+      if (Math.abs(event.clientX - panStartX) > 5 || Math.abs(event.clientY - panStartY) > 5) panScrolled_ = true;
       viewport.scrollLeft = scrollStartLeft - (event.clientX - panStartX);
       viewport.scrollTop = scrollStartTop - (event.clientY - panStartY);
     }
   });
 
-  viewport.addEventListener("pointerup", stopPanning);
-  viewport.addEventListener("pointercancel", stopPanning);
+  viewport.addEventListener("pointerup", (event) => {
+    const teamEl = pendingTeamTap_;
+    const didScroll = panScrolled_;
+    pendingTeamTap_ = null;
+    panScrolled_ = false;
+    stopPanning(event);
+    if (teamEl && !didScroll && !isPinching) {
+      window.BRSNBoard?.openTeamScheduleCard?.(teamEl);
+    }
+  });
+  viewport.addEventListener("pointercancel", (event) => {
+    pendingTeamTap_ = null;
+    panScrolled_ = false;
+    stopPanning(event);
+  });
   setupPathHoverCleanup();
   setupLayoutAlignmentObserver();
 
@@ -137,10 +198,16 @@ window.BRSNFullBracketView.init = function initFullBracketView(root = document) 
     }
   }
 
-  function applyZoom() {
+  function applyZoom(anchorPoint = null, panDelta = null) {
     const previousScrollWidth = viewport.scrollWidth || zoomTarget.getBoundingClientRect().width || 1;
+    const previousScrollHeight = viewport.scrollHeight || zoomTarget.getBoundingClientRect().height || 1;
     const currentCenterRatio = (viewport.scrollLeft + viewport.clientWidth / 2) / previousScrollWidth;
     const previousCenterRatio = hasCenteredInitialView ? currentCenterRatio : 0.5;
+    const viewportRect = anchorPoint ? viewport.getBoundingClientRect() : null;
+    const anchorOffsetX = anchorPoint && viewportRect ? anchorPoint.x - viewportRect.left : 0;
+    const anchorOffsetY = anchorPoint && viewportRect ? anchorPoint.y - viewportRect.top : 0;
+    const anchorRatioX = anchorPoint ? (viewport.scrollLeft + anchorOffsetX) / previousScrollWidth : 0;
+    const anchorRatioY = anchorPoint ? (viewport.scrollTop + anchorOffsetY) / previousScrollHeight : 0;
     const canvasWidth = Number(zoomTarget.dataset.canvasWidth || "3000");
     const gapExtra = getCenterGapExtra();
     const totalWidth = canvasWidth + gapExtra;
@@ -149,13 +216,19 @@ window.BRSNFullBracketView.init = function initFullBracketView(root = document) 
     zoomTarget.style.width = `${totalWidth}px`;
     zoomTarget.style.minHeight = "1250px";
     if (zoomValue && document.activeElement !== zoomValue) {
-      zoomValue.value = zoomPct;
+      zoomValue.value = Math.round(zoomPct);
     }
-    localStorage.setItem("bracketZoomPct", String(zoomPct));
+    localStorage.setItem("bracketZoomPct", String(Math.round(zoomPct)));
     scheduleLayoutAlignment();
     requestAnimationFrame(() => {
       const nextScrollWidth = viewport.scrollWidth || zoomTarget.getBoundingClientRect().width || previousScrollWidth;
-      viewport.scrollLeft = Math.max(0, nextScrollWidth * previousCenterRatio - viewport.clientWidth / 2);
+      if (anchorPoint) {
+        const nextScrollHeight = viewport.scrollHeight || zoomTarget.getBoundingClientRect().height || previousScrollHeight;
+        viewport.scrollLeft = Math.max(0, nextScrollWidth * anchorRatioX - anchorOffsetX - (panDelta?.x || 0));
+        viewport.scrollTop = Math.max(0, nextScrollHeight * anchorRatioY - anchorOffsetY - (panDelta?.y || 0));
+      } else {
+        viewport.scrollLeft = Math.max(0, nextScrollWidth * previousCenterRatio - viewport.clientWidth / 2);
+      }
       hasCenteredInitialView = true;
     });
   }
@@ -164,9 +237,80 @@ window.BRSNFullBracketView.init = function initFullBracketView(root = document) 
     return Math.min(max, Math.max(min, value));
   }
 
-  function stopPanning() {
+  function stopPanning(event) {
+    if (event?.pointerType === "touch") {
+      touchPointers.delete(event.pointerId);
+      if (touchPointers.size < 2) {
+        isPinching = false;
+        pinchLastMidpoint = null;
+        pinchLastDistance = 0;
+      }
+    }
     isPanning = false;
     viewport.classList.remove("is-panning");
+  }
+
+  function rememberTouchPointer(event) {
+    touchPointers.set(event.pointerId, {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    });
+  }
+
+  function currentPinchPoints() {
+    return Array.from(touchPointers.values()).slice(0, 2);
+  }
+
+  function pinchDistance(points) {
+    if (points.length < 2) {
+      return 0;
+    }
+    return Math.hypot(points[1].clientX - points[0].clientX, points[1].clientY - points[0].clientY);
+  }
+
+  function pinchMidpoint(points) {
+    return {
+      x: (points[0].clientX + points[1].clientX) / 2,
+      y: (points[0].clientY + points[1].clientY) / 2,
+    };
+  }
+
+  function startPinchZoom() {
+    const points = currentPinchPoints();
+    pinchStartDistance = pinchDistance(points);
+    pinchStartZoomPct = zoomPct;
+    pinchLastDistance = pinchStartDistance;
+    pinchLastMidpoint = pinchMidpoint(points);
+    isPinching = pinchStartDistance > 0;
+    isPanning = false;
+    viewport.classList.remove("is-panning");
+  }
+
+  function updatePinchZoom() {
+    const points = currentPinchPoints();
+    const distance = pinchDistance(points);
+    if (!pinchStartDistance || !distance) {
+      return;
+    }
+    const midpoint = pinchMidpoint(points);
+    const panDelta = pinchLastMidpoint
+      ? { x: midpoint.x - pinchLastMidpoint.x, y: midpoint.y - pinchLastMidpoint.y }
+      : null;
+    const nextZoomPct = clamp(zoomPct * (distance / (pinchLastDistance || distance)), 50, 150);
+    if (Math.abs(nextZoomPct - zoomPct) < 0.25 && (!panDelta || (Math.abs(panDelta.x) < 0.5 && Math.abs(panDelta.y) < 0.5))) {
+      return;
+    }
+    zoomPct = nextZoomPct;
+    zoom = pctToActual(zoomPct);
+    applyZoom(midpoint, panDelta);
+    pinchLastDistance = distance;
+    pinchLastMidpoint = midpoint;
+  }
+
+  function usesTwoFingerMobilePan_() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches
+      && !document.fullscreenElement;
   }
 
   function scheduleLayoutAlignment() {

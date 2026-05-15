@@ -11,6 +11,8 @@
     "playwright": "^1.53.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.8.0",
     "supabase": "^2.93.0"
   }
 }

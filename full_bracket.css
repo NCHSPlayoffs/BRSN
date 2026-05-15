@@ -27,6 +27,55 @@
   box-sizing: border-box;
 }
 
+/* MaxPreps injects document-level css with html/body padding and table
+   backgrounds. Keep those provider rules inside the bracket instead of letting
+   them resize or recolor the app shell. */
+html:has(body.full-bracket-mode) {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  background:
+    radial-gradient(circle at 14% -8%, var(--glow) 0, transparent 34%),
+    radial-gradient(circle at 88% 2%, var(--glow-2) 0, transparent 30%),
+    radial-gradient(circle at 50% 112%, rgba(255,255,255,0.045) 0, transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0) 185px),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%) !important;
+}
+
+body.full-bracket-mode {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  background:
+    radial-gradient(circle at 14% -8%, var(--glow) 0, transparent 34%),
+    radial-gradient(circle at 88% 2%, var(--glow-2) 0, transparent 30%),
+    radial-gradient(circle at 50% 112%, rgba(255,255,255,0.045) 0, transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0) 185px),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%) !important;
+}
+
+body.full-bracket-mode .wrap {
+  max-width: 97% !important;
+  margin: 0 auto !important;
+  padding: 10px !important;
+}
+
+@media (max-width: 760px) {
+  body.full-bracket-mode .wrap {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  body.full-bracket-mode .bracket-shell:not(:fullscreen) .bracket-host {
+    overflow: hidden;
+    overscroll-behavior: auto;
+    touch-action: pan-y;
+  }
+}
+
 .full-bracket-table-row > td {
   padding: 0 !important;
 }
@@ -381,16 +430,36 @@ body.full-bracket-mode .title-block::after {
 /* ── Fullscreen mode ────────────────────────────────────────────────────── */
 .bracket-shell:fullscreen,
 .bracket-shell:-webkit-full-screen {
+  position: fixed !important;
+  inset: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   width: 100vw !important;
+  width: 100dvw !important;
+  min-width: 100vw !important;
+  min-width: 100dvw !important;
+  max-width: 100vw !important;
+  max-width: 100dvw !important;
   height: 100vh !important;
+  height: 100dvh !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
   margin: 0 !important;
   padding: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  background: #07101d !important;
+  box-sizing: border-box !important;
+  background:
+    linear-gradient(90deg, rgba(255, 51, 68, .10), rgba(255, 255, 255, .04) 50%, rgba(47, 131, 255, .10)),
+    #07101d !important;
   overflow: hidden !important;
+}
+
+.bracket-shell:fullscreen::backdrop,
+.bracket-shell:-webkit-full-screen::backdrop {
+  background: #07101d !important;
 }
 
 .bracket-shell:fullscreen .bracket-tools,
@@ -401,23 +470,71 @@ body.full-bracket-mode .title-block::after {
 
 .bracket-shell:fullscreen .bracket-host,
 .bracket-shell:-webkit-full-screen .bracket-host {
-  flex: 1 1 0% !important;
+  flex: 1 1 auto !important;
   width: 100% !important;
-  height: 0 !important;
+  height: auto !important;
   max-height: none !important;
   min-height: 0 !important;
+  background:
+    linear-gradient(90deg, rgba(255, 51, 68, .10), rgba(255, 255, 255, .04) 50%, rgba(47, 131, 255, .10)),
+    #07101d !important;
+}
+
+@-moz-document url-prefix() {
+  .bracket-shell:fullscreen {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    background:
+      linear-gradient(90deg, rgba(255, 51, 68, .10), rgba(255, 255, 255, .04) 50%, rgba(47, 131, 255, .10)),
+      #07101d !important;
+  }
+
+  .bracket-shell:fullscreen .bracket-tools {
+    flex: 0 0 45px !important;
+    height: 45px !important;
+  }
+
+  .bracket-shell:fullscreen .bracket-host {
+    position: relative !important;
+    flex: 0 0 calc(100vh - 45px) !important;
+    height: calc(100vh - 45px) !important;
+    min-height: calc(100vh - 45px) !important;
+    max-height: calc(100vh - 45px) !important;
+    background:
+      linear-gradient(90deg, rgba(255, 51, 68, .10), rgba(255, 255, 255, .04) 50%, rgba(47, 131, 255, .10)),
+      #07101d !important;
+  }
+
+  .bracket-shell:fullscreen .bracket-host::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(255, 51, 68, .10), rgba(255, 255, 255, .04) 50%, rgba(47, 131, 255, .10)),
+      #07101d;
+  }
+
+  .bracket-shell:fullscreen .bracket-zoom {
+    z-index: 1;
+  }
 }
 
 .bracket-host {
+  position: relative;
   overflow: auto;
   width: 100%;
   max-width: 100%;
-  height: 100%;
+  height: clamp(700px, calc(100vh - 96px), 1080px);
   min-height: 700px;
   padding: 0;
   cursor: grab;
+  overscroll-behavior: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  touch-action: none;
 }
 
 .bracket-host::-webkit-scrollbar {
@@ -434,6 +551,20 @@ body.full-bracket-mode .title-block::after {
   width: var(--brsn-canvas-width);
   zoom: var(--bracket-zoom, 1);
   margin: 0 auto;
+}
+
+.bracket-zoom::before {
+  content: "";
+  position: absolute;
+  top: 185px;
+  left: 50%;
+  z-index: 2;
+  width: 350px;
+  height: 170px;
+  pointer-events: none;
+  background: url("https://iili.io/Bga3mQe.png") center / contain no-repeat;
+  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, .48));
+  transform: translateX(-50%);
 }
 
 /* ── Center Gap Tuning ──────────────────────────────────────────────────────
@@ -496,8 +627,41 @@ body.full-bracket-mode .title-block::after {
 }
 
 .bracket-host .view[data-view-type="horizontal-view"] {
+  position: relative;
   padding-left: 0 !important;
   padding-right: 0 !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-view"]::before,
+.bracket-host .view[data-view-type="horizontal-view"]::after {
+  position: absolute;
+  top: 1781px;
+  z-index: 3;
+  font-family: var(--brsn-font-head);
+  font-size: 26px;
+  letter-spacing: .18em;
+  line-height: 1;
+  opacity: .48;
+  pointer-events: none;
+  text-shadow: 0 10px 26px rgba(0, 0, 0, .5);
+  transform: translate(-50%, -50%);
+}
+
+.bracket-host .view[data-view-type="horizontal-view"]::before {
+  content: "WEST";
+  left: 25.5%;
+  color: rgba(255, 66, 82, .66);
+}
+
+.bracket-host .view[data-view-type="horizontal-view"]::after {
+  content: "EAST";
+  left: 74.5%;
+  color: rgba(70, 132, 255, .68);
+}
+
+.bracket-host .view.brsn-round-count-3[data-view-type="horizontal-view"]::before,
+.bracket-host .view.brsn-round-count-3[data-view-type="horizontal-view"]::after {
+  top: 986px;
 }
 
 .bracket-host .view[data-view-type="horizontal-view"] > .rounds:first-child {
@@ -886,6 +1050,11 @@ body.full-bracket-mode .title-block::after {
   direction: ltr !important;
 }
 
+.bracket-host .teams {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
 .bracket-host .game-number {
   color: rgba(244, 247, 253, .8) !important;
   font-family: var(--brsn-font-head);
@@ -915,7 +1084,9 @@ body.full-bracket-mode .title-block::after {
   align-content: center;
   column-gap: 6px;
   row-gap: 2px;
+  width: 100% !important;
   min-height: 68px;
+  margin: 0 !important;
   padding-left: 3px !important;
   padding-right: 5px !important;
   padding-top: 4px !important;
@@ -943,10 +1114,26 @@ body.full-bracket-mode .title-block::after {
   border-top: 0 !important;
 }
 
-.bracket-host .team.matchwinner {
+.bracket-host .team.matchwinner,
+.bracket-host .team.brsn-bye-advance {
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, .095), rgba(255, 255, 255, .035)) !important;
+    linear-gradient(90deg, rgba(255, 255, 255, .145), rgba(255, 255, 255, .045)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .12),
+    inset 0 -1px 0 rgba(255, 255, 255, .08) !important;
   color: #fff !important;
+}
+
+.bracket-host .matchup-container.brsn-west .team.matchwinner,
+.bracket-host .matchup-container.brsn-west .team.brsn-bye-advance {
+  background:
+    linear-gradient(90deg, rgba(255, 51, 68, .16), rgba(255, 255, 255, .08) 45%, rgba(255, 255, 255, .035)) !important;
+}
+
+.bracket-host .matchup-container.brsn-east .team.matchwinner,
+.bracket-host .matchup-container.brsn-east .team.brsn-bye-advance {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .08) 55%, rgba(47, 131, 255, .16)) !important;
 }
 
 .bracket-host .mascotimage {
@@ -1108,6 +1295,34 @@ body.full-bracket-mode .title-block::after {
   color: #fff !important;
 }
 
+@media (max-width: 760px) {
+  .bracket-host .team {
+    min-height: 78px;
+    grid-template-rows: minmax(34px, auto) auto;
+    align-content: center;
+    row-gap: 1px;
+  }
+
+  .full-bracket-board .team:has(.brsn-bracket-mascot) .name,
+  .full-bracket-board .team:has(.brsn-bracket-mascot) .name a,
+  .bracket-host .name,
+  .bracket-host .name a {
+    align-self: center;
+    font-size: 13px !important;
+    letter-spacing: .04em;
+    line-height: 16px !important;
+    min-height: 0 !important;
+    height: 32px !important;
+    max-height: 32px !important;
+  }
+
+  .full-bracket-board .brsn-bracket-mascot {
+    font-size: 11px;
+    letter-spacing: .08em;
+    line-height: 12px !important;
+  }
+}
+
 .bracket-host .matchup-footer {
   display: none !important;
 }
@@ -1124,10 +1339,19 @@ body.full-bracket-mode .title-block::after {
 }
 
 .bracket-host .view[data-view-type="horizontal-championship-view"] .round-header .content {
+  width: var(--brsn-matchup-width) !important;
+  max-width: var(--brsn-matchup-width) !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   min-height: auto !important;
+}
+
+.bracket-host .view[data-view-type="horizontal-championship-view"] > .rounds > .round > .round-header {
+  width: var(--brsn-matchup-width) !important;
+  max-width: var(--brsn-matchup-width) !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .bracket-host .view[data-view-type="horizontal-championship-view"] .round-header .content::after {

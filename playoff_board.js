@@ -4297,22 +4297,47 @@ function applyTeamLogRangeSelection_(value) {
       }
     }
 
-    async function decorateFullBracketTeams_(root) {
+    async function decorateFullBracketTeams_(root, classification, sportLabel) {
+      let tdMap, mergedRows;
       try {
-        await getTeamDetailsMapCached_();
+        const result = await getMergedRowsForSelection_(
+          classification || classEl?.value || '',
+          sportLabel    || sportEl?.value  || ''
+        );
+        mergedRows = result.rows || [];
+        tdMap = await getTeamDetailsMapCached_();
       } catch (err) {
         console.warn('Full bracket team details unavailable:', err);
         return;
       }
 
+      // Build a lowercase-keyed map so we can match MaxPreps ALL CAPS names
+      const tdMapLower = new Map();
+      for (const [key, val] of tdMap) {
+        tdMapLower.set(key.toLowerCase(), val);
+      }
+
+      // Build RPI stats lookup from merged rows (record, rpi, rank, regionRank, lineRegion)
+      const rpiRowMap = new Map();
+      for (const row of mergedRows) {
+        const k = canonicalTeamName_(String(row.school || row.name || '')).toLowerCase();
+        if (k) rpiRowMap.set(k, row);
+      }
+
+      const resolvedSport = sportLabel || sportEl?.value || '';
+      const sportKey = sportKeyFromLabel_(resolvedSport);
+      const normalizeCfg = liveTeamNameNormalizeForSport_(sportKey);
+      const scheduleOptions = scheduleOptionsForRow_({ scheduleSport: resolvedSport });
+
       root.querySelectorAll('.team').forEach(team => {
         const nameEl = team.querySelector('.name a, .name');
         const rawName = String(nameEl?.textContent || '').trim();
         if (!rawName || /^bye$/i.test(rawName) || /winner/i.test(rawName)) return;
-        const detail = teamDetailsRowForName_(rawName);
+        const lookupKey = canonicalTeamName_(rawName).toLowerCase();
+        const detail = tdMapLower.get(lookupKey);
         if (!detail) return;
 
-        const displayName = String(detail.name || rawName).trim();
+        const displayName = liveDisplayTeamName_(String(detail.name || rawName).trim(), normalizeCfg);
         const mascot = String(detail.mascot || '').trim();
         const preferredLogo = detail.mapLogoUrl || (!/drive\.google\.com|googleusercontent\.com/i.test(detail.logoUrl || '') ? detail.logoUrl : '');
         const logoUrl = normalizeDriveImageUrl_(preferredLogo || '');
@@ -4353,8 +4378,56 @@ function applyTeamLogRangeSelection_(value) {
           img.dataset.srcCandidates = candidates.join('|||');
           img.dataset.srcIndex = '0';
         }
+
+        // Schedule card data attributes
+        team.dataset.scheduleTeam = displayName;
+        team.dataset.scheduleLogo = logoUrl || '';
+        const mpUrl = teamDetailsMaxPrepsUrl_(detail, resolvedSport);
+        if (mpUrl) {
+          team.dataset.scheduleRow = '1';
+          team.dataset.maxprepsUrl = mpUrl;
+          team.dataset.scheduleYear = scheduleOptions.year || '';
+          team.dataset.scheduleSport = scheduleOptions.sport || resolvedSport;
+        }
+
+        // RPI stats: record/rpi from merged rows; region/regionRank from bracket DOM
+        const rpiRow = rpiRowMap.get(lookupKey);
+        if (rpiRow) {
+          team.dataset.scheduleRecord = String(rpiRow.record || '');
+          team.dataset.scheduleRpi    = String(rpiRow.rpi    || '');
+        }
+
+        // Seed element = region rank; matchup-container class = East/West region
+        const seedEl = team.querySelector('.seed');
+        const seedText = String(seedEl?.textContent || '').trim();
+        if (seedText && /^\d+$/.test(seedText)) {
+          team.dataset.scheduleRank       = seedText;
+          team.dataset.scheduleRegionRank = seedText;
+        } else if (rpiRow) {
+          team.dataset.scheduleRank       = String(rpiRow.rank || '');
+          team.dataset.scheduleRegionRank = '';
+        }
+
+        const container = team.closest('.matchup-container');
+        const bracketRegion = container?.classList.contains('brsn-west') ? 'West'
+                            : container?.classList.contains('brsn-east') ? 'East'
+                            : (rpiRow ? String(rpiRow.lineRegion || '') : '');
+        if (bracketRegion) team.dataset.scheduleRegion = bracketRegion;
       });
       armImageFallbacks_(root);
+    }
+
+    function markFullBracketByeWinners_(root) {
+      root?.querySelectorAll?.('.bracket-host .matchup').forEach(matchup => {
+        const teams = Array.from(matchup.querySelectorAll(':scope .team'));
+        const byeTeams = teams.filter(team => /^bye$/i.test(String(team.textContent || '').trim()));
+        if (!byeTeams.length) return;
+        const advancingTeams = teams.filter(team => !byeTeams.includes(team));
+        if (advancingTeams.length !== 1) return;
+        const winner = advancingTeams[0];
+        winner.classList.add('matchwinner', 'brsn-bye-advance');
+        winner.classList.remove('matchloser');
+      });
     }
 
     function normalizeFullBracketFinalFour_(root) {
@@ -4445,7 +4518,8 @@ function applyTeamLogRangeSelection_(value) {
       const board = tbody.querySelector('.full-bracket-board');
       if (!board) return;
       await runFullBracketInjectedScripts_(board);
-      await decorateFullBracketTeams_(board);
+      await decorateFullBracketTeams_(board, classification, sportLabel);
+      markFullBracketByeWinners_(board);
       normalizeFullBracketFinalFour_(board);
       if (window.BRSNFullBracketView?.init) {
         window.BRSNFullBracketView.init(board);
@@ -7907,6 +7981,13 @@ let eastWestLineMapState_ = null;
     // Expose team search so full_bracket_view.js can populate the bracket toolbar search menu.
     window.BRSNBoard.searchTeams = function(query) {
       try { return teamJumpSearchRows_(String(query || '')); } catch(e) { return []; }
+    };
+    // Expose schedule card opener so full_bracket_view.js can open cards on team tap.
+    window.BRSNBoard.openTeamScheduleCard = function(teamEl) {
+      try {
+        if (!teamEl) return;
+        openTeamScheduleCard_(scheduleRowFromDataset_(teamEl.dataset));
+      } catch(e) { console.warn('openTeamScheduleCard error:', e); }
     };
 
     
