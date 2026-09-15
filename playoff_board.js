@@ -13,6 +13,7 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const TEAMDETAILS_GID = '510129710';
     const OFFICIAL_RPI_FALLBACK_GID = '1999286146';
     const API_BASE_URL_ = String(window.RPI_APP_CONFIG?.apiBaseUrl || '').replace(/\/+$/g, '');
+    const EXPORT_BASE_URL_ = String(window.RPI_APP_CONFIG?.exportBaseUrl || '').replace(/\/+$/g, '');
 
     function compileTeamNameNormalizeConfig_(raw = {}) {
       return {
@@ -3271,6 +3272,57 @@ function applyTeamLogRangeSelection_(value) {
       return `${API_BASE_URL_}${path.startsWith('/') ? path : `/${path}`}`;
     }
 
+    function configuredExportEndpoint_(pathWithQuery) {
+      if (!EXPORT_BASE_URL_) return '';
+      const path = String(pathWithQuery || '');
+      return `${EXPORT_BASE_URL_}${path.startsWith('/') ? path : `/${path}`}`;
+    }
+
+    function isLocalAppHost_() {
+      return /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(window.location.hostname || '');
+    }
+
+    function isStaticHostedPage_() {
+      const host = String(window.location.hostname || '').toLowerCase();
+      return host.endsWith('.github.io') || host === 'github.io';
+    }
+
+    function serverExportEndpoints_(pathWithQuery) {
+      const path = String(pathWithQuery || '');
+      const localEndpoints = [
+        `http://localhost:8000${path}`,
+        `http://127.0.0.1:8000${path}`
+      ];
+
+      if (window.location.protocol === 'file:') {
+        return uniqueEndpoints_([
+          configuredExportEndpoint_(path),
+          ...localEndpoints
+        ]);
+      }
+
+      if (isLocalAppHost_()) {
+        return uniqueEndpoints_([
+          configuredExportEndpoint_(path),
+          path,
+          ...localEndpoints
+        ]);
+      }
+
+      if (isStaticHostedPage_()) {
+        return uniqueEndpoints_([
+          configuredExportEndpoint_(path),
+          ...localEndpoints
+        ]);
+      }
+
+      return uniqueEndpoints_([
+        configuredExportEndpoint_(path),
+        path,
+        ...localEndpoints
+      ]);
+    }
+
     async function requestAdminApiJson_(pathWithQuery, options = {}) {
       const endpoints = uniqueEndpoints_([
         configuredApiEndpoint_(pathWithQuery),
@@ -3899,28 +3951,51 @@ function applyTeamLogRangeSelection_(value) {
         .filter(r => r.team);
     }
 
-    async function fetchSingleTableWeb_(url, classification, sportKey) {
-      const division = classification.replace(/^Class/i, 'Division').trim();
-      const postBody = new URLSearchParams({ classification: division });
-      let html = '';
+    function classificationPostValues_(classification) {
+      const classValue = String(classification || '').trim();
+      const divisionValue = classValue.replace(/^Class/i, 'Division').trim();
+      return uniqueEndpoints_([divisionValue, classValue]);
+    }
 
-      try {
-        html = await fetchPageHtml_(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: postBody
-        });
-      } catch (err) {
-        html = await fetchPageHtml_(url);
-      }
-
+    function parseSingleTableResult_(html) {
       const start = html.indexOf('<table');
       const end = html.indexOf('</table>', start);
       if (start === -1 || end === -1) throw new Error('No standings table found');
 
-      const lastUpdated = extractLastUpdatedAnywhere_(html);
-      const rows = parseRowsFromTableHtml_(html.slice(start, end + 8));
-      return { rows, lastUpdated };
+      return {
+        rows: parseRowsFromTableHtml_(html.slice(start, end + 8)),
+        lastUpdated: extractLastUpdatedAnywhere_(html)
+      };
+    }
+
+    async function fetchSingleTableWeb_(url, classification, sportKey) {
+      let lastResult = null;
+      let lastError = null;
+
+      for (const classificationValue of classificationPostValues_(classification)) {
+        try {
+          const html = await fetchPageHtml_(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ classification: classificationValue })
+          });
+          const result = parseSingleTableResult_(html);
+          if (result.rows.length) return result;
+          lastResult = result;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      try {
+        const result = parseSingleTableResult_(await fetchPageHtml_(url));
+        if (result.rows.length || !lastResult) return result;
+      } catch (err) {
+        lastError = err;
+      }
+
+      if (lastResult) return lastResult;
+      throw lastError || new Error('No standings table found');
     }
 
     async function fetchBasketballWeb_(url, classification, sportKey) {
@@ -4475,30 +4550,31 @@ function applyTeamLogRangeSelection_(value) {
               ${playoffHeaderHtml_(classification, sportLabel, 'Full Playoff Brackets', 'Official NCHSAA bracket widget')}
               <section class="bracket-shell">
                 <div class="bracket-tools export-hidden" aria-label="Bracket viewport controls">
-                  <button type="button" data-zoom="out" aria-label="Zoom out">−</button>
-                  
-                  <input type="number" id="zoomValue" class="zoom-input" min="50" max="150" step="5" value="100" aria-label="Zoom percentage">
-                  
-                  <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
-                  <button type="button" data-zoom="reset">Reset</button>
-                  <button type="button" data-zoom="fullscreen" class="bracket-fullscreen-btn" title="Full screen" aria-label="Toggle full screen" aria-pressed="false">&#x26F6;</button>
-                  <span class="bracket-tools-sep" aria-hidden="true"></span>
-                  <div class="bracket-search-wrap" id="bracketSearchWrap">
-                    <input type="search" id="bracketTeamSearch" class="bracket-search-input" placeholder="Search team&#x2026;" autocomplete="off" aria-label="Search team in bracket">
-                    <div id="bracketTeamMenu" class="team-jump-menu" role="listbox" hidden></div>
+                  <div class="bracket-tools-scroll">
+                    <button type="button" data-zoom="out" aria-label="Zoom out">−</button>
+                    <input type="number" id="zoomValue" class="zoom-input" min="50" max="150" step="5" value="100" aria-label="Zoom percentage">
+                    <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+                    <button type="button" data-zoom="reset">Reset</button>
+                    <button type="button" data-zoom="fullscreen" class="bracket-fullscreen-btn" title="Full screen" aria-label="Toggle full screen" aria-pressed="false">&#x26F6;</button>
+                    <span class="bracket-tools-sep" aria-hidden="true"></span>
+                    <div class="bracket-search-wrap" id="bracketSearchWrap">
+                      <input type="search" id="bracketTeamSearch" class="bracket-search-input" placeholder="Search team&#x2026;" autocomplete="off" aria-label="Search team in bracket">
+                      <div id="bracketTeamMenu" class="team-jump-menu" role="listbox" hidden></div>
+                    </div>
+                    <span class="bracket-select-group">
+                      <label class="bracket-select-label" for="bracketSport">Sport</label>
+                      <select id="bracketSport" class="bracket-select"></select>
+                    </span>
+                    <span class="bracket-select-group">
+                      <label class="bracket-select-label" for="bracketClass">Class</label>
+                      <select id="bracketClass" class="bracket-select"></select>
+                    </span>
+                    <span class="bracket-select-group">
+                      <label class="bracket-select-label" for="bracketYear">Year</label>
+                      <select id="bracketYear" class="bracket-select"></select>
+                    </span>
                   </div>
-                  <span class="bracket-select-group">
-                    <label class="bracket-select-label" for="bracketSport">Sport</label>
-                    <select id="bracketSport" class="bracket-select"></select>
-                  </span>
-                  <span class="bracket-select-group">
-                    <label class="bracket-select-label" for="bracketClass">Class</label>
-                    <select id="bracketClass" class="bracket-select"></select>
-                  </span>
-                  <span class="bracket-select-group">
-                    <label class="bracket-select-label" for="bracketYear">Year</label>
-                    <select id="bracketYear" class="bracket-select"></select>
-                  </span>
+                  <button type="button" data-zoom="exit-fullscreen" class="bracket-close-btn" title="Exit full screen" aria-label="Exit full screen" hidden>&times;</button>
                 </div>
                 <div class="bracket-host" id="bracketViewport">
                   <div class="bracket-zoom" id="bracketZoom" data-canvas-width="${canvasWidth}" style="--brsn-canvas-width: ${canvasWidth}px">
@@ -7090,9 +7166,7 @@ let eastWestLineMapState_ = null;
     }
 
     async function requestServerPngExport_(payload) {
-      const endpoints = window.location.protocol === 'file:'
-        ? ['http://localhost:8000/export-image', '/export-image']
-        : ['/export-image', 'http://localhost:8000/export-image'];
+      const endpoints = serverExportEndpoints_('/export-image');
       let lastError = null;
 
       for (const endpoint of endpoints) {
@@ -7126,7 +7200,10 @@ let eastWestLineMapState_ = null;
         }
       }
 
-      throw lastError || new Error('Server export failed.');
+      const localHint = isStaticHostedPage_()
+        ? 'GitHub Pages cannot run the PNG renderer. Start the local export server with npm start, then try Build Exports again.'
+        : 'Start the local export server with npm start, then try Build Exports again.';
+      throw new Error(lastError?.message ? `${localHint} (${lastError.message})` : localHint);
     }
 
     function pumpExportRenderQueue_() {

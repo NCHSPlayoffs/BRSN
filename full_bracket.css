@@ -188,6 +188,7 @@ body.full-bracket-mode .title-block::after {
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
+  overflow: visible;
   min-height: 42px;
   padding: 8px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, .12);
@@ -198,6 +199,15 @@ body.full-bracket-mode .title-block::after {
   font-size: 11px;
   letter-spacing: .1em;
   text-transform: uppercase;
+}
+
+.bracket-tools-scroll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
 }
 
 .bracket-tools button {
@@ -273,6 +283,34 @@ body.full-bracket-mode .title-block::after {
     rgba(13, 24, 42, .9);
 }
 
+.bracket-close-btn {
+  flex: 0 0 auto !important;
+  min-width: 34px !important;
+  height: 28px !important;
+  margin-left: 0 !important;
+  padding: 0 10px !important;
+  border-color: rgba(255, 51, 68, .64) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 51, 68, .34), rgba(255, 51, 68, .12)),
+    rgba(42, 13, 20, .92) !important;
+  color: #fff !important;
+  font-size: 18px !important;
+  letter-spacing: 0 !important;
+}
+
+.bracket-close-btn[hidden] {
+  display: none !important;
+}
+
+.bracket-close-btn:hover,
+.bracket-close-btn:focus-visible {
+  border-color: rgba(255, 92, 108, .86) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 51, 68, .46), rgba(255, 51, 68, .18)),
+    rgba(52, 13, 22, .96) !important;
+  outline: none;
+}
+
 /* Separator — pushes search/select group to the right */
 .bracket-tools-sep {
   flex: 0 0 auto;
@@ -287,9 +325,10 @@ body.full-bracket-mode .title-block::after {
 .bracket-search-wrap {
   position: relative;
   flex: 0 0 auto;
+  --bracket-search-width: 220px;
 }
 .bracket-search-input {
-  width: 130px;
+  width: var(--bracket-search-width);
   height: 28px;
   padding: 0 8px;
   border: 1px solid rgba(255, 255, 255, .22);
@@ -321,7 +360,8 @@ body.full-bracket-mode .title-block::after {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  min-width: 200px;
+  width: var(--bracket-search-width);
+  min-width: var(--bracket-search-width);
   max-height: 260px;
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, .16);
@@ -332,6 +372,12 @@ body.full-bracket-mode .title-block::after {
   z-index: 200;
   text-transform: none;
   letter-spacing: 0;
+}
+
+#bracketTeamMenu.team-jump-menu {
+  width: var(--bracket-search-width) !important;
+  min-width: var(--bracket-search-width) !important;
+  max-width: var(--bracket-search-width) !important;
 }
 .bracket-team-option {
   display: flex;
@@ -418,13 +464,61 @@ body.full-bracket-mode .title-block::after {
 }
 /* Keep Sport select wide enough for longer labels */
 #bracketSport {
-  min-width: 100px;
+  min-width: 152px;
 }
 #bracketClass {
-  min-width: 78px;
+  min-width: 108px;
 }
 #bracketYear {
-  min-width: 60px;
+  min-width: 104px;
+}
+
+@media (max-width: 760px) {
+  body.full-bracket-mode .bracket-tools {
+    gap: 6px;
+    overflow: hidden;
+    padding: 8px 8px 8px 10px;
+  }
+
+  body.full-bracket-mode .bracket-tools-scroll {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-right: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  body.full-bracket-mode .bracket-tools-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.full-bracket-mode .bracket-tools-sep {
+    margin-left: 8px;
+  }
+
+  body.full-bracket-mode .bracket-search-wrap {
+    --bracket-search-width: 182px;
+  }
+
+  body.full-bracket-mode #bracketSport {
+    min-width: 142px;
+  }
+
+  body.full-bracket-mode #bracketClass {
+    min-width: 106px;
+  }
+
+  body.full-bracket-mode #bracketYear {
+    min-width: 104px;
+  }
+
+  body.full-bracket-mode .bracket-close-btn {
+    height: 34px !important;
+    min-width: 38px !important;
+    margin-right: 0 !important;
+  }
 }
 
 /* ── Fullscreen mode ────────────────────────────────────────────────────── */
@@ -1077,23 +1171,22 @@ body.full-bracket-mode .title-block::after {
   display: grid !important;
   grid-template-columns: 14px 41px minmax(0, 1fr) 28px;
   grid-template-areas:
-    "seed logo name score"
-    "seed logo mascot score";
+"seed logo name   score"
+"seed logo mascot score";
   grid-template-rows: auto auto;
   align-items: center;
   align-content: center;
-  column-gap: 6px;
-  row-gap: 2px;
-  width: 100% !important;
+  column-gap: 7px;
+  row-gap: 0px;
+  width: 111% !important;
   min-height: 68px;
   margin: 0 !important;
-  padding-left: 3px !important;
-  padding-right: 5px !important;
+  padding-left: 5px !important;
+  padding-right: 45px !important;
   padding-top: 4px !important;
   padding-bottom: 4px !important;
-
   border-top: 1px solid rgba(255, 255, 255, .09) !important;
-  /*background: rgba(255, 255, 255, .025) !important;*/
+  background: rgba(255, 255, 255, .025) !important;
   color: rgba(244, 247, 253, .82) !important;
   white-space: normal !important;
   filter: none !important;
@@ -1195,6 +1288,7 @@ body.full-bracket-mode .title-block::after {
   border-color: rgba(255, 255, 255, .12) !important;
   background: rgba(255, 255, 255, .045) !important;
   color: rgba(244, 247, 253, .72) !important;
+  border-radius: 4px !important;
 }
 
 .bracket-host .result {
@@ -1205,6 +1299,8 @@ body.full-bracket-mode .title-block::after {
     linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .045)),
     rgba(255, 255, 255, .08) !important;
   font-size: 20px !important;
+  height: 40px !important;
+  margin: -4px !important;
 }
 
 .bracket-host .name,

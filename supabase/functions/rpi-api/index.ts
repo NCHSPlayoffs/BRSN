@@ -633,24 +633,13 @@ function parseRowsFromTableHtml(tableHtml: string) {
   return rows;
 }
 
-async function fetchOfficialSingleTable(sport: any, classification: string) {
-  const division = classification.replace(/^Class/i, "Division").trim();
-  const postBody = new URLSearchParams({ classification: division }).toString();
-  let html = "";
+function classificationPostValues(classification: string) {
+  const classValue = String(classification || "").trim();
+  const divisionValue = classValue.replace(/^Class/i, "Division").trim();
+  return [...new Set([divisionValue, classValue].filter(Boolean))];
+}
 
-  try {
-    html = await fetchRemotePage({
-      url: sport.url,
-      options: {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: postBody,
-      },
-    });
-  } catch (_) {
-    html = await fetchRemotePage({ url: sport.url });
-  }
-
+function parseSingleTableResult(html: string) {
   const start = html.indexOf("<table");
   const end = html.indexOf("</table>", start);
   if (start === -1 || end === -1) throw new Error("No standings table found");
@@ -659,6 +648,39 @@ async function fetchOfficialSingleTable(sport: any, classification: string) {
     rows: parseRowsFromTableHtml(html.slice(start, end + 8)),
     lastUpdated: extractLastUpdated(html),
   };
+}
+
+async function fetchOfficialSingleTable(sport: any, classification: string) {
+  let lastResult = null;
+  let lastError = null;
+
+  for (const classificationValue of classificationPostValues(classification)) {
+    try {
+      const html = await fetchRemotePage({
+        url: sport.url,
+        options: {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ classification: classificationValue }).toString(),
+        },
+      });
+      const result = parseSingleTableResult(html);
+      if (result.rows.length) return result;
+      lastResult = result;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  try {
+    const result = parseSingleTableResult(await fetchRemotePage({ url: sport.url }));
+    if (result.rows.length || !lastResult) return result;
+  } catch (err) {
+    lastError = err;
+  }
+
+  if (lastResult) return lastResult;
+  throw lastError || new Error("No standings table found");
 }
 
 async function fetchOfficialBasketballTable(sport: any, classification: string) {

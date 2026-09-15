@@ -43,6 +43,12 @@ window.BRSNFullBracketView.init = function initFullBracketView(root = document) 
       }
       return;
     }
+    if (action === "exit-fullscreen") {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+      return;
+    }
     zoomPct = clamp(zoomPct, 50, 150);
     zoom = pctToActual(zoomPct);
     applyZoom();
@@ -70,11 +76,15 @@ window.BRSNFullBracketView.init = function initFullBracketView(root = document) 
 
   document.addEventListener("fullscreenchange", () => {
     const btn = root.querySelector("[data-zoom='fullscreen']");
+    const closeBtn = root.querySelector("[data-zoom='exit-fullscreen']");
+    const inFullscreen = !!document.fullscreenElement;
     if (btn) {
-      const inFullscreen = !!document.fullscreenElement;
-      btn.title = inFullscreen ? "Exit full screen" : "Full screen";
+      btn.title = "Full screen";
       btn.setAttribute("aria-pressed", String(inFullscreen));
-      btn.innerHTML = inFullscreen ? "&#x2715;" : "&#x26F6;";
+      btn.innerHTML = "&#x26F6;";
+    }
+    if (closeBtn) {
+      closeBtn.hidden = !inFullscreen;
     }
   });
 
