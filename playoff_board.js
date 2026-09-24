@@ -163,6 +163,12 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const adminStatus = document.getElementById('adminStatus');
     const adminManageField = document.getElementById('adminManageField');
     const adminManageBtn = document.getElementById('adminManageBtn');
+    document.getElementById('adminBackgroundBtn')?.addEventListener('click', async () => {
+      if (!adminUnlocked_) { setAdminStatus_('Unlock admin tools first.', true); return; }
+      if (!document.querySelector('.sports-graphic')) { setAdminStatus_('Open Region Standings or Playoff Picture first.', true); return; }
+      if (!window.GraphicBackgrounds) { setAdminStatus_('Background editor is still loading.', true); return; }
+      await window.GraphicBackgrounds.open({ secret: adminSecret_, sport: sportKeyFromLabel_(sportEl.value), html: buildServerExportHtml_() });
+    });
     const adminManagerOverlay = document.getElementById('adminManagerOverlay');
     const adminManagerCloseBtn = document.getElementById('adminManagerCloseBtn');
     const adminControls = document.getElementById('adminControls');
@@ -195,12 +201,14 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const loadBtn = document.getElementById('loadBtn');
     const regionBtn = document.getElementById('regionBtn');
     const playoffBtn = document.getElementById('playoffBtn');
+    const playoffCardTestBtn = document.getElementById('playoffCardTestBtn');
+    const playoffCardEastTestBtn = document.getElementById('playoffCardEastTestBtn');
     const eastWestLineBtn = document.getElementById('eastWestLineBtn');
     const viewMapBtn = document.getElementById('viewMapBtn');
     const eastWestExtraEast = document.getElementById('eastWestExtraEast');
     const playoffTeamLimit = document.getElementById('playoffTeamLimit');
     const exportBtn = document.getElementById('exportBtn');
-    const BOARD_ACTION_BUTTONS_ = [loadBtn, regionBtn, playoffBtn, eastWestLineBtn, viewMapBtn, exportBtn];
+    const BOARD_ACTION_BUTTONS_ = [loadBtn, regionBtn, playoffBtn, playoffCardTestBtn, playoffCardEastTestBtn, eastWestLineBtn, viewMapBtn, exportBtn];
     const statusText = document.getElementById('statusText');
     const updatedText = document.getElementById('updatedText');
     const tbody = document.getElementById('tbody');
@@ -237,6 +245,7 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const exportPreviewClassList = document.getElementById('exportPreviewClassList');
     const exportPreviewSport = document.getElementById('exportPreviewSport');
     const exportPreviewTypeFilter = document.getElementById('exportPreviewTypeFilter');
+    const exportPlayoffLayout = document.getElementById('exportPlayoffLayout');
     const exportPreviewStatus = document.getElementById('exportPreviewStatus');
     const exportPreviewGrid = document.getElementById('exportPreviewGrid');
     const teamScheduleOverlay = document.getElementById('teamScheduleOverlay');
@@ -300,6 +309,8 @@ let teamLogSelectedTeamKey_ = '';
     let teamJumpMenuOpen_ = false;
     let teamJumpHighlightedKey_ = '';
 let compareSnapshotId_ = '';
+let compareSnapshotAnchor_ = null;
+let playoffViewSelection_ = { layout: 'cards', side: 'west' };
 let compareSnapshotLabel_ = '';
 let historySnapshotId_ = '';
 let historySnapshotLabel_ = '';
@@ -693,6 +704,54 @@ function setEastWestMapSportPickerOpen_(isOpen) {
         </span>`;
     }
 
+    let activeRpiIcon_ = null;
+    let activeRpiTooltip_ = null;
+    function closeRpiTooltip_() {
+      activeRpiIcon_?.removeAttribute('aria-describedby');
+      activeRpiTooltip_?.remove();
+      activeRpiIcon_ = activeRpiTooltip_ = null;
+    }
+    function positionRpiTooltip_() {
+      if (!activeRpiIcon_?.isConnected) return closeRpiTooltip_();
+      const anchor = activeRpiIcon_.getBoundingClientRect();
+      const box = activeRpiTooltip_.getBoundingClientRect();
+      const left = Math.max(12, Math.min(anchor.right - box.width, window.innerWidth - box.width - 12));
+      const below = anchor.bottom + 10;
+      const top = Math.max(12, Math.min(below + box.height <= window.innerHeight - 12 ? below : anchor.top - box.height - 10, window.innerHeight - box.height - 12));
+      Object.assign(activeRpiTooltip_.style, { left: `${left}px`, top: `${top}px` });
+    }
+    function openRpiTooltip_(icon) {
+      if (activeRpiIcon_ === icon) return;
+      closeRpiTooltip_();
+      const original = icon.nextElementSibling;
+      if (!original?.matches('.rpi-info-popover')) return;
+      activeRpiIcon_ = icon;
+      activeRpiTooltip_ = original.cloneNode(true);
+      activeRpiTooltip_.classList.add('rpi-floating-tooltip');
+      activeRpiTooltip_.id = 'active-rpi-tooltip';
+      activeRpiTooltip_.setAttribute('popover', 'manual');
+      document.body.append(activeRpiTooltip_);
+      activeRpiTooltip_.showPopover?.();
+      icon.setAttribute('aria-describedby', activeRpiTooltip_.id);
+      positionRpiTooltip_();
+    }
+    document.addEventListener('pointerover', event => {
+      const icon = event.target.closest('.rpi-info-icon');
+      if (icon) openRpiTooltip_(icon);
+    });
+    document.addEventListener('pointerout', event => {
+      if (event.target === activeRpiIcon_ && document.activeElement !== activeRpiIcon_) closeRpiTooltip_();
+    });
+    document.addEventListener('focusin', event => {
+      if (event.target.matches('.rpi-info-icon')) openRpiTooltip_(event.target);
+    });
+    document.addEventListener('focusout', event => {
+      if (event.target === activeRpiIcon_) closeRpiTooltip_();
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeRpiTooltip_(); });
+    window.addEventListener('resize', () => { if (activeRpiTooltip_) positionRpiTooltip_(); });
+    document.addEventListener('scroll', () => { if (activeRpiTooltip_) positionRpiTooltip_(); }, true);
+
     function tableHeaderLabelHtml_(label) {
       return String(label || '') === 'RPI' ? rpiInfoHeaderHtml_() : escapeHtml(label);
     }
@@ -749,6 +808,10 @@ function setEastWestMapSportPickerOpen_(isOpen) {
       const usingSnapshotTools = Boolean(compareSnapshotId_ || historySnapshotId_);
       const showCompared = Boolean(previous && compared) && (!showLastChangeToggle?.checked || usingSnapshotTools);
       updatedText.textContent = showCompared ? `${base} | Compared: ${compared}` : base;
+      if (compareSnapshotId_ && rpiResult?.changeCompareError) updatedText.textContent += ` | Comparison unavailable: ${rpiResult.changeCompareError}`;
+      document.querySelectorAll('.graphic-updated').forEach(node => {
+        node.textContent = graphicUpdatedLabel_();
+      });
     }
 
     function snapshotButtonLabel_(snapshot) {
@@ -813,6 +876,7 @@ function setEastWestMapSportPickerOpen_(isOpen) {
 
       if (kind === 'compare') {
         compareSnapshotId_ = snapshot.id;
+        compareSnapshotAnchor_ = snapshot;
         compareSnapshotLabel_ = snapshotFullLabel_(snapshot);
         if (compareSnapshotDate?.value) await loadSnapshotListForDate_('compare', compareSnapshotDate.value);
       } else {
@@ -826,6 +890,7 @@ function setEastWestMapSportPickerOpen_(isOpen) {
 
     async function resetCompareSnapshot_() {
       compareSnapshotId_ = '';
+      compareSnapshotAnchor_ = null;
       compareSnapshotLabel_ = '';
       if (compareSnapshotDate) compareSnapshotDate.value = '';
       if (compareSnapshotList) compareSnapshotList.innerHTML = '<span class="snapshot-empty">Comparing to previous snapshot.</span>';
@@ -841,13 +906,10 @@ function setEastWestMapSportPickerOpen_(isOpen) {
     }
 
     function resetSnapshotSelectionsForNewTable_() {
-      compareSnapshotId_ = '';
-      compareSnapshotLabel_ = '';
       historySnapshotId_ = '';
       historySnapshotLabel_ = '';
-      if (compareSnapshotDate) compareSnapshotDate.value = '';
       if (historySnapshotDate) historySnapshotDate.value = '';
-      if (compareSnapshotList) compareSnapshotList.innerHTML = '<span class="snapshot-empty">Comparing to previous snapshot.</span>';
+      if (compareSnapshotList) compareSnapshotList.innerHTML = '<span class="snapshot-empty">Comparison date retained. Select a date to view this table\'s snapshots.</span>';
       if (historySnapshotList) historySnapshotList.innerHTML = '<span class="snapshot-empty">Loading live RPI tables.</span>';
     }
 
@@ -1008,8 +1070,8 @@ function setEastWestMapSportPickerOpen_(isOpen) {
     function maxPrepsPathWithSeason_(pathname, seasonToken = '') {
       let path = String(pathname || '').replace(/\/+$/g, '');
       path = path.replace(/\/schedule$/i, '');
+      path = path.replace(/\/\d{2}-\d{2}$/i, '');
       if (seasonToken) {
-        path = path.replace(/\/\d{2}-\d{2}$/i, '');
         path += `/${seasonToken}`;
       }
       return path;
@@ -1115,6 +1177,9 @@ function setEastWestMapSportPickerOpen_(isOpen) {
 
     function teamScheduleEndpointCandidates_() {
       const configured = configuredApiEndpoint_('/team-schedule');
+      if (['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
+        return uniqueEndpoints_(['/team-schedule', configured]);
+      }
       if (window.location.protocol === 'file:') {
         return uniqueEndpoints_([configured, 'http://localhost:8000/team-schedule']);
       }
@@ -3142,6 +3207,7 @@ function applyTeamLogRangeSelection_(value) {
         if (!matchedEntry) return true;
 
         excludedTeams.push({
+          longitude: row.longitude ?? teamObj?.longitude,
           label: matchedEntry.label,
           school,
           record: String(row?.record || '').trim()
@@ -3725,7 +3791,24 @@ function applyTeamLogRangeSelection_(value) {
       return uniqueEndpoints_([configuredApiEndpoint_(pathWithQuery), ...local]);
     }
 
+    const snapshotReadCache_ = new Map();
     async function requestSnapshotApiJson_(path, params = {}) {
+      const cacheable = path === '/rpi-snapshots/snapshot' || path === '/rpi-snapshots/list';
+      if (!cacheable) return fetchSnapshotApiJson_(path, params);
+      const key = JSON.stringify([path, Object.entries(params).sort(([a], [b]) => a.localeCompare(b))]);
+      const cached = snapshotReadCache_.get(key);
+      if (cached && cached.expires > Date.now()) return cached.promise;
+      const entry = { expires: Date.now() + (path.endsWith('/snapshot') ? 3600000 : 30000) };
+      entry.promise = fetchSnapshotApiJson_(path, params).catch(error => {
+        if (snapshotReadCache_.get(key) === entry) snapshotReadCache_.delete(key);
+        throw error;
+      });
+      snapshotReadCache_.set(key, entry);
+      if (snapshotReadCache_.size > 200) snapshotReadCache_.delete(snapshotReadCache_.keys().next().value);
+      return entry.promise;
+    }
+
+    async function fetchSnapshotApiJson_(path, params = {}) {
       const query = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null && String(value) !== '') query.set(key, value);
@@ -3733,12 +3816,16 @@ function applyTeamLogRangeSelection_(value) {
       const pathWithQuery = `${path}${query.toString() ? `?${query}` : ''}`;
       let lastError = null;
       for (const endpoint of snapshotApiEndpointCandidates_(pathWithQuery)) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
         try {
-          const response = await fetch(endpoint, { method: 'GET' });
+          const response = await fetch(endpoint, { method: 'GET', signal: controller.signal });
           if (!response.ok) throw new Error(`Snapshot API failed (${response.status})`);
           return await response.json();
         } catch (err) {
           lastError = err;
+        } finally {
+          clearTimeout(timeout);
         }
       }
       throw lastError || new Error('Snapshot API failed');
@@ -3806,16 +3893,36 @@ function applyTeamLogRangeSelection_(value) {
       });
     }
 
+    async function resolveCompareSnapshotId_(sport, classification) {
+      const anchor = compareSnapshotAnchor_;
+      if (!compareSnapshotId_ || !anchor) return compareSnapshotId_;
+      if (anchor.sport === sport && anchor.classification === classification) return anchor.id;
+      const cutoff = Date.parse(anchor.fetchedAt);
+      const result = await requestSnapshotApiJson_('/rpi-snapshots/list', {
+        sport, classification
+      });
+      const candidates = (result?.snapshots || []).filter(snapshot =>
+        snapshot.sport === sport && snapshot.classification === classification &&
+        snapshot.source === anchor.source && snapshot.seasonYear === anchor.seasonYear &&
+        Date.parse(snapshot.fetchedAt) <= cutoff
+      );
+      // Unchanged tables may have last been saved days earlier. Never cross the selected cutoff.
+      candidates.sort((a, b) => Date.parse(b.fetchedAt) - Date.parse(a.fetchedAt));
+      if (!candidates.length) throw new Error(`No ${classification} ${sport} snapshot at or before ${new Date(cutoff).toLocaleString()}`);
+      return candidates[0].id;
+    }
+
     async function addLiveRpiChangeData_(rows, sport, classification, rpiResult) {
       if (!shouldUseLiveRpiSnapshots_(rpiResult)) return rows;
       try {
+        const selectedCompareId = await resolveCompareSnapshotId_(sport, classification);
         const compareResult = await requestRpiSnapshotCompare_({
           sport,
           classification,
           source: 'official',
           seasonYear: 'live',
           save: false,
-          compareSnapshotId: compareSnapshotId_,
+          compareSnapshotId: selectedCompareId,
           includeLastChange: showLastChangeEnabled_(),
           rows: rows.map(row => ({
             school: row.school,
@@ -3828,6 +3935,7 @@ function applyTeamLogRangeSelection_(value) {
             oowp: row.oowp
           }))
         });
+        if (selectedCompareId && compareResult?.compareSnapshotId !== selectedCompareId) throw new Error('Selected comparison snapshot unavailable');
         rpiResult.changeCompare = compareResult;
         return compareResult?.canCompare ? applyRpiChangeData_(rows, compareResult) : rows;
       } catch (err) {
@@ -3949,6 +4057,131 @@ function applyTeamLogRangeSelection_(value) {
           };
         })
         .filter(r => r.team);
+    }
+
+    async function fetchRegionalLastRows_(rows, previousRows, sport, classification, cutoff, prepare) {
+      const lookup = (source, side) => {
+        const field = buildEastWestLineRows_(source, classification, side);
+        return new Map(field.east.concat(field.west).map(row => [canonicalTeamName_(row.school), row]));
+      };
+      const pending = ['east', 'west'].map(side => {
+        const previous = lookup(previousRows, side);
+        const teams = new Map([...lookup(rows, side)].filter(([key, row]) => {
+          const old = previous.get(key);
+          return old && old.lineRegion === row.lineRegion && old.regionRank === row.regionRank;
+        }));
+        return { side, teams };
+      });
+      const unresolved = () => pending.some(group => group.teams.size);
+      if (!unresolved()) return [];
+      const list = await requestSnapshotApiJson_('/rpi-snapshots/list', { sport, classification });
+      const snapshots = (list?.snapshots || [])
+        .filter(snapshot => snapshot.source === 'official' && snapshot.seasonYear === 'live' && Date.parse(snapshot.fetchedAt) <= Date.parse(cutoff))
+        .sort((a, b) => Date.parse(b.fetchedAt) - Date.parse(a.fetchedAt));
+      const history = [];
+      for (const snapshot of snapshots) {
+        if (!unresolved()) break;
+        const result = await requestSnapshotApiJson_('/rpi-snapshots/snapshot', { id: snapshot.id });
+        if (!result?.snapshot?.rows?.length) break;
+        const olderRows = prepare(result.snapshot);
+        history.push(olderRows);
+        for (const group of pending) {
+          const older = lookup(olderRows, group.side);
+          for (const [key, newer] of group.teams) {
+            const old = older.get(key);
+            if (!old || old.lineRegion !== newer.lineRegion || old.regionRank !== newer.regionRank) group.teams.delete(key);
+            else group.teams.set(key, old);
+          }
+        }
+      }
+      return history;
+    }
+
+    function recordResultSince_(record, previousRecord) {
+      const parse = value => {
+        const match = String(value || '').trim().match(/^(\d+)\s*-\s*(\d+)(?:\s*-\s*(\d+))?$/);
+        return match ? [Number(match[1]), Number(match[2]), Number(match[3] || 0)] : null;
+      };
+      const current = parse(record), previous = parse(previousRecord);
+      if (!current || !previous) return 'unknown';
+      const changes = current.map((value, i) => value - previous[i]);
+      if (changes.some(value => value < 0)) return 'unknown';
+      const outcomes = changes.map((value, i) => value > 0 ? i : -1).filter(i => i >= 0);
+      if (!outcomes.length) return 'none';
+      if (outcomes.length > 1) return 'mixed';
+      return ['win', 'loss', 'tie'][outcomes[0]];
+    }
+
+    async function addComparisonGameResults_(rows, previousRows, sport, classification, compare, normalizeCfg) {
+      const key = name => canonicalTeamName_(name, normalizeCfg);
+      const previous = new Map(previousRows.map(row => [key(row.school), row]));
+      const pending = new Map();
+      const updated = rows.map(row => {
+        const outcome = recordResultSince_(row.record, previous.get(key(row.school))?.record);
+        const copy = { ...row, comparisonGameResult: ['win', 'loss'].includes(outcome) ? outcome : null };
+        if (outcome === 'mixed') pending.set(key(row.school), copy);
+        return copy;
+      });
+      if (!pending.size) return updated;
+      try {
+        const list = await requestSnapshotApiJson_('/rpi-snapshots/list', { sport, classification });
+        const snapshots = (list?.snapshots || []).filter(snapshot =>
+          snapshot.source === 'official' && snapshot.seasonYear === 'live' &&
+          Date.parse(snapshot.fetchedAt) > Date.parse(compare.previousFetchedAt) &&
+          Date.parse(snapshot.fetchedAt) <= Date.parse(compare.fetchedAt)
+        ).sort((a, b) => Date.parse(b.fetchedAt) - Date.parse(a.fetchedAt));
+        // Stop at the newest changed record. Never substitute an older win for a newer tie/unknown result.
+        for (const snapshot of snapshots) {
+          if (!pending.size) break;
+          const result = await requestSnapshotApiJson_('/rpi-snapshots/snapshot', { id: snapshot.id });
+          if (!result?.snapshot?.rows?.length) break;
+          const older = new Map(result.snapshot.rows.map(row => [key(row.school), row]));
+          for (const [teamKey, row] of pending) {
+            const outcome = recordResultSince_(row.record, older.get(teamKey)?.record);
+            if (outcome === 'none') continue;
+            row.comparisonGameResult = ['win', 'loss'].includes(outcome) ? outcome : null;
+            pending.delete(teamKey);
+          }
+        }
+      } catch (error) {
+        console.warn('Latest comparison game result unavailable:', error);
+      }
+      return updated;
+    }
+
+    async function addRegionalRankHistory_(rows, sport, classification, rpiResult, tdMap, normalizeCfg) {
+      const compare = rpiResult?.changeCompare;
+      if (!compare?.canCompare || !compare.compareSnapshotId) return rows;
+      try {
+        const result = await requestSnapshotApiJson_('/rpi-snapshots/snapshot', { id: compare.compareSnapshotId });
+        if (!result?.snapshot?.rows?.length) return rows;
+        const prepare = snapshot => {
+          const historical = snapshot.rows.slice().sort((a, b) => Number(a.rank) - Number(b.rank))
+            .map(row => ({ ...row, team: row.school, rpi: row.rpi == null ? '' : String(row.rpi) }));
+          // Historical ranking needs no logo, schedule lookup, or localStorage writes.
+          const merged = historical.map(row => ({
+            ...row, originalSchool: row.team,
+            school: liveDisplayTeamName_(row.team, normalizeCfg),
+            longitude: Number(findTeamDetailByName_(tdMap, row.team, normalizeCfg)?.longitude ?? NaN)
+          }));
+          return filterOptedOutTeams_(merged, sportKeyFromLabel_(sport), tdMap, liveOptOutConfig_, normalizeCfg, {
+            classification, classOptOutConfig: adminConfig_.OptOutByClass
+          }).rows;
+        };
+        const history = { previousRows: prepare(result.snapshot), lastRows: [] };
+        if (compare.includeLastChange) {
+          try {
+            history.lastRows = await fetchRegionalLastRows_(rows, history.previousRows, sport, classification, compare.fetchedAt, prepare);
+          } catch (err) {
+            console.warn('Regional last-change history unavailable:', err);
+          }
+        }
+        const resultRows = await addComparisonGameResults_(rows, history.previousRows, sport, classification, compare, normalizeCfg);
+        return resultRows.map(row => ({ ...row, regionRankHistory: history }));
+      } catch (err) {
+        console.warn('Regional rank comparison unavailable:', err);
+        return rows;
+      }
     }
 
     function classificationPostValues_(classification) {
@@ -4208,19 +4441,12 @@ function applyTeamLogRangeSelection_(value) {
       return row.lineRegion === 'East' ? 'odd-extra-east' : 'odd-extra-west';
     }
 
-    function oddExtraNoteHtml_(rows, colspan = 1) {
+    function oddExtraNoteHtml_(rows) {
       const oddRow = (Array.isArray(rows) ? rows : []).find(row => row?.isOddExtra);
       const oddClass = oddExtraClass_(oddRow);
       if (!oddClass) return '';
-      const note = 'Region will be determined by a coin flip at the end of the season for highlighted team';
-      return `
-        <tfoot>
-          <tr>
-            <td colspan="${colspan}">
-              <div class="odd-extra-note ${escapeHtml(oddClass)}">${escapeHtml(note)}</div>
-            </td>
-          </tr>
-        </tfoot>`;
+      const note = 'Highlighted teams region will be determined by a coin flip at the end of the season';
+      return `<div class="odd-extra-note ${escapeHtml(oddClass)}">${escapeHtml(note)}</div>`;
     }
 
     function bracketHasOddExtra_(bracketData) {
@@ -4239,7 +4465,7 @@ function applyTeamLogRangeSelection_(value) {
     function bracketOddExtraNoteHtml_(side, bracketData) {
       if (!bracketHasOddExtra_(bracketData)) return '';
       const oddClass = side === 'east' ? 'odd-extra-east' : 'odd-extra-west';
-      const note = 'Region will be determined by a coin flip at the end of the season for highlighted team';
+      const note = 'Highlighted teams region will be determined by a coin flip at the end of the season';
       return `<div class="odd-extra-note ${escapeHtml(oddClass)}">${escapeHtml(note)}</div>`;
     }
 
@@ -4259,7 +4485,7 @@ function applyTeamLogRangeSelection_(value) {
     function playoffHeaderHtml_(classification, sportLabel, viewTitle, subtitle = '') {
       const sportText = String(sportLabel || '').trim();
       const classText = String(classification || '').replace(/^Class\s+/i, '').trim();
-      const sportIconHtml = sportHeaderIconHtml_(sportLabel);
+      const sportIconHtml = ['Region Standings', 'Playoff Picture'].includes(viewTitle) ? '' : sportHeaderIconHtml_(sportLabel);
       return `
         <div class="playoff-header">
           <div class="playoff-brand-row">
@@ -4267,7 +4493,7 @@ function applyTeamLogRangeSelection_(value) {
             <div class="playoff-title-wrap">
               <div class="playoff-kicker">${sportIconHtml} ${escapeHtml(classText)} ${escapeHtml(sportText)} ${sportIconHtml}</div>
               <div class="playoff-title">${escapeHtml(viewTitle)}</div>
-              <div class="playoff-subtitle">${escapeHtml(subtitle)}</div>
+              ${subtitle ? `<div class="playoff-subtitle">${escapeHtml(subtitle)}</div>` : ''}
             </div>
             <img class="playoff-brand" src="https://iili.io/Bga3mQe.png" alt="Brand logo" crossorigin="anonymous" referrerpolicy="no-referrer">
           </div>
@@ -5048,7 +5274,7 @@ function applyTeamLogRangeSelection_(value) {
         armImageFallbacks_(tbody);
       } else if (document.body.classList.contains('playoff-mode')) {
         const regionData = buildRegionRows_(sourceRows, classification, eastWestExtraSide_(), eastWestLineMapState_.excludedTeams || []);
-        renderPlayoffPicture(regionData, classification, sportLabel);
+        renderSelectedPlayoffPicture_(regionData, classification, sportLabel);
         armImageFallbacks_(tbody);
       }
 
@@ -5059,6 +5285,7 @@ function applyTeamLogRangeSelection_(value) {
       const cloneDoc = document.documentElement.cloneNode(true);
       injectExportSnapshotBase_(cloneDoc);
       cloneDoc.querySelectorAll('script').forEach(el => el.remove());
+      cloneDoc.querySelectorAll('.background-editor').forEach(el => el.remove());
       const body = cloneDoc.querySelector('body');
       if (body) body.className = document.body.className;
 
@@ -6067,7 +6294,37 @@ function applyTeamLogRangeSelection_(value) {
         .sort((a, b) => numericRpi_(b.rpi) - numericRpi_(a.rpi))
         .map((r, i) => ({ ...r, regionRank: i + 1 }));
 
+      applyRegionalRankChanges_(east.concat(west), rows.find(row => row.regionRankHistory)?.regionRankHistory, classification, extraSide);
       return { west, east, total: lineData.total, cap: lineData.cap, extraSide: lineData.extraSide, excludedTeams };
+    }
+
+    function applyRegionalRankChanges_(currentRows, history, classification, extraSide) {
+      // Rebuild the whole historical field: the geographic cutoff can move as teams qualify.
+      const lookup = rows => {
+        const field = buildEastWestLineRows_(rows, classification, extraSide);
+        return new Map(field.east.concat(field.west).map(row => [canonicalTeamName_(row.school), row]));
+      };
+      const previous = history ? lookup(history.previousRows) : new Map();
+      const olderFields = (history?.lastRows || []).map(lookup);
+      const delta = (newer, older) => newer && older && newer.lineRegion === older.lineRegion
+        ? older.regionRank - newer.regionRank : null;
+      currentRows.forEach(row => {
+        const key = canonicalTeamName_(row.school);
+        const old = previous.get(key);
+        row.previousRegionRank = old?.regionRank ?? null;
+        row.previousRegion = old?.lineRegion ?? null;
+        row.regionRankChange = delta(row, old);
+        // Last-change mode follows adjacent regional snapshots, never statewide movement.
+        if (row.regionRankChange !== 0) return;
+        let newer = row;
+        for (const field of olderFields) {
+          const older = field.get(key);
+          const change = delta(newer, older);
+          if (change === null) break;
+          if (change !== 0) { row.regionRankChange = change; break; }
+          newer = older;
+        }
+      });
     }
 
     function regionInfoLookupForRows_(rows, classification) {
@@ -6339,6 +6596,14 @@ function applyTeamLogRangeSelection_(value) {
       tbody.innerHTML = `${mobileRpiBoardHeaderHtml_()}${rowHtml}`;
     }
 
+    function graphicUpdatedLabel_() {
+      return String(updatedText.textContent || '').split(' | Compared:')[0].replace(/^Last updated:\s*/i, '').trim() || 'Update time unavailable';
+    }
+
+    function graphicFooterHtml_() {
+      return `<footer class="graphic-footer">BRSN &bull; <span class="graphic-updated">${escapeHtml(graphicUpdatedLabel_())}</span></footer>`;
+    }
+
     function renderRegionRows(regionData, classification, sportLabel) {
       setEastWestMapStateFromRows_(regionData.west.concat(regionData.east), classification, sportLabel, regionData.excludedTeams || []);
       // Keep these column names in sync with the adjustable-column comments in playoff_board.desktop.css.
@@ -6383,20 +6648,20 @@ function applyTeamLogRangeSelection_(value) {
               <tr>
                 <th class="is-centered" data-col="rank">Rank</th>
                 <th data-col="school">School</th>
-                <th class="is-centered" data-col="record">Record</th>
+                <th class="is-centered" data-col="record">W-L-T</th>
                 <th class="is-centered" data-col="rpi">${rpiInfoHeaderHtml_()}</th>
               </tr>
             </thead>
             <tbody>${items || '<tr><td colspan="4" class="muted">No teams.</td></tr>'}</tbody>
-            ${oddExtraNoteHtml_(rows, 4)}
           </table>
+          ${oddExtraNoteHtml_(rows)}
         `;
       };
 
       tbody.innerHTML = `
         <tr>
           <td colspan="${MAIN_TABLE_COLSPAN_}" style="padding:0;border-bottom:none;">
-            <div class="region-standings-board">
+            <div class="region-standings-board sports-graphic" data-background-sport="${sportKeyFromLabel_(sportLabel)}" data-surface="${/volleyball|basketball/i.test(sportLabel) ? 'court' : 'turf'}">
               ${playoffHeaderHtml_(classification, sportLabel, 'Region Standings')}
 
               <div class="region-split">
@@ -6415,6 +6680,7 @@ function applyTeamLogRangeSelection_(value) {
                 </div>
               </div>
               ${excludedTeamsNoteHtml_(regionData.excludedTeams)}
+              ${graphicFooterHtml_()}
             </div>
           </td>
         </tr>`;
@@ -6524,6 +6790,7 @@ function applyTeamLogRangeSelection_(value) {
             ${logo}
               <div class="team-copy">
                 <div class="team-copy-name">${escapeHtml(team.school)}</div>
+                ${entry.opponentLabel ? `<div class="graphic-opponent">(${escapeHtml(entry.opponentLabel)})</div>` : ''}
                 <div class="team-copy-stats">
                   ${teamLogTriggerHtml_(team, team.record, 'team-copy-stat-pill')}
                   ${teamLogTriggerHtml_(team, team.rpi, 'team-copy-stat-pill')}
@@ -6534,59 +6801,396 @@ function applyTeamLogRangeSelection_(value) {
         </div>`;
     }
 
-    function renderPlayoffRegion_(side, bracketData) {
-      const isWest = side === 'west';
-      const headerRow = isWest
-        ? `
-          <div class="round-label">1st Round</div>
-          <div class="connector-header"></div>
-          <div class="round-label">2nd Round</div>
-        `
-        : `
-          <div class="round-label">2nd Round</div>
-          <div class="connector-header"></div>
-          <div class="round-label">1st Round</div>
-        `;
+    function cardPlayoffMoveClass_(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n === 0) return 'zero';
+      return n > 0 ? 'pos' : 'neg';
+    }
 
-      const rows = bracketData.slots.map(slot => {
-        const round1Class = isWest ? 'round1-west' : 'round1-east';
-        const round1Cell = `<div class="game-slot round1-slot ${round1Class}"><div class="game-stack"><div class="slot-round-label">Round 1</div>${renderBracketEntry_(slot.firstRound.top)}${renderBracketEntry_(slot.firstRound.bottom)}</div></div>`;
-        const round2Cell = `<div class="game-slot round2-slot"><div class="game-stack"><div class="slot-round-label">Round 2</div>${renderBracketEntry_(slot.secondRound.top)}${renderBracketEntry_(slot.secondRound.bottom)}</div></div>`;
-        const connector = `<div class="connector-cell"><div class="connector-line ${side}"></div></div>`;
-        return isWest ? `<div class="bracket-row">${round1Cell}${connector}${round2Cell}</div>` : `<div class="bracket-row">${round2Cell}${connector}${round1Cell}</div>`;
-      }).join('');
+    function cardPlayoffMoveText_(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n === 0) return '\u2014';
+      return `${n > 0 ? '\u25b2' : '\u25bc'}${Math.abs(n)}`;
+    }
+
+    function cardPlayoffDeltaText_(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n === 0) return '\u2014';
+      const fixed = Math.abs(n).toFixed(5).replace(/^0\./, '.');
+      return `${n > 0 ? '\u25b2' : '\u25bc'}${fixed}`;
+    }
+
+    function cardPlayoffDeltaClass_(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n === 0) return 'zero';
+      return n > 0 ? 'positive' : 'negative';
+    }
+
+    function cardPlayoffNameClass_(name) {
+      const len = String(name || '').trim().length;
+      if (len >= 27) return 'xlong';
+      if (len > 22) return 'long';
+      return '';
+    }
+
+    function cardPlayoffNameHtml_(name) {
+      const words = String(name || '').trim().split(/\s+/);
+      if (words.length < 2) return escapeHtml(words[0]);
+      let split = 1;
+      if (/^[a-z]\.?$/i.test(words[0])) {
+        while (split < words.length - 1 && /^[a-z]\.?$/i.test(words[split])) split++;
+      }
+      return `${escapeHtml(words.slice(0, split).join(' '))}<br>${escapeHtml(words.slice(split).join(' '))}`;
+    }
+
+    function cardPlayoffColorStyle_(team) {
+      const detail = teamDetailsRowForName_(team?.school);
+      const primary = String(team?.dominantHex || detail?.dominantHex || '').trim();
+      const secondary = String(team?.secondaryHex || detail?.secondaryHex || '').trim();
+      const rules = [];
+      const colors = [primary, secondary].filter(color => /^#[0-9a-f]{6}$/i.test(color));
+      const channels = color => [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16));
+      const vibrancy = color => {
+        const rgb = channels(color);
+        const peak = Math.max(...rgb);
+        const saturation = peak ? (peak - Math.min(...rgb)) / peak : 0;
+        return saturation * 2 + (peak - Math.min(...rgb)) / 255 + (color === primary ? .15 : 0);
+      };
+      const vibrant = /^#000000$/i.test(primary)
+        ? (/^#[0-9a-f]{6}$/i.test(secondary) && !/^#000000$/i.test(secondary) ? secondary : '#ffffff')
+        : colors.sort((a, b) => vibrancy(b) - vibrancy(a))[0];
+      if (vibrant) {
+        const rgb = channels(vibrant);
+        const peak = Math.max(...rgb);
+        // Scale channels together to preserve hue and saturation instead of adding white.
+        const scale = peak > 0 ? Math.max(1, 190 / peak) : 1;
+        const visible = rgb.map(value => Math.round(value * scale).toString(16).padStart(2, '0')).join('');
+        rules.push(`--rank-accent:#${visible}`);
+        rules.push(`--team-accent:#${visible}`);
+      }
+      if (/^#[0-9a-f]{6}$/i.test(primary)) {
+        rules.push(`--team-primary:${primary}`);
+      }
+      if (/^#[0-9a-f]{6}$/i.test(secondary)) rules.push(`--team-secondary:${secondary}`);
+      return rules.length ? ` style="${escapeHtml(rules.join(';'))}"` : '';
+    }
+
+    function cardPlayoffTeamEntryHtml_(entry, options = {}) {
+      if (!entry || entry.type === 'empty') {
+        return `<div class="card-playoff-team card-playoff-placeholder is-bye"><div class="card-playoff-placeholder-text">BYE</div><div class="card-placeholder-detail">[No opponent]</div></div>`;
+      }
+      if (entry.type === 'text') {
+        const text = String(entry.text || '').trim();
+        const winner = text.match(/^Winner of #(\d+) vs #(\d+)$/i);
+        if (winner) return `<div class="card-playoff-team card-playoff-placeholder is-winner"><div class="card-placeholder-eyebrow">ADVANCES TO SECOND ROUND</div><div class="card-playoff-placeholder-text"><span>No. ${winner[1]}</span><small>VS</small><span>No. ${winner[2]}</span></div><div class="card-placeholder-detail">Matchup winner</div></div>`;
+        return `<div class="card-playoff-team card-playoff-placeholder ${entry.bye ? 'is-bye' : ''}"><div class="card-playoff-placeholder-text">${escapeHtml(text || 'BYE')}</div></div>`;
+      }
+
+      const team = entry.team || {};
+      const rank = team.regionRank || team.rank || '';
+      const logoUrl = team.mapLogoUrl || '';
+      const logo = imageHtmlWithFallback_('card-playoff-logo', logoUrl, `${team.school || 'Team'} logo`, 'card-playoff-logo-placeholder');
+      const moveClass = cardPlayoffMoveClass_(team.regionRankChange);
+      const moveText = cardPlayoffMoveText_(team.regionRankChange);
+      const deltaClass = cardPlayoffDeltaClass_(team.rpiChange);
+      const deltaText = cardPlayoffDeltaText_(team.rpiChange);
+      const changeMarkup = text => /^[\u25b2\u25bc]/.test(text)
+        ? `<span class="card-playoff-change-arrow">${escapeHtml(text[0])}</span>${escapeHtml(text.slice(1))}`
+        : escapeHtml(text);
+      const oddExtraClass = oddExtraClass_(team);
 
       return `
-        <div class="bracket-region ${side}">
-          <div class="bracket-region-title">${side === 'west' ? 'West Region' : 'East Region'}</div>
-          <div class="bracket-grid">
-            ${headerRow}
-            ${rows}
+        <div class="card-playoff-team ${escapeHtml(oddExtraClass)}" data-move="${escapeHtml(moveClass)}"${cardPlayoffColorStyle_(team)} ${scheduleRowDataAttrs_(team)}>
+          <div class="card-playoff-rank">
+            <svg class="card-playoff-rank-edge" viewBox="0 0 72 104" preserveAspectRatio="none" aria-hidden="true"><path d="M71 0 V87 L63 103 H0" /></svg>
+            ${teamLogTriggerHtml_(team, rank, 'card-playoff-rank-number')}
+            <div class="card-playoff-move"><span>${changeMarkup(moveText)}</span></div>
           </div>
+          <div class="card-playoff-hero">
+            <div class="card-playoff-logo-wrap">${logo}</div>
+            <div class="card-playoff-copy">
+              <div class="card-playoff-school ${escapeHtml(cardPlayoffNameClass_(team.school))}">${cardPlayoffNameHtml_(team.school)}</div>
+              ${team.mascot ? `<div class="card-playoff-mascot">${escapeHtml(team.mascot)}</div>` : ''}
+            </div>
+          </div>
+          <div class="card-playoff-stats">
+            <div class="card-playoff-stat"><span>W-L-T</span><div class="card-playoff-record">${['win', 'loss'].includes(team.comparisonGameResult) ? `<span class="card-playoff-result-arrow" title="Latest identifiable result in comparison window: ${team.comparisonGameResult}" aria-label="Latest identifiable result in comparison window: ${team.comparisonGameResult}">${team.comparisonGameResult === 'win' ? '&#9650;' : '&#9660;'}</span>` : ''}${teamLogTriggerHtml_(team, team.record || '', 'card-playoff-stat-value')}</div></div>
+            <div class="card-playoff-stat"><span>RPI</span>${teamLogTriggerHtml_(team, String(team.rpi ?? '').replace(/^0\./, '.'), 'card-playoff-stat-value')}</div>
+            <div class="card-playoff-stat card-playoff-delta ${escapeHtml(deltaClass)}"><span>RPI CHANGE</span><div class="card-playoff-stat-value">${changeMarkup(deltaText)}</div></div>
+          </div>
+        </div>`;
+    }
+
+    function cardPlayoffFirstRoundHtml_(slot) {
+      const top = slot?.firstRound?.top;
+      const bottom = slot?.firstRound?.bottom;
+      const hasTop = top?.type === 'team';
+      const hasBottom = bottom?.type === 'team';
+      if (!hasTop && !hasBottom) {
+        return `<div class="card-playoff-matchup is-empty"><div class="card-playoff-placeholder-text">No first-round game</div></div>`;
+      }
+      if (hasTop && hasBottom) {
+        return `
+          <div class="card-playoff-matchup">
+            ${cardPlayoffTeamEntryHtml_(top)}
+            <div class="card-playoff-vs" aria-hidden="true"><span>VS</span></div>
+            ${cardPlayoffTeamEntryHtml_(bottom)}
+          </div>`;
+      }
+      return `
+        <div class="card-playoff-matchup is-bye">
+          ${cardPlayoffTeamEntryHtml_(hasTop ? top : bottom)}
+          <div class="card-playoff-advances">Advances</div>
+        </div>`;
+    }
+
+    function cardPlayoffSecondRoundHtml_(slot) {
+      const protectedEntry = slot?.secondRound?.bottom;
+      if (protectedEntry?.type === 'team') {
+        const top = slot?.firstRound?.top;
+        const bottom = slot?.firstRound?.bottom;
+        const opponentLabel = top?.type === 'team' && bottom?.type === 'team'
+          ? `(${top.team.regionRank} VS ${bottom.team.regionRank} Winner)`
+          : '';
+        return `
+          <div class="card-playoff-second">
+            ${cardPlayoffTeamEntryHtml_(protectedEntry)}
+            ${opponentLabel ? `<div class="card-playoff-opponent">${escapeHtml(opponentLabel)}</div>` : ''}
+          </div>`;
+      }
+      const secondTop = slot?.secondRound?.top;
+      return `<div class="card-playoff-second">${cardPlayoffTeamEntryHtml_(secondTop, { placeholder: 'Winner advances' })}</div>`;
+    }
+
+    function renderPlayoffCardRegion_(side, bracketData) {
+      const teams = new Map();
+      bracketData.slots.forEach(slot => {
+        [slot.firstRound.top, slot.firstRound.bottom, slot.secondRound.bottom].forEach(entry => {
+          if (entry?.type === 'team') teams.set(Number(entry.team.regionRank), entry);
+        });
+      });
+      const size = 2 ** Math.ceil(Math.log2(Math.max(2, ...teams.keys())));
+      const games = [], byes = new Map();
+      for (let seed = 1; seed <= size / 2; seed++) {
+        const high = size + 1 - seed;
+        if (teams.has(seed) && teams.has(high)) games.push({ seed, high });
+        else if (teams.has(seed) || teams.has(high)) byes.set(seed, teams.get(seed) || teams.get(high));
+      }
+      games.sort((a, b) => b.seed - a.seed);
+      let rowsData = games.map(({seed, high}) => {
+        const next = size / 2 + 1 - seed;
+        const left = byes.get(next) || { type: 'text', text: `Winner of #${seed} vs #${high}` };
+        byes.delete(next);
+        return { left, middle: teams.get(seed), right: teams.get(high) };
+      });
+      for (const [seed, entry] of byes) {
+        if (!byes.has(seed)) continue;
+        const other = size / 2 + 1 - seed;
+        rowsData.push({ left: entry, middle: byes.get(other), right: null });
+        byes.delete(seed);
+        byes.delete(other);
+      }
+      // Keep bye seeds ordered, but place paired first-round winners together.
+      const groupedRows = [], placed = new Set();
+      for (const row of rowsData) {
+        if (placed.has(row)) continue;
+        groupedRows.push(row);
+        placed.add(row);
+        if (row.left?.type !== 'text') continue;
+        const opponentSeed = size / 2 + 1 - Number(row.middle?.team?.regionRank);
+        const partner = rowsData.find(other => other.left?.type === 'text' && Number(other.middle?.team?.regionRank) === opponentSeed);
+        if (partner && !placed.has(partner)) {
+          groupedRows.push(partner);
+          placed.add(partner);
+        }
+      }
+      rowsData = groupedRows;
+      const rows = rowsData.map((row, index) => `
+        <div class="card-playoff-row">
+          ${cardPlayoffTeamEntryHtml_(row.left)}
+          <div class="card-playoff-connector" aria-hidden="true"></div>
+          ${cardPlayoffTeamEntryHtml_(row.middle)}
+          <div class="card-playoff-vs" aria-hidden="true">VS</div>
+          ${cardPlayoffTeamEntryHtml_(row.right)}
+          ${row.left?.type === 'text' && rowsData[index + 1]?.left?.type === 'text' && Number(row.middle?.team?.regionRank) + Number(rowsData[index + 1]?.middle?.team?.regionRank) === size / 2 + 1 ? '<div class="card-playoff-vs card-playoff-winner-vs" aria-label="Second-round matchup">VS</div>' : ''}
+        </div>`).join('');
+
+      return `
+        <div class="graphic-region card-playoff-region ${side}">
+          <div class="card-playoff-heads">
+            <div>Second Round</div>
+            <div>First Round</div>
+          </div>
+          <div class="card-playoff-rows" style="--card-row-count:${Math.max(1, rowsData.length)}">${rows || '<p>No teams.</p>'}</div>
+          <div class="card-playoff-note-slot">${bracketOddExtraNoteHtml_(side, bracketData)}</div>
+        </div>`;
+    }
+
+    function renderPlayoffRegion_(side, bracketData, fieldSize = 0) {
+      // Collapse empty preliminary rounds, using the same seeded bracket on both sides.
+      const teams = new Map();
+      bracketData.slots.forEach(slot => {
+        [slot.firstRound.top, slot.firstRound.bottom, slot.secondRound.bottom].forEach(entry => {
+          if (entry?.type === 'team') teams.set(Number(entry.team.regionRank), entry.team);
+        });
+      });
+      const size = fieldSize || 2 ** Math.ceil(Math.log2(Math.max(2, ...teams.keys())));
+      const byes = [];
+      const games = [];
+      for (let seed = 1; seed <= size / 2; seed++) {
+        const otherSeed = size + 1 - seed;
+        const bottom = teams.get(seed);
+        const top = teams.get(otherSeed);
+        if (bottom && top) {
+          games.push({ lowSeed: seed, firstRound: { top: { type: 'team', team: top }, bottom: { type: 'team', team: bottom } } });
+        } else if (bottom || top) {
+          const nextLow = size / 2 + 1 - seed;
+          const nextHigh = size + 1 - nextLow;
+          const opponents = [nextHigh, nextLow].filter(rank => teams.has(rank));
+          const opponentLabel = opponents.length === 2 ? `${nextHigh} VS ${nextLow} Winner`
+            : opponents.length === 1 ? `#${opponents[0]} ${teams.get(opponents[0]).school}` : '';
+          byes.push({ type: 'team', team: bottom || top, opponentLabel });
+        }
+      }
+      byes.sort((a, b) => a.team.regionRank - b.team.regionRank);
+      games.sort((a, b) => a.lowSeed - b.lowSeed);
+      const byeRows = byes.map(entry => `<div class="graphic-bye">${renderBracketEntry_(entry)}</div>`).join('');
+      const gameRows = games.map(slot => `<div class="graphic-matchup">${renderBracketEntry_(slot.firstRound.top)}${renderBracketEntry_(slot.firstRound.bottom)}<span class="graphic-vs" aria-hidden="true"><span>VS</span></span></div>`).join('');
+
+      return `
+        <div class="graphic-region ${side}">
+          <div class="bracket-region-title">${side === 'west' ? 'West Region' : 'East Region'}</div>
+          ${byes.length ? `<h3 class="graphic-section-label">SECOND ROUND</h3><div class="graphic-byes">${byeRows}</div>` : ''}
+          ${games.length ? `<h3 class="graphic-section-label">First round</h3><div class="graphic-games">${gameRows}</div>` : ''}
+          ${!byes.length && !games.length ? '<p>No teams.</p>' : ''}
           ${bracketOddExtraNoteHtml_(side, bracketData)}
         </div>
       `;
+    }
+
+    function renderSelectedPlayoffPicture_(regionData, classification, sportLabel) {
+      if (playoffViewSelection_.layout === 'cards') {
+        renderPlayoffCardPicture(regionData, classification, sportLabel, playoffViewSelection_.side);
+      } else {
+        renderPlayoffPicture(regionData, classification, sportLabel);
+      }
     }
 
     function renderPlayoffPicture(regionData, classification, sportLabel) {
       setEastWestMapStateFromRows_(regionData.west.concat(regionData.east), classification, sportLabel, regionData.excludedTeams || []);
       const westBracket = buildRegionPlayoff_(regionData.west, classification, regionData.total);
       const eastBracket = buildRegionPlayoff_(regionData.east, classification, regionData.total);
+      const fieldSize = 2 ** Math.ceil(Math.log2(Math.max(2, ...regionData.west.concat(regionData.east).map(row => Number(row.regionRank)))));
 
       tbody.innerHTML = `
         <tr>
           <td colspan="${MAIN_TABLE_COLSPAN_}" style="padding:0;border-bottom:none;">
-            <div class="playoff-board">
-              ${playoffHeaderHtml_(classification, sportLabel, 'Playoff Picture', 'Projected first two rounds if the playoffs started today')}
+            <div class="playoff-board sports-graphic" data-background-sport="${sportKeyFromLabel_(sportLabel)}" data-surface="${/volleyball|basketball/i.test(sportLabel) ? 'court' : 'turf'}">
+              ${playoffHeaderHtml_(classification, sportLabel, 'Playoff Picture')}
 
               <div class="playoff-regions">
-                ${renderPlayoffRegion_('west', westBracket)}
-                ${renderPlayoffRegion_('east', eastBracket)}
+                ${renderPlayoffRegion_('west', westBracket, fieldSize)}
+                ${renderPlayoffRegion_('east', eastBracket, fieldSize)}
               </div>
               ${excludedTeamsNoteHtml_(regionData.excludedTeams)}
+              ${graphicFooterHtml_()}
             </div>
           </td>
         </tr>`;
+      // Reserve the same bye slots on both sides without adding fictitious teams.
+      const regions = [...tbody.querySelectorAll('.graphic-region')];
+      const byeCount = Math.max(0, ...regions.map(region => region.querySelectorAll('.graphic-bye').length));
+      regions.forEach(region => {
+        let byes = region.querySelector('.graphic-byes');
+        if (!byes && byeCount) {
+          region.querySelector('.bracket-region-title').insertAdjacentHTML('afterend', '<h3 class="graphic-section-label">SECOND ROUND</h3><div class="graphic-byes"></div>');
+          byes = region.querySelector('.graphic-byes');
+        }
+        for (let i = byes?.children.length || 0; i < byeCount; i++) {
+          byes.insertAdjacentHTML('beforeend', '<div class="graphic-bye-spacer" aria-hidden="true"></div>');
+        }
+      });
+    }
+
+    let cardPreviewResizeObserver_;
+    const cardGhostCounts_ = new Map();
+    let cardGhostPreview_;
+    const cardGhostKey_ = (classification, sport, side) => `${sport}|${classification}|${side}`;
+    function withCardGhostTeams_(data, classification, sport) {
+      const result = { ...data };
+      for (const side of ['east', 'west']) {
+        const rows = data[side].slice().sort((a, b) => a.regionRank - b.regionRank);
+        const count = Math.max(-rows.length, Math.min(cardGhostCounts_.get(cardGhostKey_(classification, sport, side)) || 0, Math.max(0, 24 - rows.length)));
+        if (count < 0) rows.splice(rows.length + count);
+        for (let i = 0; i < count; i++) {
+          rows.push({ school: `Ghost Team ${i + 1}`, mascot: 'TEST TEAM', regionRank: rows.length + 1,
+            record: '--', rpi: '', mapLogoUrl: './NCHSAALOGO.png', lineRegion: side === 'east' ? 'East' : 'West',
+            dominantHex: side === 'east' ? '#1680ff' : '#ed193e', secondaryHex: '#ffffff' });
+        }
+        result[side] = rows;
+      }
+      result.total = result.east.length + result.west.length;
+      return result;
+    }
+    function updateCardGhosts_(reset = false) {
+      const status = document.getElementById('cardGhostStatus');
+      if (!cardGhostPreview_ || !tbody.querySelector('.card-playoff-board')) {
+        status.textContent = 'Open an East or West card playoff picture first.';
+        return;
+      }
+      const { data, classification, sport, side: displayedSide } = cardGhostPreview_;
+      const side = document.getElementById('cardGhostSide').value;
+      const input = document.getElementById('cardGhostCount');
+      const count = reset ? 0 : Math.min(Math.max(-data[side].length, Math.trunc(Number(input.value) || 0)), Math.max(0, 24 - data[side].length));
+      input.value = count;
+      cardGhostCounts_.set(cardGhostKey_(classification, sport, side), count);
+      renderPlayoffCardPicture(data, classification, sport, displayedSide);
+      status.textContent = `${classification} ${sport}: ${count < 0 ? `${-count} lowest-ranked teams hidden from` : `${count} ghost teams added to`} ${side}. Local test only; resets on page reload.`;
+    }
+    document.getElementById('cardGhostApply')?.addEventListener('click', () => updateCardGhosts_());
+    document.getElementById('cardGhostReset')?.addEventListener('click', () => updateCardGhosts_(true));
+    function excludedTeamsForRegion_(regionData, side) {
+      const validLongitude = row => row?.longitude !== '' && row?.longitude != null && Number.isFinite(Number(row.longitude));
+      const east = regionData.east.filter(validLongitude).map(longitudeSortValue_);
+      const west = regionData.west.filter(validLongitude).map(longitudeSortValue_);
+      const cutoff = east.length && west.length ? (Math.max(...east) + Math.min(...west)) / 2 : null;
+      return (regionData.excludedTeams || []).filter(team => {
+        const detail = validLongitude(team) ? team : teamDetailsRowForName_(team.school || team.label);
+        if (cutoff !== null && validLongitude(detail)) {
+          return (longitudeSortValue_(detail) <= cutoff ? 'east' : 'west') === side;
+        }
+        return String(team.lineRegion || '').toLowerCase() === side;
+      });
+    }
+    function renderPlayoffCardPicture(regionData, classification, sportLabel, side = 'west') {
+      setEastWestMapStateFromRows_(regionData.west.concat(regionData.east), classification, sportLabel, regionData.excludedTeams || []);
+      cardGhostPreview_ = { data: regionData, classification, sport: sportLabel, side };
+      regionData = withCardGhostTeams_(regionData, classification, sportLabel);
+      const westBracket = buildRegionPlayoff_(regionData.west, classification, regionData.total);
+      const eastBracket = buildRegionPlayoff_(regionData.east, classification, regionData.total);
+
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="${MAIN_TABLE_COLSPAN_}" style="padding:0;border-bottom:none;">
+            <div class="playoff-board sports-graphic card-playoff-board" data-region="${side}" data-background-sport="${sportKeyFromLabel_(sportLabel)}" data-surface="${/volleyball|basketball/i.test(sportLabel) ? 'court' : 'turf'}">
+              <header class="card-playoff-title"><div class="card-banner-region">${side.toUpperCase()}<span>REGION</span></div><h1><span class="card-banner-heading">${escapeHtml(classification.replace(/^Class\s+/i, ''))} ${escapeHtml(sportLabel)}</span><span class="card-banner-subtitle">PLAYOFF PICTURE</span></h1><div class="card-banner-meta"><div class="card-banner-wordmark" aria-label="Big Red Sports Network"><div><b>BIG</b> <b>RED</b></div><small>SPORTS NETWORK</small></div></div></header>
+              <div class="playoff-regions card-playoff-regions">
+                ${renderPlayoffCardRegion_(side, side === 'east' ? eastBracket : westBracket)}
+              </div>
+              ${excludedTeamsNoteHtml_(excludedTeamsForRegion_(regionData, side))}
+              ${graphicFooterHtml_()}
+            </div>
+          </td>
+        </tr>`;
+      cardPreviewResizeObserver_?.disconnect();
+      const board = tbody.querySelector('.card-playoff-board');
+      const viewport = tbody.closest('.table-scroll');
+      if (board && viewport) {
+        const fit = () => { board.style.zoom = String(viewport.clientWidth / 1600); };
+        cardPreviewResizeObserver_ = new ResizeObserver(fit);
+        cardPreviewResizeObserver_.observe(viewport);
+        fit();
+      }
     }
 
     function getTeamDetailsMapCached_() {
@@ -6623,10 +7227,11 @@ function applyTeamLogRangeSelection_(value) {
         })
         : { rows: mergedRows, excludedTeams: [] };
       const rowsWithChanges = await addLiveRpiChangeData_(filteredRows, sport, classification, rpiResult);
+      const rowsWithRegionalHistory = await addRegionalRankHistory_(rowsWithChanges, sport, classification, rpiResult, tdMap, normalizeCfg);
       return {
         sport,
         classification,
-        rows: rowsWithChanges,
+        rows: rowsWithRegionalHistory,
         rpiResult: {
           ...rpiResult,
           excludedTeams
@@ -6859,8 +7464,38 @@ let eastWestLineMapState_ = null;
     }
 
     function exportFileBase_(item) {
-      return `${item.classShort} ${item.sportLabel || exportSportLabel_()} ${exportKindLabel_(item.kind)}`;
+      const order = (parseInt(item.classShort, 10) - 1) * 2 + (item.kind === 'region' ? 1 : 2);
+      const label = item.kind === 'playoff' && item.playoffLayout === 'cards' ? `${item.side === 'east' ? 'East' : 'West'} Playoff Picture` : exportKindLabel_(item.kind);
+      return `${String(order).padStart(2, '0')} ${item.classShort} ${item.sportLabel || exportSportLabel_()} ${label}`;
     }
+
+    let localExportDirectories_ = {};
+    const localExportEnabled_ = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+    async function localExportRequest_(path, options = {}) {
+      const response = await fetch('/local-exports/' + path, options);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Local export failed');
+      return data;
+    }
+    async function refreshExportDirectory_() {
+      if (!localExportEnabled_) return;
+      document.getElementById('localExportDirectoryControls').hidden = false;
+      try {
+        localExportDirectories_ = (await localExportRequest_('settings')).directories;
+        const directory = localExportDirectories_[sportKeyFromLabel_(exportSportLabel_())];
+        document.getElementById('exportDirectoryPath').textContent = directory || 'No folder selected';
+        document.getElementById('useExportDirectory').checked = Boolean(directory);
+      } catch (error) { document.getElementById('exportDirectoryPath').textContent = error.message; }
+    }
+    document.getElementById('browseExportDirectoryBtn')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        await localExportRequest_('browse?sport=' + sportKeyFromLabel_(exportSportLabel_()), { method: 'POST' });
+        await refreshExportDirectory_();
+      } catch (error) { setExportPreviewStatus_(error.message); }
+      finally { button.disabled = false; }
+    });
 
     function exportPreviewClassInputs_() {
       return [...exportPreviewClassList.querySelectorAll('input[type="checkbox"]')];
@@ -6940,6 +7575,10 @@ let eastWestLineMapState_ = null;
       return ['region', 'playoff'];
     }
 
+    function selectedExportPlayoffLayout_() {
+      return exportPlayoffLayout?.value === 'cards' ? 'cards' : 'classic';
+    }
+
     renderExportPreviewClassOptions_();
     populateExportPreviewSportOptions_();
     populateEastWestMapSelectors_();
@@ -6996,6 +7635,17 @@ let eastWestLineMapState_ = null;
       return text || 'Queued';
     }
 
+    let exportDownloadBusy_ = false;
+    function syncExportRenderStatus_() {
+      const cards = [...exportPreviewGrid.querySelectorAll('.export-preview-card')];
+      const ready = cards.filter(card => card.classList.contains('is-ready')).length;
+      const failed = cards.filter(card => card.classList.contains('is-error')).length;
+      const label = document.getElementById('exportRenderCount');
+      if (label) label.textContent = `${ready} / ${cards.length} rendered${failed ? ` · ${failed} failed` : ''}`;
+      const progress = document.getElementById('exportRenderProgress');
+      if (progress) { progress.max = cards.length || 1; progress.value = ready; }
+      downloadAllExportsBtn.disabled = exportDownloadBusy_ || !cards.length || ready !== cards.length;
+    }
     function setExportCardProgress_(key, text, state = 'loading') {
       const els = getExportCardEls_(key);
       if (!els) return;
@@ -7007,6 +7657,7 @@ let eastWestLineMapState_ = null;
         els.progressText.title = text || '';
       }
       if (els.downloadBtn) els.downloadBtn.disabled = state !== 'ready';
+      syncExportRenderStatus_();
     }
 
     function clearExportPreview_() {
@@ -7016,6 +7667,7 @@ let eastWestLineMapState_ = null;
       exportPreviewGrid.style.removeProperty('--export-card-size');
       exportPreviewStatus.textContent = '';
       exportPreviewGrid.classList.remove('all-classes');
+      syncExportRenderStatus_();
     }
 
     function exportSnapshotBaseHref_() {
@@ -7044,6 +7696,7 @@ let eastWestLineMapState_ = null;
     function openExportPreview_() {
       syncExportPreviewClassesToCurrent_();
       syncExportPreviewSportToCurrent_();
+      refreshExportDirectory_();
       exportPreviewOverlay.classList.add('open');
       exportPreviewOverlay.setAttribute('aria-hidden', 'false');
       if (!exportPreviewGrid.children.length) {
@@ -7106,11 +7759,36 @@ let eastWestLineMapState_ = null;
       });
     }
 
-    function downloadExportItem_(item) {
+    async function downloadExportItem_(item, batch = item.localBatch) {
       const els = getExportCardEls_(item.key);
       if (!els || !item.blob) return;
       const fallback = exportFileBase_(item);
-      downloadBlob_(item.blob, exportFileNameValue_(els.input, fallback));
+      let filename = exportFileNameValue_(els.input, fallback);
+      let blob = item.blob;
+      const format = document.getElementById('exportImageFormat')?.value || 'png';
+      if (format !== 'png') {
+        try {
+          const bitmap = await createImageBitmap(blob);
+          const canvas = document.createElement('canvas');
+          canvas.width = bitmap.width; canvas.height = bitmap.height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#101513'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(bitmap, 0, 0); bitmap.close();
+          blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', format === 'jpeg85' ? .85 : .92));
+          if (!blob) throw new Error('JPG encoding failed');
+          filename = filename.replace(/\.(png|jpe?g)$/i, '') + '.jpg';
+        } catch (error) { setExportPreviewStatus_('Conversion failed: ' + error.message); return false; }
+      }
+      if (localExportEnabled_ && document.getElementById('useExportDirectory').checked) {
+        try {
+          const params = new URLSearchParams({ sport: sportKeyFromLabel_(item.sportLabel), batch: batch || crypto.randomUUID(), filename });
+          const result = await localExportRequest_('save?' + params, { method: 'POST', headers: { 'Content-Type': blob.type }, body: blob });
+          setExportPreviewStatus_('Saved to ' + result.folder);
+          return true;
+        } catch (error) { setExportPreviewStatus_('Not saved: ' + error.message); return false; }
+      }
+      downloadBlob_(blob, filename);
+      return true;
     }
 
     function attachCardBehavior_(item) {
@@ -7120,14 +7798,16 @@ let eastWestLineMapState_ = null;
       els.downloadBtn.addEventListener('click', () => downloadExportItem_(item));
     }
     function buildServerExportHtml_() {
+      window.GraphicBackgrounds?.applyAll();
       const cloneDoc = document.documentElement.cloneNode(true);
       injectExportSnapshotBase_(cloneDoc);
+      cloneDoc.querySelectorAll('.background-editor').forEach(el => el.remove());
 
       cloneDoc.querySelectorAll('script').forEach(el => el.remove());
 
       const body = cloneDoc.querySelector('body');
       if (body) {
-        body.className = document.body.className;
+        body.className = `${document.body.className} sports-graphic-export`;
       }
 
       const tbodyClone = cloneDoc.querySelector('#tbody');
@@ -7152,6 +7832,10 @@ let eastWestLineMapState_ = null;
 
       const exportPreviewClone = cloneDoc.querySelector('#exportPreviewOverlay');
       if (exportPreviewClone) exportPreviewClone.remove();
+
+      // Start the graphic on an integer pixel so element screenshots keep exact dimensions.
+      const graphicClone = cloneDoc.querySelector('.sports-graphic');
+      if (graphicClone && body) body.appendChild(graphicClone);
 
       const helperStyle = cloneDoc.ownerDocument.createElement('style');
       helperStyle.textContent = `
@@ -7231,6 +7915,7 @@ let eastWestLineMapState_ = null;
     }
 
     async function createCurrentRenderedExportJob_(exportSelector, exportKind, classLabelForName, sportLabelForName) {
+      await window.GraphicBackgrounds?.ready;
       const target = document.querySelector(exportSelector);
       if (!target) throw new Error(`Missing export target: ${exportSelector}`);
 
@@ -7254,7 +7939,7 @@ let eastWestLineMapState_ = null;
           html: htmlSnapshot,
           selector: exportSelector,
           filename,
-          background: '#0b1320'
+          background: '#101513'
         })
       };
     }
@@ -7299,20 +7984,25 @@ let eastWestLineMapState_ = null;
         }
 
         exportPreviewGrid.classList.toggle('all-classes', classesToBuild.length > 1);
-        const totalViews = classesToBuild.length * kindsToBuild.length;
+        const totalViews = classesToBuild.length * (kindsToBuild.length + (selectedExportPlayoffLayout_() === 'cards' && kindsToBuild.includes('playoff') ? 1 : 0));
         setExportPreviewStatus_(`Preparing ${totalViews} export${totalViews === 1 ? '' : 's'}...`);
 
         const sportToBuild = exportSportLabel_();
+        const playoffLayoutToBuild = selectedExportPlayoffLayout_();
+        const localBatch = crypto.randomUUID();
         const allItems = classesToBuild.flatMap(classValue => {
           const classShort = classShortFromValue_(classValue);
-          return kindsToBuild.map(kind => ({
-            key: `${classShort}::${kind}`,
+          return kindsToBuild.flatMap(kind => (kind === 'playoff' && playoffLayoutToBuild === 'cards' ? ['west', 'east'] : ['']).map(side => ({
+            key: `${classShort}::${kind}${side ? `::${side}` : ''}`,
+            side,
             classValue,
             classShort,
             sportLabel: sportToBuild,
+            localBatch,
             kind,
+            playoffLayout: kind === 'playoff' ? playoffLayoutToBuild : '',
             blob: null
-          }));
+          })));
         });
 
         exportPreviewState_.items.push(...allItems);
@@ -7331,10 +8021,8 @@ let eastWestLineMapState_ = null;
         scheduleExportPreviewGridFit_();
 
         const teamDetailsPromise = getTeamDetailsMapCached_();
-        const classDataPromises = new Map(classesToBuild.map(classValue => [
-          classValue,
-          getMergedRowsForSelection_(classValue, sportToBuild, teamDetailsPromise)
-        ]));
+        // Load one class at a time while already queued image renders continue.
+        // This avoids a burst of history requests and unhandled prefetch rejections.
         const renderPromises = [];
 
         const trackExportJob_ = (item, job) => {
@@ -7348,7 +8036,7 @@ let eastWestLineMapState_ = null;
             .catch(err => {
               console.error(err);
               if (token === exportPreviewState_.currentToken) {
-                setExportCardProgress_(item.key, 'Error', 'error');
+                setExportCardProgress_(item.key, `Error: ${err.message || 'Render failed'}`, 'error');
               }
               return false;
             });
@@ -7369,7 +8057,7 @@ let eastWestLineMapState_ = null;
             .filter(item => item.classValue === classValue)
             .forEach(item => setExportCardProgress_(item.key, 'Loading data...', 'loading'));
 
-          const { sport, classification, rows, rpiResult } = await classDataPromises.get(classValue);
+          const { sport, classification, rows, rpiResult } = await getMergedRowsForSelection_(classValue, sportToBuild, teamDetailsPromise);
           const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
 
           const regionKey = `${classShort}::region`;
@@ -7391,18 +8079,22 @@ let eastWestLineMapState_ = null;
           }
 
           if (kindsToBuild.includes('playoff')) {
+            for (const side of playoffLayoutToBuild === 'cards' ? ['west', 'east'] : ['']) {
+            const sideKey = `${playoffKey}${side ? `::${side}` : ''}`;
             setExportPreviewStatus_(`Rendering ${classShort} Playoff Picture...`);
             setViewMode_('playoff');
             setMainHeaderBlank();
-            renderPlayoffPicture(regionData, classification, sport);
+            if (playoffLayoutToBuild === 'cards') renderPlayoffCardPicture(regionData, classification, sport, side);
+            else renderPlayoffPicture(regionData, classification, sport);
             armImageFallbacks_(tbody);
             setUpdatedFromRpi_(rpiResult);
-            setExportCardProgress_(playoffKey, 'Rendering Playoff Picture...', 'loading');
+            setExportCardProgress_(sideKey, `Rendering ${side} Playoff Picture...`, 'loading');
 
             const playoffJob = await createCurrentRenderedExportJob_('.playoff-board', 'playoff_board', classValue, sportToBuild);
             if (token !== exportPreviewState_.currentToken) return;
-            const item = exportPreviewState_.items.find(x => x.key === playoffKey);
+            const item = exportPreviewState_.items.find(x => x.key === sideKey);
             if (item) trackExportJob_(item, playoffJob);
+            }
           }
 
           setExportPreviewStatus_(`Queued ${classShort} (${i + 1}/${classesToBuild.length}).`);
@@ -7424,7 +8116,7 @@ let eastWestLineMapState_ = null;
           const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
           setViewMode_('playoff');
           setMainHeaderBlank();
-          renderPlayoffPicture(regionData, classification, sport);
+          renderSelectedPlayoffPicture_(regionData, classification, sport);
           armImageFallbacks_(tbody);
           setUpdatedFromRpi_(rpiResult, oldUpdated);
         } else if (originalMode === 'east-west') {
@@ -7933,6 +8625,7 @@ let eastWestLineMapState_ = null;
     }
 
     function lockAdminPanel_() {
+      window.GraphicBackgrounds?.close();
       adminUnlocked_ = false;
       adminSecret_ = '';
       sessionStorage.removeItem('rpi-admin-secret');

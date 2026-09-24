@@ -864,13 +864,23 @@ teamLogContent?.addEventListener('wheel', (e) => {
     window.addEventListener('resize', scheduleExportPreviewGridFit_);
     exportPreviewSport.addEventListener('change', () => {
       exportPreviewSportTouched_ = true;
+      refreshExportDirectory_();
     });
 
-    downloadAllExportsBtn.addEventListener('click', () => {
-      const items = visibleExportItems_().filter(item => item.blob);
-      items.forEach((item, idx) => {
-        setTimeout(() => downloadExportItem_(item), idx * 200);
-      });
+    downloadAllExportsBtn.addEventListener('click', async () => {
+      syncExportRenderStatus_();
+      if (downloadAllExportsBtn.disabled) return;
+      const items = visibleExportItems_().filter(item => item.blob).sort((a,b) =>
+        parseInt(a.classShort,10) - parseInt(b.classShort,10) || (a.kind === 'region' ? 0 : 1) - (b.kind === 'region' ? 0 : 1));
+      const batch = crypto.randomUUID();
+      exportDownloadBusy_ = true;
+      syncExportRenderStatus_();
+      try {
+        for (const item of items) {
+          if (await downloadExportItem_(item, batch) === false) break;
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      } finally { exportDownloadBusy_ = false; syncExportRenderStatus_(); }
     });
 
     function setAppSettingsOpen_(isOpen) {
@@ -1222,9 +1232,9 @@ teamLogContent?.addEventListener('wheel', (e) => {
       } else if (document.body.classList.contains('east-west-mode')) {
         buildEastWestLineView_();
       } else if (document.body.classList.contains('regions-mode')) {
-        regionBtn.click();
+        buildRegionView_();
       } else if (document.body.classList.contains('playoff-mode')) {
-        playoffBtn.click();
+        buildPlayoffView_();
       }
     });
 
@@ -1258,25 +1268,29 @@ teamLogContent?.addEventListener('wheel', (e) => {
       }
     }
 
-    async function buildPlayoffView_() {
+    async function buildPlayoffView_(options = {}) {
+      playoffViewSelection_ = { ...playoffViewSelection_, ...options };
+      const selection = { ...playoffViewSelection_ };
+      const useCardLayout = selection.layout === 'cards';
       setBoardActionsDisabled_(true);
       updatedText.textContent = '';
-      setStatus(`Building ${classEl.value} playoff picture...`);
+      setStatus(`Building ${classEl.value} ${useCardLayout ? 'card test' : 'playoff picture'}...`);
       setViewMode_('playoff');
       setBoardLoading_(true, 'Loading playoff picture...', `${sportEl.value} ${classEl.value}`);
       await nextPaint_();
 
       try {
         const { sport, classification, rows, rpiResult } = await getMergedRowsForCurrentSelection_();
-        setBoardLoading_(true, 'Rendering playoff picture...', 'Building projected first two rounds');
+        setBoardLoading_(true, 'Rendering playoff picture...', useCardLayout ? 'Building card layout test' : 'Building projected first two rounds');
         await nextPaint_();
         const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
         setMainHeaderBlank();
-        renderPlayoffPicture(regionData, classification, sport);
+        if (useCardLayout) renderPlayoffCardPicture(regionData, classification, sport, selection.side);
+        else renderPlayoffPicture(regionData, classification, sport);
         armImageFallbacks_(tbody);
         setUpdatedFromRpi_(rpiResult);
         await idleFrame_();
-        setStatus(`${regionData.total} playoff teams.`);
+        setStatus(useCardLayout ? `${regionData[selection.side].length} ${selection.side} playoff teams in card test layout.` : `${regionData.total} playoff teams.`);
       } catch (err) {
         console.error(err);
         restoreMainHeader();
@@ -1317,6 +1331,8 @@ teamLogContent?.addEventListener('wheel', (e) => {
       }
     }
 
-    regionBtn.addEventListener('click', buildRegionView_);
-    playoffBtn.addEventListener('click', buildPlayoffView_);
+    regionBtn?.addEventListener('click', buildRegionView_);
+    playoffBtn?.addEventListener('click', () => buildPlayoffView_({ layout: 'classic' }));
+    playoffCardTestBtn?.addEventListener('click', () => buildPlayoffView_({ layout: 'cards', side: 'west' }));
+    playoffCardEastTestBtn?.addEventListener('click', () => buildPlayoffView_({ layout: 'cards', side: 'east' }));
     refreshSeasonYearOptions_().catch(err => console.warn('Unable to load fallback RPI years:', err));

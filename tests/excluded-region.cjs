@@ -1,0 +1,10 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const source = fs.readFileSync('playoff_board.js','utf8');
+const start = source.indexOf('    function excludedTeamsForRegion_(');
+const end = source.indexOf('\n    function ', start + 1);
+const filter = new Function('longitudeSortValue_', 'teamDetailsRowForName_', `${source.slice(start,end)}; return excludedTeamsForRegion_;`)(r=>Math.abs(Number(r.longitude)),()=>({}));
+const data = {east:[{longitude:-77}],west:[{longitude:-81}],excludedTeams:[{school:'East',longitude:-76},{school:'West',longitude:-82},{school:'Unknown'}]};
+assert.deepEqual(filter(data,'east').map(t=>t.school),['East']);
+assert.deepEqual(filter(data,'west').map(t=>t.school),['West']);
+console.log('Excluded teams appear only on their geographic side.');

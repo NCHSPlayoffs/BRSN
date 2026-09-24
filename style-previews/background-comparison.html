@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Background studio</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#202421;color:#eee;font:14px Arial,sans-serif}header{padding:16px 24px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;border-bottom:1px solid #4b514d}h1{font-size:20px;margin:0}select,button{padding:8px;font:inherit;background:#303833;color:white;border:1px solid #68736b;border-radius:4px}label{display:grid;gap:6px}input{width:160px;accent-color:#58bc94}output{font-variant-numeric:tabular-nums}main{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px 24px}h2{font-size:16px;margin:0 0 12px}.frame{position:relative;width:100%;overflow:hidden}iframe{position:absolute;inset:0;width:1600px;height:2200px;border:0;transform-origin:top left;pointer-events:none}@media(max-width:600px){main{padding:12px;gap:8px}header{padding:12px;gap:12px}input{width:130px}}
+</style>
+<header><h1>Background studio</h1>
+<label>Surface<select id="surface"><option value="turf">Turf</option><option value="court">Court</option></select></label>
+<label>Brightness <output id="brightnessValue"></output><input id="brightness" type="range" min="70" max="180"></label>
+<label>Saturation <output id="saturationValue"></output><input id="saturation" type="range" min="0" max="160"></label>
+<label>Shadow <output id="shadowValue"></output><input id="shadow" type="range" min="0" max="90"></label>
+<button id="reset">Reset</button></header>
+<main><section><h2>Original</h2><div class="frame"><iframe id="original" title="Original" src="background-board.html"></iframe></div></section><section><h2>Adjusted</h2><div class="frame"><iframe id="adjusted" title="Adjusted" src="background-board.html"></iframe></div></section></main>
+<script>
+const defaults={turf:{brightness:120,saturation:100,shadow:52},court:{brightness:100,saturation:100,shadow:32}};
+let settings=structuredClone(defaults);
+try{settings={...settings,...JSON.parse(localStorage.getItem('brsn-background-studio')||'{}')}}catch{}
+const surface=document.getElementById('surface'), controls=['brightness','saturation','shadow'];
+function resize(){document.querySelectorAll('iframe').forEach(frame=>{const scale=frame.parentElement.clientWidth/1600;const height=frame.contentDocument?.querySelector('.sports-graphic')?.getBoundingClientRect().height||2200;frame.style.height=Math.ceil(height)+'px';frame.style.transform=`scale(${scale})`;frame.parentElement.style.height=Math.ceil(height)*scale+'px'})}
+function update(){
+ const type=surface.value, values=settings[type];
+ controls.forEach(name=>{document.getElementById(name).value=values[name];document.getElementById(name+'Value').textContent=values[name]+'%'});
+ for(const id of ['original','adjusted']){
+  const doc=document.getElementById(id).contentDocument, board=doc?.querySelector('.sports-graphic');if(!board)continue;
+  board.dataset.surface=type;
+  if(id==='adjusted'){
+   let style=doc.getElementById('background-adjustment');if(!style){style=doc.createElement('style');style.id='background-adjustment';doc.head.append(style)}
+   const alpha=values.shadow/100;
+   style.textContent=`body .sports-graphic{isolation:isolate;background:none!important}
+   body .sports-graphic::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,rgba(3,8,5,${alpha}),rgba(5,11,7,${Math.min(.95,alpha+.15)}) 50%,rgba(3,8,5,${alpha})),url('http://localhost:8124/sports-${type}.png') center / ${type==='turf'?'600px 600px repeat':'cover no-repeat'};filter:brightness(${values.brightness/100}) saturate(${values.saturation/100})}`;
+  }
+ }
+ localStorage.setItem('brsn-background-studio',JSON.stringify(settings));resize();
+}
+controls.forEach(name=>document.getElementById(name).addEventListener('input',event=>{settings[surface.value][name]=Number(event.target.value);update()}));
+surface.addEventListener('change',update);
+document.getElementById('reset').addEventListener('click',()=>{settings[surface.value]={...defaults[surface.value]};update()});
+document.querySelectorAll('iframe').forEach(frame=>frame.addEventListener('load',async()=>{await frame.contentDocument.fonts.ready;update()}));
+new ResizeObserver(resize).observe(document.querySelector('main'));update();
+</script></html>

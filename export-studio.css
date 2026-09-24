@@ -1,0 +1,70 @@
+/* Export controls are intentionally independent of the broadcast board theme. */
+#exportPreviewOverlay .export-render-status { display:grid; gap:6px; min-width:150px; color:#aebec8; font-size:12px; font-weight:400; font-variant-numeric:tabular-nums; }
+#exportPreviewOverlay .export-render-status progress { display:block; width:100%; height:4px; accent-color:#74bf98; border:0; border-radius:2px; overflow:hidden; }
+#exportPreviewOverlay progress::-webkit-progress-bar { background:#364249; }
+#exportPreviewOverlay progress::-webkit-progress-value { background:#74bf98; transition:width .2s ease; }
+#exportPreviewOverlay #downloadAllExportsBtn:disabled { background:#30383d; border-color:#465158; color:#86939b; opacity:1; cursor:not-allowed; }
+#exportPreviewOverlay .export-preview-status { font-weight:400; }
+#exportPreviewOverlay .export-preview-progress-text { display:inline-flex; align-items:center; gap:6px; font-weight:400; background:none; box-shadow:none; text-shadow:none; }
+#exportPreviewOverlay .export-preview-progress-text::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; flex:0 0 auto; }
+@media(max-width:600px) { #exportPreviewOverlay .export-preview-topbar { flex-wrap:wrap; } #exportPreviewOverlay .export-preview-actions { width:100%; justify-content:space-between; } #exportPreviewOverlay .export-render-status { flex:1; max-width:200px; } }
+#exportPreviewOverlay .export-preview-card { aspect-ratio:auto; grid-template-rows:auto; }
+#exportPreviewOverlay { padding: 24px; background: #080b0dd9; }
+#exportPreviewOverlay .export-preview-panel { width: min(1240px, 100%); height: min(860px, 94vh); max-height: 94vh; margin: auto; display: flex; flex-direction: column; overflow: hidden; background: #171c1f; border: 1px solid #495257; border-radius: 8px; box-shadow: 0 20px 70px #0008; }
+#exportPreviewOverlay :is(div,span,label,button,input,select,small) { font-family: Arial, Helvetica, sans-serif !important; letter-spacing: 0 !important; text-transform: none !important; }
+#exportPreviewOverlay :is(button,input,select) { box-sizing: border-box; font-size: 14px; color: #edf2f4; background: #272f34; border: 1px solid #58636b; border-radius: 4px; text-shadow: none; box-shadow: none; min-width: 0; }
+#exportPreviewOverlay button { width: auto; padding: 0 14px; height: 38px; font-weight: 600; }
+#exportPreviewOverlay button:hover:not(:disabled) { background: #36434b; }
+#exportPreviewOverlay button:disabled { opacity: .45; cursor: default; }
+#exportPreviewOverlay :is(button,select,input):focus-visible { outline: 2px solid #80c9f4; outline-offset: 2px; }
+#exportPreviewOverlay .export-preview-topbar { display:flex; justify-content:space-between; flex:0 0 auto; padding:20px 72px 20px 24px; background:none; border-bottom:1px solid #394249; }
+#exportPreviewOverlay .export-preview-title { font-size:22px; line-height:1.2; font-weight:700; color:#fff; }
+#exportPreviewOverlay .export-preview-title::after { content:none; }
+#exportPreviewOverlay .export-preview-close { top:20px; right:20px; width:36px; height:38px; padding:0; font-size:24px; }
+#exportPreviewOverlay .export-preview-actions button { min-width:0; }
+#exportPreviewOverlay :is(#buildExportPreviewBtn,#downloadAllExportsBtn) { background:#256442; border-color:#438663; color:white; }
+#exportPreviewOverlay .export-preview-toolbar { display:grid; grid-template-columns:1fr 1fr 1.15fr 1.15fr 1.15fr auto; flex:0 0 auto; gap:14px; padding:20px 24px; background:none; border-bottom:1px solid #394249; }
+#exportPreviewOverlay .export-preview-toolbar > div { min-width:0; }
+#exportPreviewOverlay label { display:block; color:#b9c5cc; font-size:12px; font-weight:600; line-height:1.4; margin:0 0 7px; }
+#exportPreviewOverlay :is(select,.export-preview-class-toggle) { width:100%; height:40px; font-size:14px; padding:0 10px; }
+#exportPreviewOverlay .export-preview-class-menu { background:#252e33; width:300px; max-width:calc(100vw - 60px); }
+#exportPreviewOverlay :is(.export-preview-class-option,.export-preview-select-all) { display:flex; margin:0; padding:8px; background:transparent; border:0; }
+#exportPreviewOverlay input[type=checkbox] { width:16px; height:16px; accent-color:#58b382; flex:0 0 auto; }
+#exportPreviewOverlay .export-destination { display:flex; align-items:center; flex:0 0 auto; gap:16px; padding:12px 24px; background:#20272b; border-bottom:1px solid #394249; }
+#exportPreviewOverlay .export-destination[hidden] { display:none; }
+#exportPreviewOverlay .export-destination label { display:flex; align-items:center; gap:8px; margin:0; color:#e3e9ed; white-space:nowrap; }
+#exportPreviewOverlay #exportDirectoryPath { flex:1; min-width:0; font-size:12px; color:#aebec8; overflow-wrap:anywhere; }
+#exportPreviewOverlay .export-results-bar { display:flex; justify-content:space-between; align-items:center; padding:12px 24px; font-size:13px; font-weight:600; color:#b9c5cc; }
+#exportPreviewOverlay #clearExportPreviewBtn { height:30px; background:transparent; border-color:transparent; }
+#exportPreviewOverlay .export-preview-grid { display:flex !important; flex-direction:column; flex:1 1 auto; min-height:0; overflow:auto; padding:0 24px 16px; gap:0; background:none; }
+#exportPreviewOverlay .export-preview-grid:empty::before { content:'No exports yet'; display:grid; place-items:center; min-height:180px; color:#8e9da7; font:14px Arial,sans-serif; border:0; background:none; }
+#exportPreviewOverlay .export-preview-card { display:grid; grid-template-columns:minmax(180px,1fr) minmax(200px,1.4fr) 85px 100px; align-items:center; gap:16px; flex:0 0 auto; width:100%; height:auto; min-height:74px; padding:14px 0; border:0; border-bottom:1px solid #343e45; border-radius:0; background:none; box-shadow:none; }
+#exportPreviewOverlay .export-preview-card-title { padding:0; background:none; border:0; min-height:0; }
+#exportPreviewOverlay .export-preview-label { font-size:14px; line-height:1.4; font-weight:600; color:#edf2f4; overflow-wrap:anywhere; }
+#exportPreviewOverlay .export-preview-name { width:100%; padding:9px; height:38px; margin:0; font-size:13px; }
+#exportPreviewOverlay .export-preview-progress { display:block; padding:0; min-height:0; background:none; border:0; }
+#exportPreviewOverlay .export-preview-progress-text { font-size:12px; color:#b3c0c8; text-align:left; }
+#exportPreviewOverlay .is-ready .export-preview-progress-text { color:#84d6a6; }
+#exportPreviewOverlay .is-error .export-preview-progress-text { color:#ffa7a7; }
+#exportPreviewOverlay .download-export-btn { margin:0; width:100%; }
+#exportPreviewOverlay .export-preview-status { align-self:stretch; width:100%; flex:0 0 auto; min-height:44px; padding:12px 24px; border:0; border-top:1px solid #394249; border-radius:0; font-size:13px; line-height:1.4; overflow-wrap:anywhere; background:#20272b; color:#bbcad3; }
+@media(max-width:900px) {
+ #exportPreviewOverlay { padding:12px; }
+ #exportPreviewOverlay .export-preview-toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ #exportPreviewOverlay #buildExportPreviewBtn { grid-column:1/-1; }
+ #exportPreviewOverlay .export-preview-card { grid-template-columns:minmax(0,1fr) 90px; gap:10px; }
+ #exportPreviewOverlay .export-preview-name { grid-column:1; grid-row:2; }
+ #exportPreviewOverlay .export-preview-progress { grid-column:2; grid-row:1; }
+ #exportPreviewOverlay .export-destination { flex-wrap:wrap; gap:10px; }
+ #exportPreviewOverlay #exportDirectoryPath { flex-basis:100%; order:3; }
+}
+@media(max-width:500px) {
+ #exportPreviewOverlay { padding:4px; }
+ #exportPreviewOverlay .export-preview-panel { max-height:98dvh; height:98dvh; }
+ #exportPreviewOverlay .export-preview-topbar { padding:16px 56px 16px 14px; gap:10px; }
+ #exportPreviewOverlay .export-preview-title { font-size:18px; }
+ #exportPreviewOverlay .export-preview-close { right:10px; top:15px; }
+ #exportPreviewOverlay .export-preview-topbar button { font-size:12px; padding:0 8px; }
+ #exportPreviewOverlay :is(.export-preview-toolbar,.export-destination) { padding:12px 14px; }
+ #exportPreviewOverlay .export-preview-grid { padding:0 14px 12px; }
+}

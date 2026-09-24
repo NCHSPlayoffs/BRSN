@@ -1,0 +1,13 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const source = fs.readFileSync('playoff_board.js', 'utf8');
+const start = source.indexOf('    function cardPlayoffNameHtml_(');
+const end = source.indexOf('\n    function ', start + 1);
+const format = new Function('escapeHtml', `${source.slice(start, end)}; return cardPlayoffNameHtml_;`)(s => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;'));
+assert.equal(format('Rocky Mtn Prep'), 'Rocky<br>Mtn Prep');
+assert.equal(format('R S Central'), 'R S<br>Central');
+assert.equal(format('R. S. Central'), 'R. S.<br>Central');
+assert.equal(format('Andrews'), 'Andrews');
+assert.equal(format('  North   East Carolina Prep '), 'North<br>East Carolina Prep');
+assert.equal(format('A & B'), 'A<br>&amp; B');
+console.log('School-name line breaks passed.');

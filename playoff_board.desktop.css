@@ -5051,6 +5051,7 @@ th,
     body.playoff-mode .playoff-board * {
       cursor: default;
       transition: none !important;
+      font: 24px/1 'Anton', sans-serif;
     }
 
     .playoff-board,

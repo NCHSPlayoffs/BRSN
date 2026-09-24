@@ -1,0 +1,23 @@
+body .sports-graphic[data-custom-background] { isolation: isolate; background: none !important; }
+body:not(.sports-graphic-export) .sports-graphic[data-custom-background] { position: relative; }
+body .sports-graphic[data-custom-background]::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, rgba(3,8,5,var(--bg-shadow)), rgba(5,11,7,var(--bg-center)) 50%, rgba(3,8,5,var(--bg-shadow))), var(--bg-image) center / var(--bg-size) var(--bg-repeat);
+  filter: brightness(var(--bg-brightness)) saturate(var(--bg-saturation));
+}
+.background-editor { width: min(1100px, 96vw); max-height: 94vh; padding: 20px; background: #18221d; color: #fff; border: 1px solid #65786c; border-radius: 8px; font: 15px Arial, sans-serif; }
+.background-editor::backdrop { background: #000b; }
+.background-editor, .background-editor :is(button, select, label, output, span, input, h2) { font-family: Arial, Helvetica, sans-serif !important; letter-spacing: 0 !important; text-transform: none !important; }
+.background-editor button { width: auto !important; flex: 0 0 auto; min-height: 36px; }
+.background-editor [data-close] { width: 36px !important; padding: 0; margin-left: auto; }
+.background-editor header, .background-editor footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.background-editor h2 { font-size: 22px; margin: 0 auto 0 0; }
+.background-editor button, .background-editor select { font: inherit; padding: 8px 12px; border: 1px solid #819488; border-radius: 4px; color: white; background: #293f32; }
+.background-editor .bg-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 18px; margin-bottom: 16px; }
+.background-editor label { display: grid; gap: 8px; }
+.background-editor input[type=range] { width: 160px; accent-color: #7aca9b; }
+.background-editor .bg-preview { height: 420px; overflow: hidden; position: relative; background: #101513; }
+.background-editor iframe { width: 1600px; height: 2400px; border: 0; transform-origin: top left; pointer-events: none; }
+.background-editor footer { margin: 16px 0 0; }
+.background-editor [role=status] { flex: 1; }
+body.sports-graphic-export .background-editor { display: none !important; }

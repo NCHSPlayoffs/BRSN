@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import * as cheerio from "npm:cheerio@1.2.0";
+import { backgroundSports, validateBackground } from "../_shared/graphic-backgrounds.js";
 import TEAM_NAME_NORMALIZE_CONFIG from "../_shared/team-name-normalize.config.json" with { type: "json" };
 
 const corsHeaders = {
@@ -462,13 +463,14 @@ async function compareSnapshots(payload: any, allowSave = false, normalizeConfig
   const seasonYear = String(payload.seasonYear || "live").trim();
   const rows = normalizeSnapshotRows(payload.rows, normalizeConfig);
   const shouldSave = allowSave && payload.save !== false;
+  const captureOnly = shouldSave && payload.captureOnly === true;
   const compareSnapshotId = String(payload.compareSnapshotId || "").trim();
   const includeLastChange = payload.includeLastChange === true || payload.includeLastChange === "true";
   if (!sport || !classification || !rows.length) throw new Error("Missing sport, classification, or rows");
 
   const now = new Date().toISOString();
   const rowHash = await snapshotHash(rows);
-  const matching = await selectSnapshots({ sport, classification, season_year: seasonYear, source }, 200, normalizeConfig);
+  const matching = await selectSnapshots({ sport, classification, season_year: seasonYear, source }, captureOnly ? 1 : 200, normalizeConfig);
 
   const latest = matching[0] || null;
   const selectedPrevious = compareSnapshotId
@@ -493,6 +495,9 @@ async function compareSnapshots(payload: any, allowSave = false, normalizeConfig
     saved = true;
     fetchedAt = inserted.fetchedAt || now;
   }
+
+  // Scheduled capture only needs the latest hash, not 200 snapshots of comparison history.
+  if (captureOnly) return { saved, fetchedAt };
 
   const previousByKey = new Map((previous?.rows || []).map((row: any) => [row.teamKey, row]));
   const lastChangeByKey = includeLastChange
@@ -735,6 +740,7 @@ async function captureSnapshot(sport: any, classification: string, normalizeConf
     source: "official",
     seasonYear: "live",
     save: true,
+    captureOnly: true,
     lastUpdated: result.lastUpdated,
     rows: result.rows.map((row: any, index: number) => ({
       school: row.team,
@@ -1269,10 +1275,10 @@ function maxPrepsScoreText(subject: any, opponent: any) {
 }
 
 function parseMaxPrepsScheduleHtml(html: string, scheduleUrl: string) {
-  const match = String(html || "").match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/i);
-  if (!match) throw new Error("MaxPreps schedule data was not found");
+  const json = cheerio.load(String(html || ""))('script#__NEXT_DATA__').text();
+  if (!json) throw new Error("MaxPreps schedule data was not found");
 
-  const data = JSON.parse(decodeHtmlEntities(match[1]));
+  const data = JSON.parse(json);
   const pageProps = data?.props?.pageProps || {};
   const teamContext = pageProps.teamContext || {};
   const teamData = teamContext.data || {};
@@ -1357,10 +1363,10 @@ function parseMaxPrepsScheduleHtml(html: string, scheduleUrl: string) {
 }
 
 function parseMaxPrepsTeamRecordHtml(html: string) {
-  const match = String(html || "").match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/i);
-  if (!match) return "";
+  const json = cheerio.load(String(html || ""))('script#__NEXT_DATA__').text();
+  if (!json) return "";
   try {
-    const data = JSON.parse(decodeHtmlEntities(match[1]));
+    const data = JSON.parse(json);
     return cleanScheduleText(data?.props?.pageProps?.teamContext?.standingsData?.overallStanding?.overallWinLossTies || "");
   } catch (_) {
     return "";
@@ -1472,6 +1478,57 @@ Deno.serve(async (req) => {
         captureProtected: Boolean(RPI_CRON_SECRET),
         adminProtected: Boolean(RPI_ADMIN_SECRET),
       });
+    }
+
+    if (req.method === "GET" && path === "/graphic-backgrounds") {
+      const rows = await restRequest('/app_admin_config?select=key,value&key=like.background:*');
+      const settings: Record<string, unknown> = {};
+      for (const row of rows || []) settings[row.key.slice('background:'.length)] = Number.isFinite(row.value?.brightness) ? row.value : null;
+      return jsonResponse({ settings });
+    }
+
+    if (req.method === "POST" && (path === "/graphic-backgrounds" || path === "/graphic-backgrounds/upload")) {
+      // Unlike the legacy admin route, background writes always fail closed.
+      if (!RPI_ADMIN_SECRET || !isAuthorizedAdmin(req, url)) return jsonResponse({ error: "Unauthorized" }, 401);
+      const sport = url.searchParams.get('sport') || '';
+      if (!Object.hasOwn(backgroundSports, sport)) return jsonResponse({ error: 'Unknown sport' }, 400);
+      const storageBase = `${SUPABASE_URL}/storage/v1/object/public/graphic-backgrounds/`;
+      if (path.endsWith('/upload')) {
+        const reader = req.body?.getReader();
+        if (!reader) return jsonResponse({ error: 'Image required' }, 400);
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.length;
+          if (size > 5242880) { await reader.cancel(); return jsonResponse({ error: 'Maximum image size is 5 MB' }, 413); }
+          chunks.push(value);
+        }
+        const bytes = new Uint8Array(size);
+        let offset = 0;
+        for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+        const png = [137,80,78,71,13,10,26,10].every((n, i) => bytes[i] === n);
+        const jpeg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+        const webp = new TextDecoder().decode(bytes.slice(0,4)) === 'RIFF' && new TextDecoder().decode(bytes.slice(8,12)) === 'WEBP';
+        const extension = png ? 'png' : jpeg ? 'jpg' : webp ? 'webp' : '';
+        if (!extension) return jsonResponse({ error: 'Use PNG, JPEG, or WebP' }, 400);
+        const imagePath = `${sport}/${crypto.randomUUID()}.${extension}`;
+        const response = await fetch(`${SUPABASE_URL}/storage/v1/object/graphic-backgrounds/${imagePath}`, {
+          method: 'POST', headers: restHeaders({ 'Content-Type': png ? 'image/png' : jpeg ? 'image/jpeg' : 'image/webp' }), body: bytes
+        });
+        if (!response.ok) throw new Error('Background upload failed');
+        return jsonResponse({ imageUrl: storageBase + imagePath });
+      }
+      try {
+        const body = await readJson(req);
+        const settings = validateBackground(sport, body.settings, storageBase);
+        await restRequest('/app_admin_config?on_conflict=key', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify([{ key: `background:${sport}`, value: settings || {}, updated_at: new Date().toISOString() }])
+        });
+        return jsonResponse({ settings });
+      } catch (error) { return jsonResponse({ error: error instanceof Error ? error.message : 'Save failed' }, 400); }
     }
 
     if (req.method === "GET" && path === "/admin/config") {

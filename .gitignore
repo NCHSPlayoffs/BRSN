@@ -4,6 +4,8 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 data/rpi-snapshots.json
+data/graphic-backgrounds/
+data/export-directories.json
 supabase/.temp/
 supabase/functions/.env*
 !supabase/functions/.env.example

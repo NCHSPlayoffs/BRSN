@@ -7,6 +7,8 @@ const cheerio = require('cheerio');
 
 const PORT = Number(process.env.PORT || 8000);
 const ROOT = process.cwd();
+const handleLocalBackgrounds = require('./local-backgrounds.cjs')(ROOT);
+const handleLocalExports = require('./local-exports.cjs')(ROOT);
 const DATA_DIR = path.join(ROOT, 'data');
 const SNAPSHOT_FILE = path.join(DATA_DIR, 'rpi-snapshots.json');
 const SNAPSHOT_SWEEP_INTERVAL_MS = Number(process.env.RPI_SNAPSHOT_INTERVAL_MS || 60 * 60 * 1000);
@@ -394,9 +396,15 @@ async function getBrowser() {
 }
 
 async function renderPNG(payload) {
+  const frame = payload?.frame && typeof payload.frame === 'object' ? payload.frame : null;
+  const frameWidth = Number(frame?.width) || 0;
+  const frameHeight = Number(frame?.height) || 0;
   const browser = await getBrowser();
   const page = await browser.newPage({
-    viewport: { width: 1800, height: 1200 },
+    viewport: {
+      width: Math.max(1800, frameWidth || 0),
+      height: Math.max(1200, frameHeight || 0)
+    },
     deviceScaleFactor: 2
   });
 
@@ -438,6 +446,103 @@ async function renderPNG(payload) {
       requestAnimationFrame(() => requestAnimationFrame(resolve));
     }));
 
+    if (frameWidth > 0 && frameHeight > 0) {
+      const frameSelector = await page.evaluate(({ selector, frame }) => {
+        const node = document.querySelector(selector);
+        if (!node) return '';
+
+        const width = Number(frame.width) || 1600;
+        const height = Number(frame.height) || 2000;
+        const padding = Math.max(0, Number(frame.padding) || 0);
+        const background = String(frame.background || '#0b1320');
+        const frameId = 'brsn-social-export-frame';
+
+        const existing = document.getElementById(frameId);
+        if (existing) existing.remove();
+
+        const wrapper = document.createElement('div');
+        wrapper.id = frameId;
+        wrapper.style.width = `${width}px`;
+        wrapper.style.height = `${height}px`;
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = '0';
+        wrapper.style.top = '0';
+        wrapper.style.overflow = 'hidden';
+        wrapper.style.background = background;
+        wrapper.style.display = 'block';
+        wrapper.style.boxSizing = 'border-box';
+
+        const stage = document.createElement('div');
+        stage.style.position = 'absolute';
+        stage.style.left = `${padding}px`;
+        stage.style.top = `${padding}px`;
+        stage.style.transformOrigin = 'top left';
+        stage.style.margin = '0';
+        stage.style.padding = '0';
+        stage.style.boxSizing = 'border-box';
+
+        document.body.appendChild(wrapper);
+        wrapper.appendChild(stage);
+        stage.appendChild(node);
+
+        node.style.margin = '0';
+        node.style.maxWidth = 'none';
+        node.style.transform = 'none';
+
+        const availableWidth = Math.max(1, width - padding * 2);
+        const availableHeight = Math.max(1, height - padding * 2);
+        const rect = node.getBoundingClientRect();
+        const scale = Math.min(
+          availableWidth / Math.max(1, rect.width),
+          availableHeight / Math.max(1, rect.height)
+        );
+        const scaledWidth = rect.width * scale;
+        const scaledHeight = rect.height * scale;
+
+        stage.style.transform = `translate(${Math.max(0, (availableWidth - scaledWidth) / 2)}px, ${Math.max(0, (availableHeight - scaledHeight) / 2)}px) scale(${scale})`;
+        stage.style.width = `${rect.width}px`;
+        stage.style.height = `${rect.height}px`;
+
+        document.body.style.margin = '0';
+        document.body.style.width = `${width}px`;
+        document.body.style.height = `${height}px`;
+        document.body.style.minHeight = `${height}px`;
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.margin = '0';
+        document.documentElement.style.width = `${width}px`;
+        document.documentElement.style.height = `${height}px`;
+        document.documentElement.style.minHeight = `${height}px`;
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.background = background;
+        return `#${frameId}`;
+      }, { selector: payload.selector, frame: payload.frame });
+
+      const framedEl = frameSelector ? await page.$(frameSelector) : null;
+      if (!framedEl) throw new Error('Export frame not found');
+      const box = await framedEl.boundingBox();
+      if (!box) throw new Error('Export frame bounds not found');
+      return await page.screenshot({
+        type: 'png',
+        animations: 'disabled',
+        clip: {
+          x: Math.floor(box.x),
+          y: Math.floor(box.y),
+          width: frameWidth,
+          height: frameHeight
+        }
+      });
+    }
+
+    await el.evaluate(node => {
+      if (!node.matches('.sports-graphic')) return;
+      const box = node.getBoundingClientRect();
+      const footer = node.querySelector('.graphic-footer')?.getBoundingClientRect();
+      const content = node.querySelector('.playoff-regions,.region-split')?.getBoundingClientRect();
+      if (Math.abs(box.width - 1600) > 1 || Math.abs(box.height - 2000) > 1 ||
+          (footer && footer.bottom > box.bottom) || (footer && content && content.bottom > footer.top)) {
+        throw new Error('Graphic does not fit the 4:5 export canvas. Export stopped to avoid clipped content.');
+      }
+    });
     return await el.screenshot({ type: 'png', animations: 'disabled' });
   } finally {
     await page.close().catch(() => {});
@@ -1001,10 +1106,10 @@ function maxPrepsScoreText(subject, opponent) {
 }
 
 function parseMaxPrepsScheduleHtml(html, scheduleUrl) {
-  const match = String(html || '').match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/i);
-  if (!match) throw new Error('MaxPreps schedule data was not found');
+  const json = cheerio.load(String(html || ''))('script#__NEXT_DATA__').text();
+  if (!json) throw new Error('MaxPreps schedule data was not found');
 
-  const data = JSON.parse(decodeHtmlEntities(match[1]));
+  const data = JSON.parse(json);
   const pageProps = data?.props?.pageProps || {};
   const teamContext = pageProps.teamContext || {};
   const teamData = teamContext.data || {};
@@ -1093,10 +1198,10 @@ function parseMaxPrepsScheduleHtml(html, scheduleUrl) {
 }
 
 function parseMaxPrepsTeamRecordHtml(html) {
-  const match = String(html || '').match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/i);
-  if (!match) return '';
+  const json = cheerio.load(String(html || ''))('script#__NEXT_DATA__').text();
+  if (!json) return '';
   try {
-    const data = JSON.parse(decodeHtmlEntities(match[1]));
+    const data = JSON.parse(json);
     return cleanScheduleText(data?.props?.pageProps?.teamContext?.standingsData?.overallStanding?.overallWinLossTies || '');
   } catch (_) {
     return '';
@@ -1629,6 +1734,8 @@ process.on('SIGTERM', async () => {
 const server = http.createServer(async (req, res) => {
   try {
     const requestUrl = new URL(req.url, `http://${req.headers.host || `localhost:${PORT}`}`);
+    if (await handleLocalBackgrounds(req, res, requestUrl)) return;
+    if (await handleLocalExports(req, res, requestUrl)) return;
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
