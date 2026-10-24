@@ -116,6 +116,7 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     let liveOptOutConfig_ = APP_BASE_OPT_OUT_;
     let liveTeamNameNormalizeConfig_ = APP_BASE_TEAM_NAME_NORMALIZE_;
     let adminConfig_ = { OptOut: {}, TeamNameNormalize: {} };
+    const liveNormalizeConfigs_ = new Map();
     let adminConfigLoaded_ = false;
     let adminConfigPromise_ = null;
     let adminUnlocked_ = false;
@@ -163,12 +164,6 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const adminStatus = document.getElementById('adminStatus');
     const adminManageField = document.getElementById('adminManageField');
     const adminManageBtn = document.getElementById('adminManageBtn');
-    document.getElementById('adminBackgroundBtn')?.addEventListener('click', async () => {
-      if (!adminUnlocked_) { setAdminStatus_('Unlock admin tools first.', true); return; }
-      if (!document.querySelector('.sports-graphic')) { setAdminStatus_('Open Region Standings or Playoff Picture first.', true); return; }
-      if (!window.GraphicBackgrounds) { setAdminStatus_('Background editor is still loading.', true); return; }
-      await window.GraphicBackgrounds.open({ secret: adminSecret_, sport: sportKeyFromLabel_(sportEl.value), html: buildServerExportHtml_() });
-    });
     const adminManagerOverlay = document.getElementById('adminManagerOverlay');
     const adminManagerCloseBtn = document.getElementById('adminManagerCloseBtn');
     const adminControls = document.getElementById('adminControls');
@@ -185,6 +180,8 @@ const SHEET_ID = '1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE';
     const adminRemoveTokenAddBtn = document.getElementById('adminRemoveTokenAddBtn');
     const adminRemoveTokenList = document.getElementById('adminRemoveTokenList');
     const adminAcronymFromInput = document.getElementById('adminAcronymFromInput');
+    const adminOriginalTeamNames = document.getElementById('adminOriginalTeamNames');
+    let adminOriginalNameMenuOpen_ = false;
     const adminAcronymToInput = document.getElementById('adminAcronymToInput');
     const adminAcronymAddBtn = document.getElementById('adminAcronymAddBtn');
     const adminAcronymList = document.getElementById('adminAcronymList');
@@ -474,6 +471,7 @@ function normalizeAdminConfig_(config = {}) {
 
 function applyLiveAdminConfig_(config = {}) {
   adminConfig_ = normalizeAdminConfig_(config);
+  liveNormalizeConfigs_.clear();
   liveOptOutConfig_ = mergeOptOutConfig_(APP_BASE_OPT_OUT_, adminConfig_.OptOut);
   liveTeamNameNormalizeConfig_ = liveTeamNameNormalizeForSport_('all');
 }
@@ -510,15 +508,21 @@ function adminNormalizeBucketForSportClass_(config = adminConfig_, sportKey = 'a
 }
 
 function liveTeamNameNormalizeForSport_(sportKey, classKey = 'all') {
+  const scope = JSON.stringify([sportKey, normalizeClassKey_(classKey)]);
+  if (liveNormalizeConfigs_.has(scope)) return liveNormalizeConfigs_.get(scope);
   const globalRaw = adminNormalizeBucketForSport_(adminConfig_, 'all');
   const sportRaw = adminNormalizeBucketForSport_(adminConfig_, sportKey);
   const classRaw = adminNormalizeBucketForSportClass_(adminConfig_, sportKey, classKey);
-  return compileTeamNameNormalizeConfig_(
+  const compiled = compileTeamNameNormalizeConfig_(
     mergeTeamNameNormalizeRaw_(
       mergeTeamNameNormalizeRaw_(APP_BASE_TEAM_NAME_NORMALIZE_RAW_, globalRaw),
       mergeTeamNameNormalizeRaw_(sportRaw, classRaw)
     )
   );
+  liveNormalizeConfigs_.set(scope, compiled);
+  compiled.displayOverrideEntries = [globalRaw, sportRaw, classRaw]
+    .flatMap(bucket => Object.entries(bucket.acronymOverrides || {}));
+  return compiled;
 }
 
 // ============================================================================
@@ -1131,14 +1135,14 @@ function setEastWestMapSportPickerOpen_(isOpen) {
     // ============================================================================
     // 4. Generic utility helpers plus Team Schedule card rendering
     // ============================================================================
-    function cacheMaxPrepsUrl_(teamName, sportLabel, url) {
+    function cacheMaxPrepsUrl_(teamName, sportLabel, url, deferSave = false) {
       const normalized = normalizeMaxPrepsUrl_(url);
       const key = maxPrepsCacheKey_(teamName, sportLabel);
       if (!key || !normalized) return '';
       const cache = loadMaxPrepsUrlCache_();
       if (cache[key] !== normalized) {
         cache[key] = normalized;
-        saveMaxPrepsUrlCache_();
+        if (!deferSave) saveMaxPrepsUrlCache_();
       }
       return normalized;
     }
@@ -3044,6 +3048,34 @@ function applyTeamLogRangeSelection_(value) {
 
     function escapeRegex_(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
+    const teamNameMatchers_ = new WeakMap();
+
+    function teamNameMatcher_(cfg) {
+      let matcher = teamNameMatchers_.get(cfg);
+      if (matcher && matcher.overrides === cfg.acronymOverrides) return matcher;
+      matcher = {
+        overrides: cfg.acronymOverrides,
+        phrases: (cfg.removePhrases || []).map(p => new RegExp('\\b' + escapeRegex_(p).replace(/\s+/g, '\\s+') + '\\b', 'ig')),
+        tokens: (cfg.removeTokens || []).map(t => new RegExp('\\b' + escapeRegex_(t) + '\\b', 'ig')),
+        aliases: new Map(),
+        displayAliases: new Map()
+      };
+      teamNameMatchers_.set(cfg, matcher);
+      for (const [original, value] of Object.entries(cfg.acronymOverrides || {})) {
+        const key = teamNameMatchKey_(normalizeTeamNameText_(original, cfg, matcher));
+        if (!matcher.aliases.has(key)) matcher.aliases.set(key, value);
+      }
+      for (const [original, value] of cfg.displayOverrideEntries || []) {
+        const key = displayTeamNameMatchKey_(normalizeTeamNameText_(original, cfg, matcher));
+        matcher.displayAliases.set(key, String(value));
+      }
+      return matcher;
+    }
+
+    function teamNameMatchKey_(name) {
+      return acronymKey_(name).replace(/\b([ns]) ([ew])\b/g, '$1$2');
+    }
+
     function acronymKey_(s) {
       return String(s || '')
         .toLowerCase()
@@ -3053,16 +3085,23 @@ function applyTeamLogRangeSelection_(value) {
         .trim();
     }
 
+    function displayTeamNameMatchKey_(name) {
+      return teamNameMatchKey_(name).replace(/\b(?:[a-z]\s+)+[a-z]\b/g, initials => initials.replace(/\s+/g, ''));
+    }
+
     function applyAcronymOverrides_(name, cfg) {
       const map = cfg?.acronymOverrides || null;
       if (!map) return name;
       const k = acronymKey_(name);
-      return map[k] || name;
+      if (Object.prototype.hasOwnProperty.call(map, k)) return map[k];
+      const matcher = teamNameMatcher_(cfg);
+      if (!matcher.aliases.size) return name;
+      const key = teamNameMatchKey_(normalizeTeamNameText_(name, cfg, matcher));
+      return matcher.aliases.has(key) ? matcher.aliases.get(key) : name;
     }
 
-    function canonicalTeamName_(name, cfg = APP.TeamNameNormalize) {
+    function normalizeTeamNameText_(name, cfg, matcher = teamNameMatcher_(cfg)) {
       let s = String(name || '');
-      s = applyAcronymOverrides_(s, cfg);
       s = s
         .replace(/\u00A0/g, ' ')
         .replace(/[’‘]/g, "'")
@@ -3072,21 +3111,32 @@ function applyTeamLogRangeSelection_(value) {
       for (const r of (cfg.phraseReplacements || [])) s = s.replace(r.from, r.to);
       if (cfg.removeLeadingThe) s = s.replace(/^\s*the\b\s+/i, '');
       s = s.replace(/[^A-Za-z0-9 ]+/g, ' ');
-      for (const p of (cfg.removePhrases || [])) {
-        const re = new RegExp('\\b' + escapeRegex_(p).replace(/\s+/g, '\\s+') + '\\b', 'ig');
-        s = s.replace(re, ' ');
-      }
-      for (const t of (cfg.removeTokens || [])) {
-        const re = new RegExp('\\b' + escapeRegex_(t) + '\\b', 'ig');
-        s = s.replace(re, ' ');
-      }
+      for (const re of matcher.phrases) s = s.replace(re, ' ');
+      for (const re of matcher.tokens) s = s.replace(re, ' ');
       if (cfg.removeTrailingSchool) s = s.replace(/\bschool\b\s*$/i, '');
       return s.replace(/\s+/g, ' ').trim();
     }
 
+    function canonicalTeamName_(name, cfg = APP.TeamNameNormalize) {
+      return applyAcronymOverrides_(normalizeTeamNameText_(applyAcronymOverrides_(name, cfg), cfg), cfg);
+    }
+
     function liveDisplayTeamName_(name, normalizeCfg = APP.TeamNameNormalize) {
+      const matcher = teamNameMatcher_(normalizeCfg);
+      const displayKey = displayTeamNameMatchKey_(normalizeTeamNameText_(name, normalizeCfg, matcher));
+      if (matcher.displayAliases.has(displayKey)) return matcher.displayAliases.get(displayKey);
+      const overrides = normalizeCfg?.acronymOverrides || {};
+      const key = acronymKey_(name);
+      // Overrides are display text, not input to the matching cleanup rules.
+      if (Object.prototype.hasOwnProperty.call(overrides, key)) return String(overrides[key]);
+      const override = applyAcronymOverrides_(name, normalizeCfg);
+      if (override !== name) return String(override);
+      for (const value of Object.values(overrides)) {
+        if (acronymKey_(value) === key) return String(value);
+      }
       const normalized = canonicalTeamName_(name, normalizeCfg);
-      return normalized || String(name || '').trim();
+      return (normalized || String(name || '').trim())
+        .replace(/\b(?:[a-z]\s+)+[a-z]\b/gi, initials => initials.replace(/\s+/g, '').toUpperCase());
     }
 
     function splitAliasList_(value) { return String(value || '').split(/[,;\n|]/).map(s => s.trim()).filter(Boolean); }
@@ -3194,21 +3244,36 @@ function applyTeamLogRangeSelection_(value) {
 
       if (!optOutEntries.length) return { rows, excludedTeams: [] };
 
+      if (!options.teamOptOutIndex) {
+        options.teamOptOutIndex = new Map();
+        for (const team of new Set(tdMap?.values() || [])) {
+          if (!team) continue;
+          const keys = teamDetailOptOutKeys_(team, normalizeCfg);
+          for (const key of keys) {
+            if (!options.teamOptOutIndex.has(key)) options.teamOptOutIndex.set(key, { team, keys });
+          }
+        }
+      }
+
       const excludedTeams = [];
       const filteredRows = (Array.isArray(rows) ? rows : []).filter(row => {
         const school = String(row?.school || row?.team || '').trim();
         const rowKey = canonicalTeamName_(school, normalizeCfg);
         if (!rowKey) return true;
-        const teamObj = findTeamDetailForOptOutKey_(rowKey, tdMap, normalizeCfg);
-        const rowKeys = teamDetailOptOutKeys_(teamObj, normalizeCfg);
-        rowKeys.add(rowKey);
+        const indexed = options.teamOptOutIndex.get(rowKey);
+        const teamObj = indexed?.team;
+        const rowKeys = indexed?.keys || new Set([rowKey]);
 
         const matchedEntry = optOutEntries.find(entry => rowKeys.has(entry.key)) || null;
         if (!matchedEntry) return true;
 
+        // Opt-out labels may use a different alias than the saved display override.
+        const displaySource = [matchedEntry.label, row.originalSchool, school, teamObj?.name]
+          .find(name => name && applyAcronymOverrides_(name, normalizeCfg) !== name);
+
         excludedTeams.push({
           longitude: row.longitude ?? teamObj?.longitude,
-          label: matchedEntry.label,
+          label: displaySource ? liveDisplayTeamName_(displaySource, normalizeCfg) : matchedEntry.label,
           school,
           record: String(row?.record || '').trim()
         });
@@ -3224,13 +3289,26 @@ function applyTeamLogRangeSelection_(value) {
 
     // TeamDetails loading plus live/fallback RPI data sources.
     async function fetchTeamDetailsMap_() {
+      let data;
+      const syncStatus = document.getElementById('teamDetailsSyncStatus');
+      try {
+        const saved = await requestAdminApiJson_('/team-details');
+        if (saved?.table?.rows?.length && Array.isArray(saved.table.cols)) {
+          data = { table: saved.table };
+          if (syncStatus) syncStatus.textContent = `${saved.teamCount} teams. Last synced: ${new Date(saved.syncedAt).toLocaleString()}`;
+        }
+      } catch (error) { console.warn('Saved team details unavailable:', error); }
+      // Compatibility fallback until the first manual sync, or during an API outage.
+      if (!data) {
+      if (syncStatus) syncStatus.textContent = 'Using spreadsheet directly. Sync Team Details to enable faster loading.';
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${TEAMDETAILS_GID}&tqx=out:json`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`TeamDetails fetch failed (${res.status})`);
       const text = await res.text();
       const jsonText = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?$/s)?.[1];
       if (!jsonText) throw new Error('Could not parse TeamDetails response');
-      const data = JSON.parse(jsonText);
+      data = JSON.parse(jsonText);
+      }
       const rows = data.table.rows || [];
       const cols = data.table.cols || [];
       const map = new Map();
@@ -3438,6 +3516,30 @@ function applyTeamLogRangeSelection_(value) {
     function ensureAdminSecret_() {
       return String(adminSecret_ || sessionStorage.getItem('rpi-admin-secret') || '').trim();
     }
+
+    document.getElementById('teamDetailsSyncBtn')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      const status = document.getElementById('teamDetailsSyncStatus');
+      const secret = ensureAdminSecret_();
+      if (!secret) { status.textContent = 'Unlock admin controls first.'; return; }
+      button.disabled = true;
+      status.textContent = 'Syncing TeamDetails spreadsheet...';
+      try {
+        const response = await fetch(configuredApiEndpoint_('/admin/team-details/sync'), {
+          method: 'POST', headers: { 'X-RPI-Admin-Secret': secret }, signal: AbortSignal.timeout(90000)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `Sync failed (${response.status})`);
+        teamDetailsMapPromise_ = null;
+        teamDetailsMapResolved_ = null;
+        teamLogSelectorCache_.clear();
+        status.textContent = `${result.teamCount} teams synced: ${new Date(result.syncedAt).toLocaleString()}`;
+        try { await refreshCurrentViewAfterAdminEdit_(); }
+        catch (error) { status.textContent += ' Saved successfully; refresh the page to reload the board.'; }
+      } catch (error) {
+        status.textContent = `Sync not confirmed: ${error.message}. The previous saved copy is retained if the sync failed.`;
+      } finally { button.disabled = false; }
+    });
 
     async function saveAdminConfig_(config) {
       const secret = ensureAdminSecret_();
@@ -3792,6 +3894,34 @@ function applyTeamLogRangeSelection_(value) {
     }
 
     const snapshotReadCache_ = new Map();
+    const liveRpiReadCache_ = new Map();
+    const liveCompareReadCache_ = new Map();
+
+    async function cachedLiveRead_(cache, key, read) {
+      let entry = cache.get(key);
+      if (!entry || entry.expires <= Date.now()) {
+        entry = { expires: Infinity };
+        entry.promise = Promise.resolve().then(read).then(result => {
+          entry.expires = Date.now() + 30000;
+          return result;
+        }).catch(error => {
+          if (cache.get(key) === entry) cache.delete(key);
+          throw error;
+        });
+        cache.set(key, entry);
+        if (cache.size > 64) cache.delete(cache.keys().next().value);
+      }
+      // History and view builders attach fields; never share those mutations.
+      return structuredClone(await entry.promise);
+    }
+
+    function refreshLiveRpiReads_() {
+      liveRpiReadCache_.clear();
+      liveCompareReadCache_.clear();
+      for (const [key] of snapshotReadCache_) {
+        if (JSON.parse(key)[0] === '/rpi-snapshots/list') snapshotReadCache_.delete(key);
+      }
+    }
     async function requestSnapshotApiJson_(path, params = {}) {
       const cacheable = path === '/rpi-snapshots/snapshot' || path === '/rpi-snapshots/list';
       if (!cacheable) return fetchSnapshotApiJson_(path, params);
@@ -3846,6 +3976,13 @@ function applyTeamLogRangeSelection_(value) {
     }
 
     async function requestRpiSnapshotCompare_(payload) {
+      if (payload.save === false) {
+        return cachedLiveRead_(liveCompareReadCache_, JSON.stringify(payload), () => fetchRpiSnapshotCompare_(payload));
+      }
+      return fetchRpiSnapshotCompare_(payload);
+    }
+
+    async function fetchRpiSnapshotCompare_(payload) {
       let lastError = null;
       for (const endpoint of snapshotEndpointCandidates_()) {
         try {
@@ -4074,14 +4211,15 @@ function applyTeamLogRangeSelection_(value) {
       });
       const unresolved = () => pending.some(group => group.teams.size);
       if (!unresolved()) return [];
-      const list = await requestSnapshotApiJson_('/rpi-snapshots/list', { sport, classification });
+      const list = await requestSnapshotApiJson_('/rpi-snapshots/list', { sport, classification, includeRows: 'comparison' });
       const snapshots = (list?.snapshots || [])
         .filter(snapshot => snapshot.source === 'official' && snapshot.seasonYear === 'live' && Date.parse(snapshot.fetchedAt) <= Date.parse(cutoff))
         .sort((a, b) => Date.parse(b.fetchedAt) - Date.parse(a.fetchedAt));
       const history = [];
       for (const snapshot of snapshots) {
         if (!unresolved()) break;
-        const result = await requestSnapshotApiJson_('/rpi-snapshots/snapshot', { id: snapshot.id });
+        const result = Array.isArray(snapshot.rows) ? { snapshot }
+          : await requestSnapshotApiJson_('/rpi-snapshots/snapshot', { id: snapshot.id });
         if (!result?.snapshot?.rows?.length) break;
         const olderRows = prepare(result.snapshot);
         history.push(olderRows);
@@ -4124,7 +4262,7 @@ function applyTeamLogRangeSelection_(value) {
       });
       if (!pending.size) return updated;
       try {
-        const list = await requestSnapshotApiJson_('/rpi-snapshots/list', { sport, classification });
+        const list = await requestSnapshotApiJson_('/rpi-snapshots/list', { sport, classification, includeRows: 'comparison' });
         const snapshots = (list?.snapshots || []).filter(snapshot =>
           snapshot.source === 'official' && snapshot.seasonYear === 'live' &&
           Date.parse(snapshot.fetchedAt) > Date.parse(compare.previousFetchedAt) &&
@@ -4133,7 +4271,8 @@ function applyTeamLogRangeSelection_(value) {
         // Stop at the newest changed record. Never substitute an older win for a newer tie/unknown result.
         for (const snapshot of snapshots) {
           if (!pending.size) break;
-          const result = await requestSnapshotApiJson_('/rpi-snapshots/snapshot', { id: snapshot.id });
+          const result = Array.isArray(snapshot.rows) ? { snapshot }
+            : await requestSnapshotApiJson_('/rpi-snapshots/snapshot', { id: snapshot.id });
           if (!result?.snapshot?.rows?.length) break;
           const older = new Map(result.snapshot.rows.map(row => [key(row.school), row]));
           for (const [teamKey, row] of pending) {
@@ -4155,6 +4294,8 @@ function applyTeamLogRangeSelection_(value) {
       try {
         const result = await requestSnapshotApiJson_('/rpi-snapshots/snapshot', { id: compare.compareSnapshotId });
         if (!result?.snapshot?.rows?.length) return rows;
+        const findDetail = createTeamDetailLookup_(tdMap, normalizeCfg);
+        const historyFilterOptions = { classification, classOptOutConfig: adminConfig_.OptOutByClass };
         const prepare = snapshot => {
           const historical = snapshot.rows.slice().sort((a, b) => Number(a.rank) - Number(b.rank))
             .map(row => ({ ...row, team: row.school, rpi: row.rpi == null ? '' : String(row.rpi) }));
@@ -4162,21 +4303,21 @@ function applyTeamLogRangeSelection_(value) {
           const merged = historical.map(row => ({
             ...row, originalSchool: row.team,
             school: liveDisplayTeamName_(row.team, normalizeCfg),
-            longitude: Number(findTeamDetailByName_(tdMap, row.team, normalizeCfg)?.longitude ?? NaN)
+            longitude: Number(findDetail(row.team)?.longitude ?? NaN)
           }));
-          return filterOptedOutTeams_(merged, sportKeyFromLabel_(sport), tdMap, liveOptOutConfig_, normalizeCfg, {
-            classification, classOptOutConfig: adminConfig_.OptOutByClass
-          }).rows;
+          return filterOptedOutTeams_(merged, sportKeyFromLabel_(sport), tdMap, liveOptOutConfig_, normalizeCfg, historyFilterOptions).rows;
         };
         const history = { previousRows: prepare(result.snapshot), lastRows: [] };
-        if (compare.includeLastChange) {
-          try {
-            history.lastRows = await fetchRegionalLastRows_(rows, history.previousRows, sport, classification, compare.fetchedAt, prepare);
-          } catch (err) {
-            console.warn('Regional last-change history unavailable:', err);
-          }
-        }
-        const resultRows = await addComparisonGameResults_(rows, history.previousRows, sport, classification, compare, normalizeCfg);
+        // These independent history walks need not block each other.
+        const rankHistory = compare.includeLastChange
+          ? fetchRegionalLastRows_(rows, history.previousRows, sport, classification, compare.fetchedAt, prepare)
+            .catch(err => { console.warn('Regional last-change history unavailable:', err); return []; })
+          : Promise.resolve([]);
+        const [lastRows, resultRows] = await Promise.all([
+          rankHistory,
+          addComparisonGameResults_(rows, history.previousRows, sport, classification, compare, normalizeCfg)
+        ]);
+        history.lastRows = lastRows;
         return resultRows.map(row => ({ ...row, regionRankHistory: history }));
       } catch (err) {
         console.warn('Regional rank comparison unavailable:', err);
@@ -4327,7 +4468,7 @@ function applyTeamLogRangeSelection_(value) {
       }
 
       try {
-        return await fetchOfficialRpiRows_(classification, sportLabel);
+        return await cachedLiveRead_(liveRpiReadCache_, JSON.stringify([classification, sportLabel]), () => fetchOfficialRpiRows_(classification, sportLabel));
       } catch (err) {
         const fallback = await fetchFallbackRpiRows_(classification, sportLabel);
         return {
@@ -4351,19 +4492,45 @@ function applyTeamLogRangeSelection_(value) {
       return null;
     }
 
+    function createTeamDetailLookup_(tdMap, normalizeCfg) {
+      // Build aliases once for this operation, preserving direct-key precedence.
+      let aliases;
+      return name => {
+        if (!tdMap || !name) return null;
+        const key = canonicalTeamName_(name, normalizeCfg);
+        const direct = tdMap.get(key) || tdMap.get(canonicalTeamName_(name));
+        if (direct) return direct;
+        if (!aliases) {
+          aliases = new Map();
+          for (const team of new Set(tdMap.values())) {
+            if (!team) continue;
+            for (const alias of teamDetailOptOutKeys_(team, normalizeCfg)) {
+              if (!aliases.has(alias)) aliases.set(alias, team);
+            }
+          }
+        }
+        return aliases.get(key) || null;
+      };
+    }
+
     function mergeRows_(rpiRows, tdMap, sportLabel = sportEl?.value || '', rpiResult = {}, normalizeCfg = APP.TeamNameNormalize, options = {}) {
       const scheduleYear = scheduleYearForRpiResult_(rpiResult);
       const normalizeDisplayNames = Boolean(options.normalizeDisplayNames);
       let rank = 1;
-      return rpiRows.map(row => {
-        const match = findTeamDetailByName_(tdMap, row.team, normalizeCfg);
+      const findDetail = createTeamDetailLookup_(tdMap, normalizeCfg);
+      let urlsChanged = false;
+      const merged = rpiRows.map(row => {
+        const match = findDetail(row.team);
         const originalTeam = String(row.team || '').trim();
         const displayTeam = normalizeDisplayNames ? liveDisplayTeamName_(originalTeam, normalizeCfg) : originalTeam;
         const officialUrl = normalizeMaxPrepsUrl_(row.maxPrepsUrl || '');
         const teamDetailsUrl = teamDetailsMaxPrepsUrl_(match, sportLabel);
         const cachedUrl = cachedMaxPrepsUrl_(row.team, sportLabel);
         const maxPrepsUrl = officialUrl || teamDetailsUrl || cachedUrl || '';
-        if (officialUrl || teamDetailsUrl) cacheMaxPrepsUrl_(row.team, sportLabel, maxPrepsUrl);
+        if ((officialUrl || teamDetailsUrl) && cachedUrl !== maxPrepsUrl) {
+          cacheMaxPrepsUrl_(row.team, sportLabel, maxPrepsUrl, true);
+          urlsChanged = true;
+        }
         return {
           rank: rank++,
           school: displayTeam,
@@ -4381,10 +4548,14 @@ function applyTeamLogRangeSelection_(value) {
           logoUrl: match?.logoUrl || '',
           mapLogoUrl: match?.mapLogoUrl || '',
           mascot: match?.mascot || '',
+          dominantHex: match?.dominantHex || '',
+          secondaryHex: match?.secondaryHex || '',
           longitude: Number(match?.longitude ?? NaN),
           latitude: Number(match?.latitude ?? NaN)
         };
       });
+      if (urlsChanged) saveMaxPrepsUrlCache_();
+      return merged;
     }
 
     function numericRpi_(value) {
@@ -4479,7 +4650,7 @@ function applyTeamLogRangeSelection_(value) {
         })
         .filter(Boolean);
       if (!items.length) return '';
-      return `<div class="excluded-teams-note">Excluded Teams: ${items.join(', ')}</div>`;
+      return `<div class="excluded-teams-note">Excluded Teams: ${items.map(item => `<span class="excluded-team-entry">${item}</span>`).join(', ')}</div>`;
     }
 
     function playoffHeaderHtml_(classification, sportLabel, viewTitle, subtitle = '') {
@@ -4760,6 +4931,21 @@ function applyTeamLogRangeSelection_(value) {
       });
     }
 
+    function buildLiveFullBracketPayload_(regionData, classification) {
+      const brackets = Object.fromEntries(['west', 'east'].map(side =>
+        [side, buildRegionPlayoff_(regionData[side], classification, regionData.total)]));
+      const teamHtml = entry => {
+        if (!entry || entry.type !== 'team') return `<div class="live-placeholder">${escapeHtml(entry?.text || 'BYE')}</div>`;
+        const team = entry.team;
+        const logo = imageHtmlWithFallback_('live-team-logo', team.mapLogoUrl || team.logoUrl, '', 'live-team-logo');
+        return `<div class="team live-team ${escapeHtml(oddExtraClass_(team))}" data-team-name="${escapeHtml(team.school)}" ${scheduleRowDataAttrs_(team)}><span class="seed">${escapeHtml(team.regionRank)}</span><span class="mascotimage">${logo}</span><span class="name">${escapeHtml(team.school)}</span><span class="brsn-bracket-mascot">${escapeHtml(team.mascot || '')}</span></div>`;
+      };
+      const payload = window.BRSNLiveBracket.render(brackets, teamHtml);
+      payload.html += ['west', 'east'].map(side => bracketOddExtraNoteHtml_(side, brackets[side])).join('');
+      payload.html += excludedTeamsNoteHtml_(regionData.excludedTeams);
+      return payload;
+    }
+
     function renderFullBracketShell_(payload, classification, sportLabel) {
       const canvasWidth = escapeHtml(payload?.canvasWidth || '3000');
       const sourceLink = payload?.sourcePageUrl
@@ -4772,8 +4958,8 @@ function applyTeamLogRangeSelection_(value) {
       return `
         <tr class="full-bracket-table-row">
           <td colspan="${MAIN_TABLE_COLSPAN_}">
-            <section class="full-bracket-board">
-              ${playoffHeaderHtml_(classification, sportLabel, 'Full Playoff Brackets', 'Official NCHSAA bracket widget')}
+            <section class="full-bracket-board ${payload?.live ? 'live-full-bracket' : ''}">
+              ${playoffHeaderHtml_(classification, sportLabel, 'Full Playoff Brackets', payload?.live ? 'Projected from current regional seeds - not an official bracket' : 'Official NCHSAA bracket widget')}
               <section class="bracket-shell">
                 <div class="bracket-tools export-hidden" aria-label="Bracket viewport controls">
                   <div class="bracket-tools-scroll">
@@ -4819,10 +5005,12 @@ function applyTeamLogRangeSelection_(value) {
       tbody.innerHTML = renderFullBracketShell_(payload, classification, sportLabel);
       const board = tbody.querySelector('.full-bracket-board');
       if (!board) return;
-      await runFullBracketInjectedScripts_(board);
-      await decorateFullBracketTeams_(board, classification, sportLabel);
-      markFullBracketByeWinners_(board);
-      normalizeFullBracketFinalFour_(board);
+      if (!payload?.live) {
+        await runFullBracketInjectedScripts_(board);
+        await decorateFullBracketTeams_(board, classification, sportLabel);
+        markFullBracketByeWinners_(board);
+        normalizeFullBracketFinalFour_(board);
+      }
       if (window.BRSNFullBracketView?.init) {
         window.BRSNFullBracketView.init(board);
       }
@@ -4852,6 +5040,7 @@ function applyTeamLogRangeSelection_(value) {
 
     function ncMapProjector_(width, height) {
       const boundary = eastWestLineMapState_?.boundary || NC_BOUNDARY_;
+      if(window.WhiteboardMap?.projector)return window.WhiteboardMap.projector(boundary,width,height);
       const padX = 64;
       const padY = 58;
       const bounds = boundary.reduce((acc, point) => {
@@ -4939,7 +5128,7 @@ function applyTeamLogRangeSelection_(value) {
 
     async function getNcBoundary_() {
       if (!ncBoundaryPromise_) {
-        ncBoundaryPromise_ = fetch(NC_BOUNDARY_GEOJSON_URL_)
+        ncBoundaryPromise_ = fetch(window.WhiteboardMap?.boundaryUrl || NC_BOUNDARY_GEOJSON_URL_)
           .then(res => {
             if (!res.ok) throw new Error(`NC boundary fetch failed (${res.status})`);
             return res.json();
@@ -4955,7 +5144,7 @@ function applyTeamLogRangeSelection_(value) {
 
     async function getNcCountyBoundaries_() {
       if (!ncCountyBoundariesPromise_) {
-        ncCountyBoundariesPromise_ = fetch(NC_COUNTIES_GEOJSON_URL_)
+        ncCountyBoundariesPromise_ = fetch(window.WhiteboardMap?.countiesUrl || NC_COUNTIES_GEOJSON_URL_)
           .then(res => {
             if (!res.ok) throw new Error(`NC county boundary fetch failed (${res.status})`);
             return res.json();
@@ -5246,6 +5435,7 @@ function applyTeamLogRangeSelection_(value) {
           </g>
           ${eastWestMapControlsSvg_()}
         </svg>`);
+      window.WhiteboardMap?.decorate(eastWestMapCanvas.querySelector('.east-west-map-svg'),()=>requestEastWestMapZoomApply_({deferPlacement:true}));
       eastWestMapCanvas.insertAdjacentHTML('beforeend', eastWestMapSettingsPanelHtml_());
       hideEastWestMapContextMenu_();
       hideEastWestMapInfoCard_();
@@ -5285,7 +5475,6 @@ function applyTeamLogRangeSelection_(value) {
       const cloneDoc = document.documentElement.cloneNode(true);
       injectExportSnapshotBase_(cloneDoc);
       cloneDoc.querySelectorAll('script').forEach(el => el.remove());
-      cloneDoc.querySelectorAll('.background-editor').forEach(el => el.remove());
       const body = cloneDoc.querySelector('body');
       if (body) body.className = document.body.className;
 
@@ -5671,6 +5860,7 @@ function applyTeamLogRangeSelection_(value) {
     function applyEastWestMapViewport_() {
       const viewport = eastWestMapCanvas.querySelector('#eastWestMapViewport');
       if (!viewport) return;
+      window.WhiteboardMap?.constrainTransform(eastWestMapTransform_,eastWestMapCanvas.querySelector('.east-west-map-svg'));
       viewport.setAttribute('transform', `translate(${eastWestMapTransform_.x.toFixed(2)} ${eastWestMapTransform_.y.toFixed(2)}) scale(${eastWestMapTransform_.scale.toFixed(4)})`);
     }
 
@@ -5725,6 +5915,7 @@ function applyTeamLogRangeSelection_(value) {
         marker.dataset.drawY = placement.y.toFixed(2);
         marker.setAttribute('transform', `translate(${placement.x.toFixed(2)} ${placement.y.toFixed(2)}) scale(${markerScale.toFixed(4)})`);
       });
+      window.WhiteboardMap?.updateLeaders(eastWestMapCanvas.querySelector('.east-west-map-svg'));
     }
 
     function requestEastWestMapZoomApply_(options = {}) {
@@ -6986,7 +7177,7 @@ function applyTeamLogRangeSelection_(value) {
       for (const [seed, entry] of byes) {
         if (!byes.has(seed)) continue;
         const other = size / 2 + 1 - seed;
-        rowsData.push({ left: entry, middle: byes.get(other), right: null });
+        rowsData.push({ left: entry, middle: other === seed ? null : byes.get(other), right: null });
         byes.delete(seed);
         byes.delete(other);
       }
@@ -7184,9 +7375,16 @@ function applyTeamLogRangeSelection_(value) {
         </tr>`;
       cardPreviewResizeObserver_?.disconnect();
       const board = tbody.querySelector('.card-playoff-board');
+      window.WhiteboardPlayoff?.apply(board,sportLabel);
       const viewport = tbody.closest('.table-scroll');
       if (board && viewport) {
-        const fit = () => { board.style.zoom = String(viewport.clientWidth / 1600); };
+        let lastWidth = -1;
+        const fit = () => {
+          const width = viewport.clientWidth;
+          if (width === lastWidth) return;
+          lastWidth = width;
+          board.style.zoom = String(width / 1600);
+        };
         cardPreviewResizeObserver_ = new ResizeObserver(fit);
         cardPreviewResizeObserver_.observe(viewport);
         fit();
@@ -7207,7 +7405,7 @@ function applyTeamLogRangeSelection_(value) {
       return teamDetailsMapPromise_;
     }
 
-    async function getMergedRowsForSelection_(classification, sport, teamDetailsPromise = getTeamDetailsMapCached_()) {
+    async function getMergedRowsForSelection_(classification, sport, teamDetailsPromise = getTeamDetailsMapCached_(), options = {}) {
       const [tdMap, rpiResult] = await Promise.all([
         teamDetailsPromise,
         fetchRpiRows_(classification, sport)
@@ -7227,7 +7425,8 @@ function applyTeamLogRangeSelection_(value) {
         })
         : { rows: mergedRows, excludedTeams: [] };
       const rowsWithChanges = await addLiveRpiChangeData_(filteredRows, sport, classification, rpiResult);
-      const rowsWithRegionalHistory = await addRegionalRankHistory_(rowsWithChanges, sport, classification, rpiResult, tdMap, normalizeCfg);
+      const rowsWithRegionalHistory = options.regionalHistory === false ? rowsWithChanges
+        : await addRegionalRankHistory_(rowsWithChanges, sport, classification, rpiResult, tdMap, normalizeCfg);
       return {
         sport,
         classification,
@@ -7239,8 +7438,8 @@ function applyTeamLogRangeSelection_(value) {
       };
     }
 
-    async function getMergedRowsForCurrentSelection_() {
-      return getMergedRowsForSelection_(classEl.value, sportEl.value);
+    async function getMergedRowsForCurrentSelection_(options = {}) {
+      return getMergedRowsForSelection_(classEl.value, sportEl.value, getTeamDetailsMapCached_(), options);
     }
 
     async function waitForImagesInNode_(node, timeoutMs = 6000) {
@@ -7576,7 +7775,7 @@ let eastWestLineMapState_ = null;
     }
 
     function selectedExportPlayoffLayout_() {
-      return exportPlayoffLayout?.value === 'cards' ? 'cards' : 'classic';
+      return 'cards';
     }
 
     renderExportPreviewClassOptions_();
@@ -7759,7 +7958,18 @@ let eastWestLineMapState_ = null;
       });
     }
 
-    async function downloadExportItem_(item, batch = item.localBatch) {
+    async function downloadExportDescription_(items, batch) {
+      const text = window.BRSNExportDescription.description(items);
+      if (!text) return;
+      const filename = `${items[0].sportLabel} Playoff Picture Post.txt`;
+      const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+      if (localExportEnabled_ && document.getElementById('useExportDirectory').checked) {
+        const params = new URLSearchParams({sport:sportKeyFromLabel_(items[0].sportLabel),batch,filename});
+        await localExportRequest_('save?' + params, {method:'POST',headers:{'Content-Type':blob.type},body:blob});
+      } else downloadBlob_(blob, filename);
+    }
+
+    async function downloadExportItem_(item, batch = item.localBatch, includeDescription = true) {
       const els = getExportCardEls_(item.key);
       if (!els || !item.blob) return;
       const fallback = exportFileBase_(item);
@@ -7784,10 +7994,12 @@ let eastWestLineMapState_ = null;
           const params = new URLSearchParams({ sport: sportKeyFromLabel_(item.sportLabel), batch: batch || crypto.randomUUID(), filename });
           const result = await localExportRequest_('save?' + params, { method: 'POST', headers: { 'Content-Type': blob.type }, body: blob });
           setExportPreviewStatus_('Saved to ' + result.folder);
+          if (includeDescription) await downloadExportDescription_([item], batch);
           return true;
         } catch (error) { setExportPreviewStatus_('Not saved: ' + error.message); return false; }
       }
       downloadBlob_(blob, filename);
+      if (includeDescription) await downloadExportDescription_([item], batch);
       return true;
     }
 
@@ -7795,13 +8007,11 @@ let eastWestLineMapState_ = null;
       const els = getExportCardEls_(item.key);
       if (!els) return;
       els.downloadBtn.disabled = !item.blob;
-      els.downloadBtn.addEventListener('click', () => downloadExportItem_(item));
+      els.downloadBtn.addEventListener('click', () => downloadExportItem_(item).catch(error => setExportPreviewStatus_('Post description not saved: ' + error.message)));
     }
-    function buildServerExportHtml_() {
-      window.GraphicBackgrounds?.applyAll();
+    function buildServerExportHtml_(selector) {
       const cloneDoc = document.documentElement.cloneNode(true);
       injectExportSnapshotBase_(cloneDoc);
-      cloneDoc.querySelectorAll('.background-editor').forEach(el => el.remove());
 
       cloneDoc.querySelectorAll('script').forEach(el => el.remove());
 
@@ -7846,6 +8056,15 @@ let eastWestLineMapState_ = null;
       `;
       cloneDoc.querySelector('head')?.appendChild(helperStyle);
 
+      if(selector && body){
+        const target=cloneDoc.querySelector(selector);
+        if(!target)throw new Error(`Missing export target: ${selector}`);
+        const head=cloneDoc.querySelector('head');
+        // Keep every stylesheet, including links originally placed in the app body.
+        cloneDoc.querySelectorAll('body link[rel="stylesheet"],body style').forEach(node=>head.append(node));
+        if(target.classList.contains('cutout-board'))head.querySelectorAll('link[href*="fonts.googleapis.com"]').forEach(node=>node.remove());
+        body.replaceChildren(target);
+      }
       return '<!DOCTYPE html>\n' + cloneDoc.outerHTML;
     }
 
@@ -7915,7 +8134,7 @@ let eastWestLineMapState_ = null;
     }
 
     async function createCurrentRenderedExportJob_(exportSelector, exportKind, classLabelForName, sportLabelForName) {
-      await window.GraphicBackgrounds?.ready;
+      await window.CutoutBoard?.ready;
       const target = document.querySelector(exportSelector);
       if (!target) throw new Error(`Missing export target: ${exportSelector}`);
 
@@ -7928,7 +8147,7 @@ let eastWestLineMapState_ = null;
       await waitForImagesInNode_(target, 1800);
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-      const htmlSnapshot = buildServerExportHtml_();
+      const htmlSnapshot = buildServerExportHtml_(exportSelector);
       const classShort = classShortFromValue_(classLabelForName || classEl.value);
       const filename = `${classShort} ${sportLabelForName || sportEl.value} ${exportKind === 'region_rankings' ? 'Region Standings' : 'Playoff Picture'}.png`;
 
@@ -8061,6 +8280,10 @@ let eastWestLineMapState_ = null;
           const regionData = buildRegionRows_(rows, classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
 
           const regionKey = `${classShort}::region`;
+          allItems.filter(item => item.classValue === classValue && item.side).forEach(item => {
+            item.comparisonAvailable = regionData[item.side].some(row => Number.isFinite(row.regionRankChange));
+            item.movers = window.BRSNExportDescription.movers(regionData[item.side]).map(row => ({school:row.school,regionRankChange:row.regionRankChange,rpiChange:row.rpiChange}));
+          });
           const playoffKey = `${classShort}::playoff`;
 
           if (kindsToBuild.includes('region')) {
@@ -8246,39 +8469,47 @@ let eastWestLineMapState_ = null;
       return entries;
     }
 
+    const teamSearchIndexes_ = new WeakMap();
+
+    function teamSearchIndex_(normalizeCfg) {
+      const existing = teamSearchIndexes_.get(normalizeCfg);
+      if (existing?.source === teamDetailsMapResolved_) return existing.rows;
+      const rows = [];
+      for (const teamObj of new Set(teamDetailsMapResolved_.values())) {
+        if (!teamObj) continue;
+        const name = teamObj.name || teamObj.keyName || '';
+        if (!name) continue;
+        const aliases = splitAliasList_(teamObj.aliases);
+        const searchable = [name, teamObj.keyName, teamObj.keyAcr, ...aliases, ...splitAliasList_(teamObj.keyAliases)];
+        const searchParts = searchable.map(value => canonicalTeamName_(value, normalizeCfg).toLowerCase());
+        const haystack = searchParts.join(' ');
+        const mascotKey = canonicalTeamName_(teamObj.mascot || '', normalizeCfg).toLowerCase();
+        const teamClass = normalizeClassKey_(teamObj.teamClass || '');
+        rows.push({
+          name, teamClass, classShort: teamClass.replace(/^Class\s+/i, ''),
+          aliases: aliases.slice(0, 2).join(', '), mascot: teamObj.mascot || '',
+          logoUrl: teamObj.mapLogoUrl || teamObj.logoUrl || '',
+          haystack, jumpHaystack: [...searchParts.slice(0, 3), mascotKey, ...searchParts.slice(3)].join(' ')
+        });
+      }
+      rows.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+      teamSearchIndexes_.set(normalizeCfg, {source: teamDetailsMapResolved_, rows});
+      return rows;
+    }
+
     function adminTeamSearchRows_(sportKey, classFilter, query = '') {
       if (!(teamDetailsMapResolved_ instanceof Map)) return [];
       const selectedClass = normalizeClassKey_(classFilter);
       const normalizeCfg = liveTeamNameNormalizeForSport_(sportKey, selectedClass);
       const needle = canonicalTeamName_(query, normalizeCfg).toLowerCase();
-      const seen = new Set();
       const rows = [];
-      for (const teamObj of teamDetailsMapResolved_.values()) {
-        if (!teamObj || seen.has(teamObj)) continue;
-        seen.add(teamObj);
-        const teamClass = normalizeClassKey_(teamObj.teamClass || '');
-        if (selectedClass !== 'all' && teamClass !== selectedClass) continue;
-        const searchable = [
-          teamObj.name,
-          teamObj.keyName,
-          teamObj.keyAcr,
-          ...splitAliasList_(teamObj.aliases),
-          ...splitAliasList_(teamObj.keyAliases)
-        ];
-        const haystack = searchable.map(value => canonicalTeamName_(value, normalizeCfg).toLowerCase()).join(' ');
-        if (needle && !haystack.includes(needle)) continue;
-        rows.push({
-          name: teamObj.name || teamObj.keyName || '',
-          teamClass,
-          classShort: teamClass.replace(/^Class\s+/i, ''),
-          aliases: splitAliasList_(teamObj.aliases).slice(0, 2).join(', '),
-          logoUrl: teamObj.mapLogoUrl || teamObj.logoUrl || ''
-        });
+      for (const row of teamSearchIndex_(normalizeCfg)) {
+        if (selectedClass !== 'all' && row.teamClass !== selectedClass) continue;
+        if (needle && !row.haystack.includes(needle)) continue;
+        rows.push(row);
+        if (rows.length === 30) break;
       }
-      return rows
-        .filter(row => row.name)
-        .sort((a, b) => String(a.name).localeCompare(String(b.name)))
-        .slice(0, 30);
+      return rows;
     }
 
     function teamJumpNormalizeCfg_(classKey = classEl?.value || '') {
@@ -8317,36 +8548,24 @@ let eastWestLineMapState_ = null;
       const selectedClass = normalizeClassKey_(classEl?.value || '');
       const normalizeCfg = liveTeamNameNormalizeForSport_(sportKey, selectedClass);
       const needle = canonicalTeamName_(query, normalizeCfg).toLowerCase();
-      const seen = new Set();
       const rows = [];
-      for (const teamObj of teamDetailsMapResolved_.values()) {
-        if (!teamObj || seen.has(teamObj)) continue;
-        seen.add(teamObj);
-        const teamClass = normalizeClassKey_(teamObj.teamClass || '');
-        if (!needle && teamClass !== selectedClass) continue;
-        const aliases = splitAliasList_(teamObj.aliases);
-        const keyAliases = splitAliasList_(teamObj.keyAliases);
-        const searchable = [teamObj.name, teamObj.keyName, teamObj.keyAcr, teamObj.mascot, ...aliases, ...keyAliases];
-        const haystack = searchable.map(value => canonicalTeamName_(value, normalizeCfg).toLowerCase()).join(' ');
-        if (needle && !haystack.includes(needle)) continue;
-        rows.push({
-          name: teamObj.name || teamObj.keyName || '',
-          mascot: teamObj.mascot || '',
-          teamClass,
-          classShort: teamClass.replace(/^Class\s+/i, ''),
-          logoUrl: teamObj.mapLogoUrl || teamObj.logoUrl || '',
-          key: teamJumpKey_(teamObj.name || teamObj.keyName || '', teamClass),
-          aliases: aliases.slice(0, 2).join(', ')
-        });
+      for (const row of teamSearchIndex_(normalizeCfg)) {
+        if (!row.teamClass || (!needle && row.teamClass !== selectedClass)) continue;
+        if (needle && !row.jumpHaystack.includes(needle)) continue;
+        rows.push({...row, key: teamJumpKey_(row.name, row.teamClass)});
+        if (rows.length === (needle ? 40 : 32)) break;
       }
-      return rows
-        .filter(row => row.name && row.teamClass)
-        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
-        .slice(0, needle ? 40 : 32);
+      return rows;
     }
 
     function renderTeamJumpMenu_() {
       if (!teamJumpMenu) return;
+      if (!teamJumpMenuOpen_) {
+        teamJumpMenu.hidden = true;
+        teamJumpPicker?.classList.remove('open');
+        teamJumpMenu.innerHTML = '';
+        return;
+      }
       const rows = teamJumpSearchRows_(teamJumpSearch_);
       const isOpen = teamJumpMenuOpen_ && rows.length;
       teamJumpMenu.hidden = !isOpen;
@@ -8375,6 +8594,7 @@ let eastWestLineMapState_ = null;
     }
 
     function closeTeamJumpMenu_() {
+      if (!teamJumpMenuOpen_) return;
       teamJumpMenuOpen_ = false;
       teamJumpPicker?.classList.remove('open');
       renderTeamJumpMenu_();
@@ -8436,8 +8656,37 @@ let eastWestLineMapState_ = null;
       }
     }
 
+    function renderAdminOriginalNameSuggestions_() {
+      if (!adminOriginalTeamNames) return;
+      if (!adminOriginalNameMenuOpen_) {
+        adminOriginalTeamNames.hidden = true;
+        adminAcronymFromInput?.setAttribute('aria-expanded', 'false');
+        adminOriginalTeamNames.innerHTML = '';
+        return;
+      }
+      const sport = adminOptOutSport?.value || sportKeyFromLabel_(sportEl?.value || '');
+      const classification = adminClassFilter?.value || 'all';
+      const rows = adminTeamSearchRows_(sport, classification, adminAcronymFromInput?.value || '');
+      const open = Boolean(adminOriginalNameMenuOpen_ && rows.length);
+      adminOriginalTeamNames.hidden = !open;
+      adminAcronymFromInput?.setAttribute('aria-expanded',String(open));
+      adminOriginalTeamNames.innerHTML = open ? rows.map(row => `
+        <button type="button" class="admin-team-search-option" data-admin-original-team="${escapeHtml(row.name)}">
+          <span class="admin-team-search-logo">${row.logoUrl ? `<img src="${escapeHtml(row.logoUrl)}" alt="" loading="lazy">` : ''}</span>
+          <span class="admin-team-search-copy">
+            <span class="admin-team-search-name">${escapeHtml(row.name)}</span>
+            <small><b>${escapeHtml(row.classShort || row.teamClass)}</b>${row.aliases ? ` <span>${escapeHtml(row.aliases)}</span>` : ''}</small>
+          </span>
+        </button>`).join('') : '';
+    }
+
     function renderAdminOptOutMenu_() {
       if (!adminOptOutMenu) return;
+      if (!adminOptOutMenuOpen_) {
+        adminOptOutMenu.hidden = true;
+        adminOptOutMenu.innerHTML = '';
+        return;
+      }
       const selectedSport = adminOptOutSport?.value || sportKeyFromLabel_(sportEl?.value || '');
       const selectedClass = adminClassFilter?.value || 'all';
       const rows = adminTeamSearchRows_(selectedSport, selectedClass, adminOptOutSearch_);
@@ -8502,6 +8751,7 @@ let eastWestLineMapState_ = null;
         setAdminStatus_('Admin tools unlocked. Open Manage Teams to edit live settings.');
       }
       renderAdminOptOutMenu_();
+      renderAdminOriginalNameSuggestions_();
     }
 
     function setAdminManagerOpen_(isOpen) {
@@ -8514,7 +8764,9 @@ let eastWestLineMapState_ = null;
         getTeamDetailsMapCached_().then(() => renderAdminPanel_()).catch(() => {});
       } else {
         adminOptOutMenuOpen_ = false;
+        adminOriginalNameMenuOpen_ = false;
         renderAdminOptOutMenu_();
+        renderAdminOriginalNameSuggestions_();
       }
     }
 
@@ -8598,7 +8850,7 @@ let eastWestLineMapState_ = null;
       const bucket = selectedClass === 'all'
         ? adminNormalizeBucketForSport_(next, selectedSport, true)
         : adminNormalizeBucketForSportClass_(next, selectedSport, selectedClass, true);
-      bucket.acronymOverrides[from.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim()] = to;
+      bucket.acronymOverrides[acronymKey_(from)] = to;
       await saveAdminConfig_(next);
       if (adminAcronymFromInput) adminAcronymFromInput.value = '';
       if (adminAcronymToInput) adminAcronymToInput.value = '';
@@ -8625,7 +8877,6 @@ let eastWestLineMapState_ = null;
     }
 
     function lockAdminPanel_() {
-      window.GraphicBackgrounds?.close();
       adminUnlocked_ = false;
       adminSecret_ = '';
       sessionStorage.removeItem('rpi-admin-secret');
@@ -8725,7 +8976,7 @@ let eastWestLineMapState_ = null;
       await nextPaint_();
 
       try {
-        const { rows, rpiResult } = await getMergedRowsForCurrentSelection_();
+        const { rows, rpiResult } = await getMergedRowsForCurrentSelection_({ regionalHistory: false });
         setBoardLoading_(true, 'Rendering RPI standings...', `${rows.length} teams loaded`);
         await nextPaint_();
         renderRows(rows);

@@ -1,0 +1,54 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const {chromium}=require('playwright');
+(async()=>{
+  const browser=await chromium.launch();
+  try{
+    const context=await browser.newContext();
+    let published;
+    const lab=await context.newPage();
+    await lab.route('**/design-settings',async route=>{
+      published={...route.request().postDataJSON(),savedAt:String(Date.now())};
+      await route.fulfill({json:{savedAt:published.savedAt}});
+    });
+    await lab.goto('http://localhost:8125/board.html');
+    await lab.locator('.lab-controls>details>summary').filter({hasText:'Card Design'}).click();
+    await lab.locator('.lab-controls>details>summary').filter({hasText:'Card Alignment'}).click();
+    await lab.locator('.lab-controls>details>summary').filter({hasText:'Fonts'}).click();
+    await lab.locator('.lab-controls>details>summary').filter({hasText:'Bracket Connectors'}).click();
+    await lab.locator('#lab-control-schoolStroke').fill('5');
+    await lab.locator('#lab-control-schoolStroke').dispatchEvent('input');
+    await lab.locator('#lab-control-schoolStroke').dispatchEvent('change');
+    await lab.click('#lab-undo');
+    assert.equal(await lab.locator('#lab-control-schoolStroke').inputValue(),'2.5');
+    await lab.locator('#lab-control-schoolStroke').fill('4');
+    await lab.locator('#lab-control-schoolStroke').dispatchEvent('input');
+    await lab.locator('#lab-control-schoolStroke').dispatchEvent('change');
+    await lab.locator('#lab-control-width').fill('1010');
+    await lab.locator('#lab-control-width').dispatchEvent('input');
+    await lab.locator('#lab-control-connectorX').fill('18');
+    await lab.locator('#lab-control-connectorX').dispatchEvent('input');
+    await lab.click('#lab-save');
+    await lab.waitForFunction(()=>document.querySelector('#lab-design-status').textContent==='Saved to lab and winter board 2');
+    assert.equal(published.card.width,1010);
+    assert.equal(published.card.schoolStroke,4);
+    assert.equal(published.stats.connectorX,18);
+    const official=await context.newPage();
+    await official.route('**/design-settings',route=>route.fulfill({json:published}));
+    const source=fs.readFileSync('playoff_board.js','utf8').replace('function renderPlayoffCardPicture(','window.syncTest={renderPlayoffCardPicture,setViewMode_}; function renderPlayoffCardPicture(');
+    await official.route('**/playoff_board.js*',route=>route.fulfill({contentType:'text/javascript',body:source}));
+    await official.goto('http://localhost:8139/playoff_board.html');
+    await official.evaluate(async()=>{await window.CutoutBoard.ready;window.syncTest.setViewMode_('playoff');const rows=Array.from({length:12},(_,i)=>({school:'Test Team '+i,regionRank:i+1,rank:i+1,record:'3-1-0',rpi:'.55000',dominantHex:'#008040',mapLogoUrl:'/assets/fallback-logo.png',mascot:'Teams'}));window.syncTest.renderPlayoffCardPicture({east:rows,west:rows,total:24,excludedTeams:[]},'Class 8A','Football','west');});
+    await official.waitForTimeout(300);
+    assert.equal(await official.locator('.cm-school').first().evaluate(n=>getComputedStyle(n).webkitTextStrokeWidth),'4px');
+    assert.equal(await official.locator('.magnet').first().evaluate(n=>n.offsetWidth),1010);
+    assert.equal(await official.locator('.cutout-board').evaluate(n=>n.style.getPropertyValue('--lab-connector-x')),'18px');
+    published.card.width=1030;published.savedAt='next';
+    await official.evaluate(()=>window.CutoutBoard.refreshDesign());
+    assert.equal(await official.locator('.magnet').first().evaluate(n=>n.offsetWidth),1030);
+    assert.equal(await official.locator('.lab-controls').count(),0);
+    const response=await official.request.get('http://localhost:8139/design-settings');
+    assert.equal(response.status(),200);
+    console.log('PASS: Save publishes all groups, official loads width/connector changes and refreshes an existing board without lab controls. Test settings were not written to the shared file.');
+  }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

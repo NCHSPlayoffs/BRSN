@@ -5047,8 +5047,8 @@ th,
     .muted { color: var(--muted); }
     .error { color: var(--danger); }
 
-    body.playoff-mode .playoff-board,
-    body.playoff-mode .playoff-board * {
+    body.playoff-mode .playoff-board:not(.whiteboard-playoff),
+    body.playoff-mode .playoff-board:not(.whiteboard-playoff) * {
       cursor: default;
       transition: none !important;
       font: 24px/1 'Anton', sans-serif;

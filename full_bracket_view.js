@@ -14,13 +14,24 @@ window.BRSNFullBracketView.init = function initFullBracketView(root = document) 
   // Actual CSS zoom = zoomPct / 100 * base, where base = 0.65 (small) or 0.55 (large).
   function getBracketBase() {
     const canvasWidth = Number(zoomTarget.dataset.canvasWidth || "3000");
-    return canvasWidth <= 2300 ? 0.66 : 0.60;
+    // Keep mobile cards readable and pannable; desktop defaults to a full-width overview.
+    if (viewport.clientWidth < 760) return 0.60;
+    return Math.min(0.66, (viewport.clientWidth - 24) / (canvasWidth + getCenterGapExtra()));
   }
   function pctToActual(pct) { return (pct / 100) * getBracketBase(); }
   function actualToPct(actual) { return Math.round((actual / getBracketBase()) * 100); }
 
   let zoomPct = clamp(Number(localStorage.getItem("bracketZoomPct") || "100"), 50, 150);
   let zoom = pctToActual(zoomPct);
+  let fittedWidth = viewport.clientWidth;
+  const fitObserver = new ResizeObserver(() => {
+    if (!viewport.isConnected) { fitObserver.disconnect(); return; }
+    if (viewport.clientWidth === fittedWidth) return;
+    fittedWidth = viewport.clientWidth;
+    zoom = pctToActual(zoomPct);
+    applyZoom();
+  });
+  fitObserver.observe(viewport);
 
   tools.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-zoom]");
@@ -189,6 +200,7 @@ window.BRSNFullBracketView.init = function initFullBracketView(root = document) 
   scheduleLayoutAlignment();
 
   function getCenterGapExtra() {
+    if (zoomTarget.querySelector('.live-bracket')) return 0;
     try {
       const rootStyle = getComputedStyle(document.documentElement);
       const view = zoomTarget.querySelector('.view[data-view-type="horizontal-view"]');
@@ -743,6 +755,22 @@ window.BRSNFullBracketView.init = function initFullBracketView(root = document) 
       if (bracketYear  && mainYear)  { bracketYear.innerHTML  = mainYear.innerHTML;  bracketYear.value  = mainYear.value; }
     }
     syncSelects();
+    // Live rendering can finish before the asynchronous archive-year list arrives.
+    window.BRSNFullBracketView.selectorCleanup?.();
+    const optionObserver = new MutationObserver(() => {
+      if (!viewport.isConnected) { optionObserver.disconnect(); return; }
+      syncSelects();
+    });
+    const mainSelects = [mainSport, mainClass, mainYear].filter(Boolean);
+    mainSelects.forEach(select => {
+      optionObserver.observe(select, { childList: true, subtree: true, characterData: true });
+      select.addEventListener('change', syncSelects);
+    });
+    [bracketSport, bracketClass, bracketYear].filter(Boolean).forEach(select => select.addEventListener('focus', syncSelects));
+    window.BRSNFullBracketView.selectorCleanup = () => {
+      optionObserver.disconnect();
+      mainSelects.forEach(select => select.removeEventListener('change', syncSelects));
+    };
 
     // When a bracket select changes, push the value to the main select and trigger reload.
     if (bracketSport) {

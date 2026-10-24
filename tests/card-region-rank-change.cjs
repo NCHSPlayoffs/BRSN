@@ -54,6 +54,7 @@ Object.assign(context, {
   mergeRows_: rows => rows.map(row => ({ ...row, school: row.team })),
   liveDisplayTeamName_: name => name,
   findTeamDetailByName_: (_, name) => original.find(row => row.school === name),
+  createTeamDetailLookup_: () => name => original.find(row => row.school === name),
   fetchRegionalLastRows_: async (_, previous) => [previous],
   addComparisonGameResults_: async rows => rows,
   filterOptedOutTeams_: rows => ({ rows: rows.filter(row => row.school !== 'F') }),

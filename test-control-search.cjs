@@ -1,0 +1,50 @@
+const assert=require('node:assert/strict');
+const {chromium}=require('playwright');
+
+(async()=>{
+  const browser=await chromium.launch();
+  try{
+    const page=await browser.newPage({viewport:{width:1440,height:1000}});
+    let saved=null;
+    await page.route('https://**',r=>r.fulfill({json:{}}));
+    await page.route('**/lab-config.js',r=>r.fulfill({contentType:'text/javascript',body:''}));
+    await page.route('**/design-settings',r=>{saved=r.request().postDataJSON();return r.fulfill({json:{saved:true}});});
+    await page.goto('http://localhost:8125/board.html',{waitUntil:'domcontentloaded'});
+    const search=page.getByRole('searchbox',{name:'Search controls'});
+    await search.waitFor();
+    const groups=page.locator('.lab-controls details');
+    const total=await page.locator('.lab-adjust,.lab-choice').count();
+    const initial=await groups.evaluateAll(groups=>groups.map(n=>({name:n.dataset.controlGroup,open:n.open})));
+    const visibleLabels=()=>page.locator('.lab-adjust,.lab-choice').evaluateAll(rows=>rows.filter(n=>n.getBoundingClientRect().height>0).map(n=>n.querySelector('label')?.textContent||n.textContent));
+    await search.fill('team name x');
+    assert.deepEqual(await visibleLabels(),['Team name X']);
+    assert.equal(await page.locator('#lab-control-nameX').evaluate(n=>n.closest('details').dataset.controlGroup),'Card Alignment');
+    const input=page.getByRole('spinbutton',{name:'Team name X',exact:true});
+    const before=Number(await input.inputValue());
+    await input.fill(String(before+10));await input.blur();
+    await page.getByRole('button',{name:'Undo',exact:true}).click();
+    assert.equal(await input.inputValue(),String(before));assert.equal(await search.inputValue(),'team name x');
+    await search.fill('weldon');
+    assert.equal((await visibleLabels()).length,7);
+    assert.ok((await visibleLabels()).every(name=>name.includes('Weldon')));
+    await search.fill('mascot font');
+    assert.ok(await page.getByLabel('Mascot font',{exact:true}).isVisible());
+    await search.fill('secondary stroke');
+    assert.ok(await page.locator('#lab-control-schoolStrokeColor').isVisible());
+    await search.fill('definitely nonexistent control');
+    assert.equal((await visibleLabels()).length,0);assert.ok(await page.getByText('No matching controls',{exact:true}).isVisible());
+    await search.press('Escape');
+    assert.equal(await search.inputValue(),'');
+    assert.deepEqual(await groups.evaluateAll(groups=>groups.map(n=>({name:n.dataset.controlGroup,open:n.open}))),initial);
+    assert.equal(await page.locator('.lab-control-search-results').textContent(),total+' controls');
+    await search.fill('horizontal position');
+    assert.ok((await visibleLabels()).includes('Team name X'));
+    await page.getByRole('button',{name:'Save design',exact:true}).click();
+    await page.getByText('Saved to lab and winter board 2',{exact:true}).waitFor();
+    assert.ok(saved?.stats);assert.equal(saved.stats.nameX,before);
+    assert.deepEqual(Object.keys(saved).sort(),['card','layout','stats']);
+    await search.fill('team name');
+    await page.locator('.lab-controls').screenshot({path:'control-search-preview.png'});
+    console.log('PASS: Team name X, all control types, aliases, empty results, clearing, section restoration, Undo, and save payload isolation.');
+  }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

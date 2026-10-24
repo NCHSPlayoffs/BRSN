@@ -1,6 +1,8 @@
 /* v45 concept adapted from 1800px to the existing 1600px/4:5 canvas.
    Remove this stylesheet link to restore the preceding card design.
    Header, table background, live data, and export geometry stay in sports-graphic.css. */
+/* Avoid blurring an entire tall board while the loading spinner is animated. */
+body .table-card.is-loading .board-loading-overlay { backdrop-filter: none; }
 body .sports-graphic.card-playoff-board {
   --card-height: 200px;
   --card-silver-gradient: linear-gradient(#fff 18%,#f4f6f8 45%,#a6afb7 52%,#e8edf1 88%);
@@ -12,7 +14,7 @@ body .sports-graphic.card-playoff-board {
   --card-stat-divider-length: 100%;
   --card-stat-divider-thickness: 2px;
   --card-connector-gap: 190px;
-  --card-column-width: 437px;
+  --card-column-width: 427px;
   /* Set to 0px to restore the plain T-shaped connector. */
   --card-connector-cap-length: 18px;
   --card-matchup-gap: 11px;

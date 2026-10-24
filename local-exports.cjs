@@ -35,13 +35,16 @@ module.exports = function localExports(root, chooseDirectory) {
       const batch = url.searchParams.get('batch');
       if (!/^[a-zA-Z0-9-]{1,80}$/.test(batch || '')) throw new Error('Invalid export batch');
       const filename = url.searchParams.get('filename');
-      if (!filename || filename.length > 180 || /[<>:"/\\|?*\x00-\x1f]/.test(filename) || !/\.(png|jpe?g)$/i.test(filename) || filename.startsWith('.')) throw new Error('Invalid image filename');
+      if (!filename || filename.length > 180 || /[<>:"/\\|?*\x00-\x1f]/.test(filename) || !/\.(png|jpe?g|txt)$/i.test(filename) || filename.startsWith('.')) throw new Error('Invalid export filename');
       const chunks=[];let size=0;
       for await (const chunk of req) {size+=chunk.length;if(size>52428800)return reply(413,{error:'PNG exceeds 50 MB'});chunks.push(chunk);}
       const png=Buffer.concat(chunks);
       const isPng = png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
       const isJpeg = png[0] === 255 && png[1] === 216 && png[2] === 255;
-      if (/\.png$/i.test(filename) ? !isPng : !isJpeg) throw new Error('Image format does not match filename');
+      if (/\.txt$/i.test(filename)) {
+        if (size > 1048576) throw new Error('Text exceeds 1 MB');
+        new TextDecoder('utf-8', {fatal:true}).decode(png);
+      } else if (/\.png$/i.test(filename) ? !isPng : !isJpeg) throw new Error('Image format does not match filename');
       const key=directory+'|'+sport+'|'+batch;
       let folder=batches.get(key);
       if(!folder){
@@ -54,7 +57,7 @@ module.exports = function localExports(root, chooseDirectory) {
       }
       let output;
       for(let version=1;;version++){
-        output=path.join(folder,filename.replace(/\.(png|jpe?g)$/i,extension => (version===1?'':` (${version})`)+extension));
+        output=path.join(folder,filename.replace(/\.(png|jpe?g|txt)$/i,extension => (version===1?'':` (${version})`)+extension));
         try{fs.writeFileSync(output,png,{flag:'wx'});break}catch(error){if(error.code!=='EEXIST')throw error}
       }
       return reply(200,{path:output,folder});

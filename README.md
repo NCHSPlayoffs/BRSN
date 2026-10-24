@@ -1,5 +1,22 @@
 # NCHSAA RPI Rankings Board
 
+## Winter White Board 2
+
+This branch contains the latest whiteboard design, saved magnet settings, local
+fonts and artwork, canonical display-name fixes, and loading optimizations.
+
+```powershell
+npm ci
+npx playwright install chromium
+$env:PORT = '8139'
+npm start
+```
+
+Open http://localhost:8139/playoff_board.html. See [WHITEBOARD2.md](WHITEBOARD2.md)
+for design settings and export details. Run the Node server for the complete
+whiteboard experience; GitHub Pages alone does not provide its design-settings,
+logo-proxy, local-export, or PNG-rendering endpoints.
+
 Broadcast-style RPI rankings, region standings, playoff picture, and PNG export tooling.
 
 ## GitHub Pages

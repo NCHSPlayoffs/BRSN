@@ -39,5 +39,14 @@ vm.runInContext(source.slice(source.indexOf('    const snapshotReadCache_'), sou
   calls = 0;
   await context.fetchRegionalLastRows_(ranks, ranks.map(row => ({ ...row, regionRank: 3 - row.regionRank })), 'Football', '3A', '2026-09-19', snapshot => snapshot.rows);
   assert.equal(calls, 0, 'No history fetch when direct comparison already has changes');
+  context.requestSnapshotApiJson_ = async (path) => {
+    calls++;
+    assert.ok(path.endsWith('/list'), 'Bulk history must not request individual snapshots');
+    return {snapshots:['recent','older'].map((id,i)=>({id,source:'official',seasonYear:'live',fetchedAt:`2026-09-${19-i}`,rows:i?ranks.map(row=>({...row,regionRank:3-row.regionRank})):ranks}))};
+  };
+  calls=0;
+  const bulk = await context.fetchRegionalLastRows_(ranks,ranks,'Football','3A','2026-09-19',snapshot=>snapshot.rows);
+  assert.equal(bulk.length,2);
+  assert.equal(calls,1,'All comparison history arrives in one request');
   console.log('Snapshot caching and early-stop checks passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

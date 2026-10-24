@@ -5,9 +5,8 @@ const crypto = require('crypto');
 const { chromium } = require('playwright');
 const cheerio = require('cheerio');
 
-const PORT = Number(process.env.PORT || 8000);
+const PORT = Number(process.env.PORT || 8139);
 const ROOT = process.cwd();
-const handleLocalBackgrounds = require('./local-backgrounds.cjs')(ROOT);
 const handleLocalExports = require('./local-exports.cjs')(ROOT);
 const DATA_DIR = path.join(ROOT, 'data');
 const SNAPSHOT_FILE = path.join(DATA_DIR, 'rpi-snapshots.json');
@@ -43,6 +42,7 @@ const RPI_SPORTS = [
 const BASKETBALL_ANCHOR_GIRLS = '<h3>Girls Basketball RPI standings</h3>';
 const BASKETBALL_ANCHOR_BOYS = '<h3>Boys Basketball RPI standings</h3>';
 let browserPromise = null;
+let exportContextPromise = null;
 let snapshotSweepTimer = null;
 let snapshotSweepRunning = false;
 let snapshotSweepLastRun = null;
@@ -161,7 +161,7 @@ function normalizeTeamKey(name, cfg = TEAM_NAME_NORMALIZE) {
     s = s.replace(re, ' ');
   }
   if (cfg.removeTrailingSchool) s = s.replace(/\bschool\b\s*$/i, '');
-  return s.replace(/\s+/g, ' ').trim().toLowerCase();
+  return applyAcronymOverrides(s.replace(/\s+/g, ' ').trim(), cfg).toLowerCase();
 }
 
 function normalizeSnapshotRows(rows) {
@@ -382,9 +382,10 @@ async function readBody(req) {
 
 async function getBrowser() {
   if (!browserPromise) {
-    browserPromise = chromium.launch().then(browser => {
+    browserPromise = chromium.launch({args:process.platform==='win32'?['--enable-gpu','--use-angle=d3d11']:['--enable-gpu']}).then(browser => {
       browser.on('disconnected', () => {
         browserPromise = null;
+        exportContextPromise = null;
       });
       return browser;
     }).catch(err => {
@@ -394,23 +395,45 @@ async function getBrowser() {
   }
   return browserPromise;
 }
+async function getExportContext() {
+  if(!exportContextPromise)exportContextPromise=getBrowser().then(browser=>browser.newContext({
+    viewport:{width:1800,height:2000},deviceScaleFactor:2,reducedMotion:'reduce'
+  })).catch(error=>{exportContextPromise=null;throw error;});
+  return exportContextPromise;
+}
 
-async function renderPNG(payload) {
+const pngRenderQueue = [];
+let activePngRenders = 0;
+function renderPNG(payload) {
+  return new Promise((resolve, reject) => {
+    pngRenderQueue.push({payload, resolve, reject});
+    pumpPngRenderQueue();
+  });
+}
+function pumpPngRenderQueue() {
+  while (activePngRenders < 2 && pngRenderQueue.length) {
+    const job = pngRenderQueue.shift();
+    activePngRenders += 1;
+    renderPNGNow(job.payload).then(job.resolve, job.reject).finally(() => {
+      activePngRenders -= 1;
+      pumpPngRenderQueue();
+    });
+  }
+}
+async function renderPNGNow(payload) {
+  const renderStarted=Date.now(),profile={};
   const frame = payload?.frame && typeof payload.frame === 'object' ? payload.frame : null;
   const frameWidth = Number(frame?.width) || 0;
   const frameHeight = Number(frame?.height) || 0;
-  const browser = await getBrowser();
-  const page = await browser.newPage({
-    viewport: {
-      width: Math.max(1800, frameWidth || 0),
-      height: Math.max(1200, frameHeight || 0)
-    },
-    deviceScaleFactor: 2
-  });
+  const context = await getExportContext();
+  const page = await context.newPage();
+  await page.setViewportSize({width:Math.max(1800,frameWidth),height:Math.max(2000,frameHeight)});
 
   try {
     page.setDefaultTimeout(15000);
     await page.setContent(payload.html, { waitUntil: 'domcontentloaded' });
+    profile.content=Date.now()-renderStarted;
+    await page.addStyleTag({content: '*,:before,:after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }'});
 
     await page.evaluate(async () => {
       if (!document.fonts || !document.fonts.ready) return;
@@ -421,6 +444,7 @@ async function renderPNG(payload) {
     });
 
     const el = await page.$(payload.selector);
+    profile.fonts=Date.now()-renderStarted;
     if (!el) throw new Error("Selector not found");
 
     await el.evaluate(async node => {
@@ -445,6 +469,7 @@ async function renderPNG(payload) {
     await page.evaluate(() => new Promise(resolve => {
       requestAnimationFrame(() => requestAnimationFrame(resolve));
     }));
+    profile.images=Date.now()-renderStarted;
 
     if (frameWidth > 0 && frameHeight > 0) {
       const frameSelector = await page.evaluate(({ selector, frame }) => {
@@ -543,7 +568,24 @@ async function renderPNG(payload) {
         throw new Error('Graphic does not fit the 4:5 export canvas. Export stopped to avoid clipped content.');
       }
     });
-    return await el.screenshot({ type: 'png', animations: 'disabled' });
+    // Capture measured bounds without the actionability/stability polling used
+    // by element screenshots, which can time out on cloned responsive layouts.
+    let bounds = await el.boundingBox();
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) throw new Error('Export target has no visible bounds');
+    // Page screenshots intersect their clip with the viewport. Include the
+    // complete board even when the app header places it below the first screen.
+    const viewport = page.viewportSize();
+    await page.setViewportSize({
+      width: Math.max(viewport.width, Math.ceil(bounds.x + bounds.width)),
+      height: Math.max(viewport.height, Math.ceil(bounds.y + bounds.height))
+    });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    bounds = await el.boundingBox();
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) throw new Error('Export target has no visible bounds');
+    profile.prepared=Date.now()-renderStarted;
+    const png=await page.screenshot({type: 'png', animations: 'disabled', timeout: 60000, clip: bounds});
+    if(process.env.RPI_EXPORT_PROFILE==='1')console.log('[PNG timing]',JSON.stringify({...profile,total:Date.now()-renderStarted}));
+    return png;
   } finally {
     await page.close().catch(() => {});
   }
@@ -1734,8 +1776,15 @@ process.on('SIGTERM', async () => {
 const server = http.createServer(async (req, res) => {
   try {
     const requestUrl = new URL(req.url, `http://${req.headers.host || `localhost:${PORT}`}`);
-    if (await handleLocalBackgrounds(req, res, requestUrl)) return;
     if (await handleLocalExports(req, res, requestUrl)) return;
+    if (req.method === 'GET' && requestUrl.pathname === '/design-settings') {
+      res.setHeader('Cache-Control','no-store');
+      return sendJson(res,200,await require('./design-settings.cjs').readDesign());
+    }
+    if (req.method === 'GET' && requestUrl.pathname === '/lab-logo') {
+      const {data,type}=await require('./lab-logo.cjs').logoImage(requestUrl.searchParams.get('url'));
+      return send(res,200,data,type);
+    }
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
@@ -1870,7 +1919,11 @@ node server-headless-export-v2.js</pre>
         date: requestUrl.searchParams.get('date') || '',
         tzOffset: requestUrl.searchParams.get('tzOffset') || ''
       });
-      return sendJson(res, 200, { snapshots: result });
+      const includeRows = requestUrl.searchParams.get('includeRows') === 'comparison';
+      return sendJson(res, 200, { snapshots: includeRows ? result.map(summary => ({
+        ...summary,
+        rows: (getSnapshotById(summary.id)?.rows || []).map(({school, rank, rpi, record}) => ({school, rank, rpi, record}))
+      })) : result });
     }
 
     if (req.method === 'GET' && requestUrl.pathname === '/rpi-snapshots/snapshot') {

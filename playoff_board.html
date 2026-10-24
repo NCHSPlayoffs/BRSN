@@ -5,7 +5,7 @@
   <script src="./app-config.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NCHSAA RPI Rankings</title>
+  <title>Winter White Board 2 - NCHSAA RPI Rankings</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./playoff_board.css" />
 </head>
@@ -97,7 +97,6 @@
 
                 <div id="adminManageField" class="app-settings-field admin-manage-field" hidden>
                   <button id="adminManageBtn" class="admin-manage-btn" type="button">Manage Teams</button>
-                  <button id="adminBackgroundBtn" class="admin-manage-btn" type="button">Background Editor</button>
                 </div>
               </div>
             </details>
@@ -157,7 +156,6 @@
               <div>
                 <div class="admin-manager-kicker">Live Admin Tools</div>
                 <div id="adminManagerTitle" class="admin-manager-title">Manage Teams</div>
-                <div class="admin-manager-subtitle">Edit live opt-outs and team name matching rules.</div>
               </div>
               <button id="adminManagerCloseBtn" class="admin-manager-close" type="button" aria-label="Close admin manager">&times;</button>
             </div>
@@ -174,14 +172,20 @@
                     <option value="all">All Classes</option>
                   </select>
                 </label>
-                <div class="admin-manager-context-note">Each sport manages its own lists. All applies sport-wide; a class selection saves class-only edits.</div>
               </div>
 
-              <a class="admin-sheet-link" href="https://docs.google.com/spreadsheets/d/1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE/edit?gid=510129710#gid=510129710" target="_blank" rel="noopener">Open TeamDetails Sheet</a>
+              <section class="admin-sync-section" aria-label="Team details">
+              <div class="admin-section-heading">Team Details</div>
+              <div class="admin-inline-row">
+                <button id="teamDetailsSyncBtn" type="button">Sync Team Details</button>
+                <a class="admin-sheet-link" href="https://docs.google.com/spreadsheets/d/1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE/edit?gid=510129710#gid=510129710" target="_blank" rel="noopener">Open Spreadsheet</a>
+              </div>
+              <div id="teamDetailsSyncStatus" role="status">Team details not loaded yet.</div>
+              </section>
 
               <div class="admin-edit-grid">
                 <div class="app-settings-field admin-edit-field">
-                  <label for="cardGhostCount">Ghost Teams (Local Card Test)</label>
+                  <label for="cardGhostCount">Local Preview · Team Adjustment</label>
                   <div class="admin-inline-row">
                     <select id="cardGhostSide" aria-label="Ghost team region"><option value="east">East</option><option value="west">West</option></select>
                     <input id="cardGhostCount" type="number" min="-24" max="24" value="0" aria-label="Team adjustment: positive adds ghosts, negative removes lowest ranks">
@@ -221,9 +225,12 @@
                 </div>
 
                 <div class="app-settings-field admin-edit-field">
-                  <label>Normalization Overrides</label>
+                  <label for="adminAcronymFromInput">Name Overrides</label>
                   <div class="admin-inline-row admin-inline-row-split">
-                    <input id="adminAcronymFromInput" type="text" placeholder="Original name">
+                    <span class="admin-team-search-wrap">
+                      <input id="adminAcronymFromInput" type="text" placeholder="Search original team name" autocomplete="off" aria-label="Original team name" aria-controls="adminOriginalTeamNames" aria-expanded="false">
+                      <span id="adminOriginalTeamNames" class="admin-team-search-menu" hidden></span>
+                    </span>
                     <input id="adminAcronymToInput" type="text" placeholder="Normalized name">
                     <button id="adminAcronymAddBtn" type="button">Add</button>
                   </div>
@@ -404,8 +411,7 @@
         <div class="export-format-field">
           <label for="exportPlayoffLayout">Playoff layout</label>
           <select id="exportPlayoffLayout">
-            <option value="classic" selected>Current graphic</option>
-            <option value="cards">Card test</option>
+            <option value="cards" selected>East/West Playoff Picture</option>
           </select>
         </div>
         <button id="buildExportPreviewBtn" type="button">Build Exports</button>
@@ -493,13 +499,23 @@
     </div>
   </div>
 
-      <script src="./full_bracket_view.js"></script>
-      <link rel="stylesheet" href="./graphic-backgrounds.css">
+      <script src="./full_bracket_view.js?v=20260930-year-picker"></script>
+      <script src="./export-description.js"></script>
+      <script src="./live_bracket.js?v=20260930-labels"></script>
+      <link rel="stylesheet" href="./admin-panel.css">
+      <link rel="stylesheet" href="./live-bracket.css?v=20260927-mirrored">
+      <link rel="stylesheet" href="./bracket-polish.css?v=20260930-labels">
       <link rel="stylesheet" href="./export-studio.css">
       <link rel="stylesheet" href="./sports-card-v45.css">
-      <script src="./playoff_board.js?v=20260924-official-2"></script>
-      <script type="module" src="./graphic-backgrounds.js"></script>
-  <script src="./playoff_board.runtime.js?v=20260924-official-2"></script>
+      <link rel="stylesheet" href="./whiteboard-playoff.css">
+      <link rel="stylesheet" href="./cutout-board.css">
+      <link rel="stylesheet" href="./whiteboard-map.css">
+      <script src="./whiteboard-map.js"></script>
+      <script src="./whiteboard-playoff.js"></script>
+      <script src="./cutout-card.js"></script>
+      <script src="./cutout-board.js"></script>
+      <script src="./playoff_board.js?v=20261002-name-history"></script>
+  <script src="./playoff_board.runtime.js?v=20261002-name-history"></script>
 
 </body>
 </html>

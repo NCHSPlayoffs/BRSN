@@ -877,10 +877,12 @@ teamLogContent?.addEventListener('wheel', (e) => {
       syncExportRenderStatus_();
       try {
         for (const item of items) {
-          if (await downloadExportItem_(item, batch) === false) break;
+          if (await downloadExportItem_(item, batch, false) === false) return;
           await new Promise(resolve => setTimeout(resolve, 200));
         }
-      } finally { exportDownloadBusy_ = false; syncExportRenderStatus_(); }
+        await downloadExportDescription_(items, batch);
+      } catch (error) { setExportPreviewStatus_('Post description not saved: ' + error.message); }
+      finally { exportDownloadBusy_ = false; syncExportRenderStatus_(); }
     });
 
     function setAppSettingsOpen_(isOpen) {
@@ -958,6 +960,27 @@ teamLogContent?.addEventListener('wheel', (e) => {
         .then(() => { if (adminRemoveTokenInput) adminRemoveTokenInput.value = ''; })
         .catch(err => setAdminStatus_(`Unable to save token. ${err.message}`, true));
     });
+    adminAcronymFromInput?.addEventListener('input', () => {
+      adminOriginalNameMenuOpen_ = true;
+      renderAdminOriginalNameSuggestions_();
+    });
+    adminAcronymFromInput?.addEventListener('focus', () => {
+      adminOriginalNameMenuOpen_ = true;
+      renderAdminOriginalNameSuggestions_();
+      getTeamDetailsMapCached_().then(renderAdminOriginalNameSuggestions_).catch(() => {});
+    });
+    adminOriginalTeamNames?.addEventListener('click', e => {
+      const option = e.target.closest('[data-admin-original-team]');
+      if (!option) return;
+      adminAcronymFromInput.value = option.dataset.adminOriginalTeam;
+      adminOriginalNameMenuOpen_ = false;
+      renderAdminOriginalNameSuggestions_();
+    });
+    adminAcronymFromInput?.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      adminOriginalNameMenuOpen_ = false;
+      renderAdminOriginalNameSuggestions_();
+    });
     adminAcronymAddBtn?.addEventListener('click', () => {
       addAdminAcronymOverride_().catch(err => setAdminStatus_(`Unable to save override. ${err.message}`, true));
     });
@@ -983,6 +1006,10 @@ teamLogContent?.addEventListener('wheel', (e) => {
         renderAdminOptOutMenu_();
       }
       hideTeamAdminContextMenu_();
+      if (adminOriginalTeamNames && !adminOriginalTeamNames.hidden && !adminOriginalTeamNames.contains(e.target) && e.target !== adminAcronymFromInput) {
+        adminOriginalNameMenuOpen_ = false;
+        renderAdminOriginalNameSuggestions_();
+      }
     });
 
     compareSnapshotCalendarBtn?.addEventListener('click', () => openDatePicker_(compareSnapshotDate));
@@ -1109,7 +1136,10 @@ teamLogContent?.addEventListener('wheel', (e) => {
       syncYearPickerUi_();
       reloadCurrentBoardForSelection_();
     });
-    loadBtn.addEventListener('click', loadRankings);
+    loadBtn.addEventListener('click', () => {
+      if (currentViewMode_() === 'rankings') refreshLiveRpiReads_();
+      loadRankings();
+    });
     exportBtn.addEventListener('click', exportPlayoffBoardPng_);
 
     function currentViewMode_() {
@@ -1194,13 +1224,23 @@ teamLogContent?.addEventListener('wheel', (e) => {
           classification: classEl.value,
           seasonYear: selectedRpiYear_()
         };
-        const payload = await requestFullBracketJson_(params);
-        setBoardLoading_(true, 'Rendering full playoff bracket...', 'Preserving official bracket geometry');
+        const live = !params.seasonYear || params.seasonYear === 'live';
+        let payload;
+        if (live) {
+          const { rows, rpiResult } = await getMergedRowsForSelection_(params.classification, params.sport, undefined, { regionalHistory: false });
+          const regions = buildRegionRows_(rows, params.classification, eastWestExtraSide_(), rpiResult?.excludedTeams || []);
+          if (!regions.total) throw new Error('No eligible teams available for this selection');
+          payload = buildLiveFullBracketPayload_(regions, params.classification);
+          setUpdatedFromRpi_(rpiResult);
+        } else {
+          payload = await requestFullBracketJson_(params);
+        }
+        setBoardLoading_(true, 'Rendering full playoff bracket...', live ? 'Building projected regional matchups' : 'Preserving official bracket geometry');
         await nextPaint_();
         await renderFullBracket_(payload, classEl.value, sportEl.value);
         await idleFrame_();
         setStatus(`Full playoff bracket loaded for ${classEl.value} ${sportEl.value}.`);
-        updatedText.textContent = payload?.bracketYear ? `Bracket year: ${payload.bracketYear}` : '';
+        if (!live) updatedText.textContent = payload?.bracketYear ? `Bracket year: ${payload.bracketYear}` : '';
       } catch (err) {
         console.error(err);
         clearFullBracketWidgetStyles_();

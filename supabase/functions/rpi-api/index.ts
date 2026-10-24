@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import * as cheerio from "npm:cheerio@1.2.0";
-import { backgroundSports, validateBackground } from "../_shared/graphic-backgrounds.js";
+import { parseTeamDetailsSheet } from "../_shared/team-details.js";
 import TEAM_NAME_NORMALIZE_CONFIG from "../_shared/team-name-normalize.config.json" with { type: "json" };
 
 const corsHeaders = {
@@ -265,7 +265,7 @@ function normalizeTeamKey(name: string, cfg = TEAM_NAME_NORMALIZE) {
     s = s.replace(re, " ");
   }
   if (cfg.removeTrailingSchool) s = s.replace(/\bschool\b\s*$/i, "");
-  return s.replace(/\s+/g, " ").trim().toLowerCase();
+  return applyAcronymOverrides(s.replace(/\s+/g, " ").trim(), cfg).toLowerCase();
 }
 
 function normalizeSnapshotRows(rows: any[], normalizeConfig = TEAM_NAME_NORMALIZE) {
@@ -1480,55 +1480,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (req.method === "GET" && path === "/graphic-backgrounds") {
-      const rows = await restRequest('/app_admin_config?select=key,value&key=like.background:*');
-      const settings: Record<string, unknown> = {};
-      for (const row of rows || []) settings[row.key.slice('background:'.length)] = Number.isFinite(row.value?.brightness) ? row.value : null;
-      return jsonResponse({ settings });
+
+    if (req.method === "GET" && path === "/team-details") {
+      const records = await restRequest('/app_admin_config?select=value&key=eq.team-details:v1&limit=1');
+      return jsonResponse(records?.[0]?.value || { syncedAt: null, teamCount: 0, table: null });
     }
 
-    if (req.method === "POST" && (path === "/graphic-backgrounds" || path === "/graphic-backgrounds/upload")) {
-      // Unlike the legacy admin route, background writes always fail closed.
+    if (req.method === "POST" && path === "/admin/team-details/sync") {
       if (!RPI_ADMIN_SECRET || !isAuthorizedAdmin(req, url)) return jsonResponse({ error: "Unauthorized" }, 401);
-      const sport = url.searchParams.get('sport') || '';
-      if (!Object.hasOwn(backgroundSports, sport)) return jsonResponse({ error: 'Unknown sport' }, 400);
-      const storageBase = `${SUPABASE_URL}/storage/v1/object/public/graphic-backgrounds/`;
-      if (path.endsWith('/upload')) {
-        const reader = req.body?.getReader();
-        if (!reader) return jsonResponse({ error: 'Image required' }, 400);
-        const chunks: Uint8Array[] = [];
-        let size = 0;
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          size += value.length;
-          if (size > 5242880) { await reader.cancel(); return jsonResponse({ error: 'Maximum image size is 5 MB' }, 413); }
-          chunks.push(value);
-        }
-        const bytes = new Uint8Array(size);
-        let offset = 0;
-        for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-        const png = [137,80,78,71,13,10,26,10].every((n, i) => bytes[i] === n);
-        const jpeg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
-        const webp = new TextDecoder().decode(bytes.slice(0,4)) === 'RIFF' && new TextDecoder().decode(bytes.slice(8,12)) === 'WEBP';
-        const extension = png ? 'png' : jpeg ? 'jpg' : webp ? 'webp' : '';
-        if (!extension) return jsonResponse({ error: 'Use PNG, JPEG, or WebP' }, 400);
-        const imagePath = `${sport}/${crypto.randomUUID()}.${extension}`;
-        const response = await fetch(`${SUPABASE_URL}/storage/v1/object/graphic-backgrounds/${imagePath}`, {
-          method: 'POST', headers: restHeaders({ 'Content-Type': png ? 'image/png' : jpeg ? 'image/jpeg' : 'image/webp' }), body: bytes
-        });
-        if (!response.ok) throw new Error('Background upload failed');
-        return jsonResponse({ imageUrl: storageBase + imagePath });
-      }
-      try {
-        const body = await readJson(req);
-        const settings = validateBackground(sport, body.settings, storageBase);
-        await restRequest('/app_admin_config?on_conflict=key', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-          body: JSON.stringify([{ key: `background:${sport}`, value: settings || {}, updated_at: new Date().toISOString() }])
-        });
-        return jsonResponse({ settings });
-      } catch (error) { return jsonResponse({ error: error instanceof Error ? error.message : 'Save failed' }, 400); }
+      const response = await fetch('https://docs.google.com/spreadsheets/d/1JmclT_tkhJC1g71NWB3z6SBV8dvTdKV3Cu9Q3f6FxIE/gviz/tq?gid=510129710&tqx=out:json', { signal: AbortSignal.timeout(60000) });
+      if (!response.ok) throw new Error(`TeamDetails sheet returned ${response.status}. Previous data was not changed.`);
+      const table = parseTeamDetailsSheet(await response.text());
+      const value = { syncedAt: new Date().toISOString(), teamCount: table.rows.length, table };
+      await restRequest('/app_admin_config?on_conflict=key', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify([{ key: 'team-details:v1', value, updated_at: value.syncedAt }])
+      });
+      return jsonResponse({ syncedAt: value.syncedAt, teamCount: value.teamCount });
     }
 
     if (req.method === "GET" && path === "/admin/config") {
@@ -1559,9 +1527,15 @@ Deno.serve(async (req) => {
       const classification = url.searchParams.get("classification") || "";
       const date = url.searchParams.get("date") || "";
       const tzOffset = url.searchParams.get("tzOffset") || "";
-      const snapshots = (await selectSnapshots({ sport, classification }, 300))
+      const includeRows = url.searchParams.get("includeRows") === "comparison";
+      if (includeRows && (!sport || !classification)) return jsonResponse({ error: "Sport and classification required" }, 400);
+      const normalizeConfig = includeRows ? effectiveNormalizeConfig(await getAdminConfig(), sport, classification) : TEAM_NAME_NORMALIZE;
+      const snapshots = (await selectSnapshots({ sport, classification }, 300, normalizeConfig))
         .filter((snapshot) => !date || snapshotLocalDate(snapshot.fetchedAt, tzOffset) === date)
-        .map(snapshotSummary);
+        .map(snapshot => includeRows ? {
+          ...snapshotSummary(snapshot),
+          rows: snapshot.rows.map((row: any) => ({ school: row.school, rank: row.rank, rpi: row.rpi, record: row.record }))
+        } : snapshotSummary(snapshot));
       return jsonResponse({ snapshots });
     }
 
