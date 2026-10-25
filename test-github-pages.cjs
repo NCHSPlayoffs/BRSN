@@ -25,7 +25,7 @@ const {chromium}=require('playwright');
   const errors=[],pageErrors=[];
   page.on('pageerror',e=>pageErrors.push(e.message));
   page.on('response',r=>{if(r.status()>=400&&r.url().includes('/BRSN/')&&!r.url().endsWith('favicon.ico'))errors.push({url:r.url(),status:r.status()});});
-  await page.goto('http://127.0.0.1:'+server.address().port+'/BRSN/playoff_board.html');
+  await page.goto(process.env.PAGES_URL||'http://127.0.0.1:'+server.address().port+'/BRSN/playoff_board.html');
   await page.evaluate(async()=>{
    await window.CutoutBoard.ready;
    document.getElementById('classification').value='Class 3A';document.getElementById('sport').value='Football';
@@ -60,7 +60,16 @@ const {chromium}=require('playwright');
   assert.equal(exported.width,3200);assert.equal(exported.height,4000);assert.ok(exported.red>150&&exported.dark>300,'PNG must contain the header, connectors, logos and text');
   assert.ok(exported.connectorRed>100&&exported.paperRed>300&&exported.headerRed>200,'Export must preserve connector strokes, timestamp paper and round-header borders');
   fs.writeFileSync(path.join(require('node:os').tmpdir(),'whiteboard-pages-export.png'),Buffer.from(exported.data.split(',')[1],'base64'));
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>buildPlayoffView_({layout:'cards',side:'east'}));
+  await page.evaluate(async()=>{await Promise.all([...document.querySelectorAll('.cutout-board img')].map(n=>n.decode().catch(()=>{})));});
+  assert.equal(await page.locator('.cutout-board').getAttribute('data-region'),'east');
+  assert.equal(await page.locator('.cutout-board .magnet').count(),24);
+  assert.equal(await page.locator('.cutout-board img').evaluateAll(nodes=>nodes.filter(n=>!n.naturalWidth).length),0);
+  await page.locator('.cutout-board').screenshot({path:path.join(require('node:os').tmpdir(),'whiteboard-pages-mobile-east.png')});
+  await page.evaluate(async()=>{document.getElementById('classification').value='Class 8A';await buildPlayoffView_({layout:'cards',side:'west'});});
+  assert.equal(await page.locator('.cutout-board .magnet').count(),12,'8A smaller field must retain its layout');
   assert.deepEqual(pageErrors,[]);assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({status:'PASS',rpi:'live',magnets:24,export:[exported.width,exported.height],staticErrors:errors,pageErrors}));
+  console.log(JSON.stringify({status:'PASS',rpi:'live',magnets:24,mobileEast:true,smallField:12,export:[exported.width,exported.height],staticErrors:errors,pageErrors}));
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1;});
