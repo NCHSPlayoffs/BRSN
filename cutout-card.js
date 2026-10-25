@@ -59,8 +59,9 @@
     node.style.setProperty('--team',team.color||'#326978');node.style.setProperty('--mascot-color',mascotColor(team.color,team.secondary));
     node.style.setProperty('--cutout-filter',`url('#${rimId}')`);
     const image=node.querySelector('.logo');image.style.setProperty('--base-filter',`url('#${baseId}')`);
-    image.crossOrigin='anonymous';image.referrerPolicy='no-referrer';image.src=team.logo||'/assets/fallback-logo.png';
-    image.onerror=()=>{if(!image.dataset.fallback){image.dataset.fallback='true';image.src='/assets/fallback-logo.png';}};
+    const fallback=new URL('assets/fallback-logo.png',document.baseURI).href;
+    image.crossOrigin='anonymous';image.referrerPolicy='no-referrer';image.src=team.logo||fallback;
+    image.onerror=()=>{if(!image.dataset.fallback){image.dataset.fallback='true';image.src=fallback;}};
     return node;
   }
   const trimmedLogos=new Map();

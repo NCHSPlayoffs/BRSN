@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "cheerio": "^1.2.0",
+    "html-to-image": "1.11.13",
     "playwright": "^1.53.0"
   },
   "devDependencies": {

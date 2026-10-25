@@ -2,3 +2,6 @@ project_id = "rpi-rankings-board"
 
 [functions.rpi-api]
 verify_jwt = false
+
+[functions.team-logo]
+verify_jwt = false

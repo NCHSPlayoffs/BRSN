@@ -13,9 +13,14 @@ npm start
 ```
 
 Open http://localhost:8139/playoff_board.html. See [WHITEBOARD2.md](WHITEBOARD2.md)
-for design settings and export details. Run the Node server for the complete
-whiteboard experience; GitHub Pages alone does not provide its design-settings,
-logo-proxy, local-export, or PNG-rendering endpoints.
+for design settings and export details.
+
+Live site: https://nchsplayoffs.github.io/BRSN/playoff_board.html
+
+GitHub Pages loads the published design from `data/whiteboard-design.json`,
+uses the separate Supabase `team-logo` function for CORS-safe logos, and renders
+PNG downloads in the browser. No local Node server is required on the live site.
+The Node server retains local-folder export and headless rendering for desktop use.
 
 Broadcast-style RPI rankings, region standings, playoff picture, and PNG export tooling.
 

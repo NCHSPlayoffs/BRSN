@@ -3,6 +3,6 @@ window.RPI_APP_CONFIG = {
   // https://YOUR_PROJECT_REF.supabase.co/functions/v1/rpi-api
   apiBaseUrl: 'https://ahlaljynyywkoidvhlsf.supabase.co/functions/v1/rpi-api',
   // Optional: set this to a deployed Node/Playwright export server.
-  // If blank, PNG exports use the local helper at http://localhost:8000.
+  // If blank on the hosted site, PNG exports run in the browser.
   exportBaseUrl: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.origin : ''
 };

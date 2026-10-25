@@ -6635,7 +6635,8 @@ function applyTeamLogRangeSelection_(value) {
     }
 
     function normalizeDriveImageUrl_(url) {
-      return driveImageCandidates_(url)[0] || '';
+      const candidate=driveImageCandidates_(url)[0] || '';
+      return window.BRSNHosted?.enabled?window.BRSNHosted.imageUrl(candidate):candidate;
     }
 
     function logoCandidates_(url) {
@@ -6644,7 +6645,7 @@ function applyTeamLogRangeSelection_(value) {
     }
 
     function imageHtmlWithFallback_(className, url, alt, placeholderClass) {
-      const candidates = logoCandidates_(url);
+      const candidates = logoCandidates_(url).map(value=>window.BRSNHosted?.enabled?window.BRSNHosted.imageUrl(value):value);
       if (!candidates.length) return `<div class="${placeholderClass}"></div>`;
       const first = escapeHtml(candidates[0]);
       const all = escapeHtml(candidates.join('|||'));
@@ -8069,6 +8070,7 @@ let eastWestLineMapState_ = null;
     }
 
     async function requestServerPngExport_(payload) {
+      if(window.BRSNHosted?.enabled&&!EXPORT_BASE_URL_)return window.BRSNHosted.renderPng(payload);
       const endpoints = serverExportEndpoints_('/export-image');
       let lastError = null;
 

@@ -1,13 +1,13 @@
-@font-face{font-family:Cutout Scoreboard;src:url('/assets/Anton-Regular.ttf');font-display:swap}
-@font-face{font-family:Cutout Marker;src:url('/assets/PermanentMarker-Regular.ttf');font-display:swap}
-@font-face{font-family:Cutout Pen;src:url('/assets/BoardPen-Triangular4-Bold.ttf');font-weight:700;font-display:swap}
-@font-face{font-family:Cutout Neat;src:url('/assets/BarlowCondensed-ExtraBold.ttf');font-weight:700 800;font-display:swap}
-@font-face{font-family:Cutout Goldman;src:url('/assets/Goldman-Bold.ttf');font-display:swap}
-@font-face{font-family:Cutout Russo;src:url('/assets/RussoOne-Regular.ttf');font-display:swap}
-@font-face{font-family:Cutout Graduate;src:url('/assets/Graduate-Regular.ttf');font-display:swap}
-@font-face{font-family:Cutout Black Ops;src:url('/assets/BlackOpsOne-Regular.ttf');font-display:swap}
-@font-face{font-family:Cutout Saira Stencil;src:url('/assets/SairaStencilOne-Regular.ttf');font-display:swap}
-@font-face{font-family:Cutout Squada;src:url('/assets/SquadaOne-Regular.ttf');font-display:swap}
+@font-face{font-family:Cutout Scoreboard;src:url('assets/Anton-Regular.ttf');font-display:swap}
+@font-face{font-family:Cutout Marker;src:url('assets/PermanentMarker-Regular.ttf');font-display:swap}
+@font-face{font-family:Cutout Pen;src:url('assets/BoardPen-Triangular4-Bold.ttf');font-weight:700;font-display:swap}
+@font-face{font-family:Cutout Neat;src:url('assets/BarlowCondensed-ExtraBold.ttf');font-weight:700 800;font-display:swap}
+@font-face{font-family:Cutout Goldman;src:url('assets/Goldman-Bold.ttf');font-display:swap}
+@font-face{font-family:Cutout Russo;src:url('assets/RussoOne-Regular.ttf');font-display:swap}
+@font-face{font-family:Cutout Graduate;src:url('assets/Graduate-Regular.ttf');font-display:swap}
+@font-face{font-family:Cutout Black Ops;src:url('assets/BlackOpsOne-Regular.ttf');font-display:swap}
+@font-face{font-family:Cutout Saira Stencil;src:url('assets/SairaStencilOne-Regular.ttf');font-display:swap}
+@font-face{font-family:Cutout Squada;src:url('assets/SquadaOne-Regular.ttf');font-display:swap}
 .lab-nav{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:12px 20px;background:#fff;color:#202226;font:14px Arial,sans-serif;border-bottom:1px solid #bbc0c5}
 .lab-nav a{color:#315a79}
 /* Lab-only board controls, in the original 1122px board coordinates. */

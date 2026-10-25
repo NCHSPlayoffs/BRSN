@@ -306,7 +306,8 @@
       }
       const schoolLines=[...slot.querySelectorAll('.wb-school>span')].map(line=>line.textContent.trim());
       const team={name:schoolLines.length?schoolLines.join(' '):text(slot,'.wb-school'),mascot:text(slot,'.wb-mascot'),color:slot.style.getPropertyValue('--team-primary')||slot.style.getPropertyValue('--team-accent')||'#326978',secondary:slot.style.getPropertyValue('--team-secondary').trim(),logo:slot.querySelector('.wb-logo')?.src};
-      if(/pine\s*lake|pinelake/i.test(team.name))team.logo='/assets/pine-lake-prep-nMdhYRp.png';
+      if(/pine\s*lake|pinelake/i.test(team.name))team.logo=new URL('assets/pine-lake-prep-nMdhYRp.png',document.baseURI).href;
+      else if(window.BRSNHosted?.enabled)team.logo=window.BRSNHosted.imageUrl(team.logo);
       else if(/^https?:/.test(team.logo)&&new URL(team.logo).origin!==location.origin)team.logo='/lab-logo?url='+encodeURIComponent(team.logo);
       const move=Number(text(slot,'.wb-move').replace(/[^\d]/g,''))*(slot.dataset.move==='neg'?-1:slot.dataset.move==='pos'?1:0);
       const stats=[...slot.querySelectorAll('.wb-stat')];
@@ -478,7 +479,7 @@
   let revision='';
   async function loadSharedDesign(){
     try{
-      const response=await fetch('./design-settings',{cache:'no-store'});
+      const response=await fetch(window.BRSNHosted?.enabled?'./data/whiteboard-design.json':'./design-settings',{cache:'no-store'});
       if(!response.ok)return;
       const design=await response.json();
       if(!design||design.savedAt===revision)return;
